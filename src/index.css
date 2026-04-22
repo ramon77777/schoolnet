@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Base reset (propre) ---------- */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: #f8fafc; /* slate-50 */
+  color: #0f172a;      /* slate-900 */
+}
+
+/* ---------- Smooth UI ---------- */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(59, 130, 246, 0.25); /* blue-500 */
+}
+
+/* ---------- Reusable polish classes ---------- */
+@layer components {
+  .sn-card {
+    @apply rounded-2xl bg-white shadow-sm ring-1 ring-gray-100;
+  }
+
+  .sn-card-hover {
+    @apply transition hover:shadow-md hover:-translate-y-[1px];
+  }
+
+  .sn-soft-bg {
+    /* fond subtil premium */
+    background:
+      radial-gradient(900px 500px at 10% 0%, rgba(59, 130, 246, 0.16), transparent 60%),
+      radial-gradient(700px 450px at 90% 10%, rgba(99, 102, 241, 0.14), transparent 55%),
+      radial-gradient(800px 500px at 50% 100%, rgba(34, 211, 238, 0.12), transparent 60%),
+      #f8fafc;
+  }
+
+  .sn-focus {
+    @apply outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500;
+  }
+
+  .sn-btn {
+    @apply rounded-xl px-4 py-2 text-sm font-semibold transition;
+  }
+
+  .sn-btn-primary {
+    @apply sn-btn bg-blue-600 text-white hover:bg-blue-700;
+  }
+
+  .sn-btn-ghost {
+    @apply sn-btn bg-gray-100 text-gray-800 hover:bg-gray-200;
+  }
+}
+
+@layer components {
+  /* Sidebar active pill (glow + douceur) */
+  .sn-nav-item {
+    @apply block rounded-xl px-3 py-2 text-sm font-medium transition;
+  }
+  .sn-nav-item-active {
+    @apply bg-blue-600 text-white shadow-sm;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+  }
+  .sn-nav-item-inactive {
+    @apply text-gray-700 hover:bg-gray-100;
+  }
+
+  /* Badges */
+  .sn-badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .sn-badge-blue {
+    @apply bg-blue-50 text-blue-700;
+  }
+  .sn-badge-red {
+    @apply bg-red-50 text-red-700;
+  }
+  .sn-badge-green {
+    @apply bg-green-50 text-green-700;
+  }
+  .sn-badge-gray {
+    @apply bg-gray-100 text-gray-700;
+  }
+}
+
+
+@layer components {
+  /* Animation douce (cards + boutons) */
+  .sn-press {
+    @apply active:scale-[0.98];
+  }
+
+  .sn-pop {
+    animation: sn-pop 220ms ease-out;
+  }
+
+  @keyframes sn-pop {
+    from { transform: translateY(6px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Barres de progression: transition smooth */
+  .sn-progress {
+    @apply h-2 w-full rounded-full bg-gray-200 overflow-hidden;
+  }
+  .sn-progress > div {
+    transition: width 500ms ease;
+  }
+
+  /* Inputs focus premium */
+  .sn-input {
+    @apply w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900
+      placeholder:text-gray-400 shadow-sm transition;
+  }
+  .sn-input:focus {
+    outline: none;
+    border-color: rgb(59 130 246); /* blue-500 */
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  }
+}
+
+
+/* =========================
+   SIDEBAR NAV – PREMIUM A++
+   ========================= */
+
+.sn-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.9rem;
+
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  color: rgb(55 65 81); /* gray-700 */
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 120ms ease,
+    box-shadow 180ms ease;
+}
+
+/* Hover (soft lift) */
+.sn-nav-item:hover {
+  background: rgba(59, 130, 246, 0.06); /* blue-500 / 6% */
+  transform: translateX(2px);
+}
+
+/* Active pill */
+.sn-nav-item-active {
+  background: linear-gradient(
+    135deg,
+    rgb(59 130 246),
+    rgb(37 99 235)
+  ); /* blue-500 → blue-600 */
+
+  color: white;
+
+  box-shadow:
+    0 6px 18px rgba(37, 99, 235, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Active hover (slight glow pulse) */
+.sn-nav-item-active:hover {
+  transform: translateX(2px) scale(1.01);
+  box-shadow:
+    0 8px 22px rgba(37, 99, 235, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Inactive */
+.sn-nav-item-inactive {
+  background: transparent;
+}
+
+/* Icons inside nav items */
+.sn-nav-item svg,
+.sn-nav-item span {
+  flex-shrink: 0;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .sn-nav-item,
+  .sn-nav-item-active {
+    transition: none;
+    transform: none;
+  }
+}
