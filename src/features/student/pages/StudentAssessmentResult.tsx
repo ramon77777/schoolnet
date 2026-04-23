@@ -152,6 +152,10 @@ function sortChoices(rows: QuizChoiceRow[]) {
   });
 }
 
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
 function formatPoints(value: number | null | undefined) {
   if (value === null || value === undefined) return "—";
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
@@ -286,13 +290,13 @@ export default function StudentAssessmentResult() {
 
       const defaultMaxPoints =
         assessmentData.max_score && questionRows.length > 0
-          ? Math.max(1, Math.round(Number(assessmentData.max_score) / questionRows.length))
+          ? Math.max(1, round2(Number(assessmentData.max_score) / questionRows.length))
           : 1;
 
       const mappedQuestions: QuestionResultView[] = questionRows.map((question) => {
         const answer = answerByQuestionId[question.id];
         const grade = gradeByQuestionId[question.id];
-        const maxPoints = grade?.max_points ?? defaultMaxPoints;
+        const maxPoints = round2(grade?.max_points ?? defaultMaxPoints);
 
         if (question.question_type === "mcq") {
           const linkedChoices = sortChoices(
@@ -311,7 +315,8 @@ export default function StudentAssessmentResult() {
             type: "mcq",
             prompt: question.prompt,
             maxPoints,
-            studentAnswerLabel: choices.find((choice) => choice.selected)?.label || "Aucune réponse.",
+            studentAnswerLabel:
+              choices.find((choice) => choice.selected)?.label || "Aucune réponse.",
             teacherPoints: grade?.points_awarded ?? null,
             teacherFeedback: grade?.feedback ?? null,
             choices,
