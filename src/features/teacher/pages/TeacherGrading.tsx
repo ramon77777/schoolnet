@@ -223,7 +223,7 @@ export default function TeacherGrading() {
       }
 
       const { data: submissionsData, error: submissionsError } = await supabase
-        .from("submissions")
+        .from("assessment_submissions")
         .select(
           `
           id,

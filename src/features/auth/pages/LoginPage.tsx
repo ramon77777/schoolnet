@@ -1,87 +1,99 @@
 // src/features/auth/pages/LoginPage.tsx
-import { useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  getDefaultPathByRole,
-  signInWithMagicLink,
-  signInWithPassword,
-  type UserRole,
-} from "@/lib/auth";
-import { AuthContext } from "@/lib/auth/AuthProvider";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getDefaultPathByRole, signInWithMagicLink, signInWithPassword } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
-const ROLE_LABEL: Record<UserRole, string> = {
-  student: "Apprenant",
-  parent: "Parent/Tuteur",
-  teacher: "Enseignant",
-  admin: "Admin",
-};
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "object" && error !== null) {
+    const maybe = error as {
+      message?: string;
+      error_description?: string;
+    };
 
-function isRole(x: string | null): x is UserRole {
-  return x === "student" || x === "parent" || x === "teacher" || x === "admin";
+    return maybe.message || maybe.error_description || fallback;
+  }
+
+  return fallback;
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { user, loading } = useContext(AuthContext)!;
-
-  const [sp] = useSearchParams();
-  const presetRole = useMemo<UserRole>(() => {
-    const r = sp.get("role");
-    return isRole(r) ? r : "student";
-  }, [sp]);
+  const { user, loading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"password" | "magic">("password");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [isError, setIsError] = useState(false);
 
-  // ✅ si déjà connecté -> redirect
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
+    if (loading || !user) return;
     navigate(getDefaultPathByRole(user.role), { replace: true });
   }, [loading, user, navigate]);
 
   async function onPasswordLogin() {
-    setMsg(null);
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail || !password || busy) return;
+
     setBusy(true);
+    setIsError(false);
     setMsg("Connexion en cours...");
 
     try {
-      const authUser = await signInWithPassword(email.trim(), password);
+      const authUser = await signInWithPassword(cleanEmail, password);
 
-      // ✅ REDIRECT IMMÉDIAT (plus de ctrl+f5)
-      navigate(getDefaultPathByRole(authUser.role), { replace: true });
-
-      // Optionnel : on peut nettoyer le message
+      setIsError(false);
       setMsg(null);
-    } catch (e: any) {
-      setMsg(e?.message ?? "Connexion impossible.");
+
+      navigate(getDefaultPathByRole(authUser.role), { replace: true });
+    } catch (e: unknown) {
+      console.error("[LoginPage] password login error:", e);
+      setIsError(true);
+      setMsg(getErrorMessage(e, "Connexion impossible. Vérifie l’email et le mot de passe."));
     } finally {
       setBusy(false);
     }
   }
 
   async function onMagicLink() {
-    setMsg(null);
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail || busy) return;
+
     setBusy(true);
+    setIsError(false);
+    setMsg("Envoi du lien en cours...");
 
     try {
-      await signInWithMagicLink(email.trim());
+      await signInWithMagicLink(cleanEmail);
+      setIsError(false);
       setMsg("✅ Lien envoyé. Vérifie ta boîte mail.");
-    } catch (e: any) {
-      setMsg(e?.message ?? "Envoi impossible.");
+    } catch (e: unknown) {
+      console.error("[LoginPage] magic link error:", e);
+      setIsError(true);
+      setMsg(getErrorMessage(e, "Envoi impossible."));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="w-full max-w-md mx-auto space-y-5">
+      <form
+        className="w-full max-w-md mx-auto space-y-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (mode === "password") {
+            void onPasswordLogin();
+          } else {
+            void onMagicLink();
+          }
+        }}
+      >
       <div className="text-sm text-gray-500">
-        Rôle sélectionné :{" "}
-        <b className="text-gray-900">{ROLE_LABEL[presetRole]}</b>
+        Connexion réelle : le rôle est récupéré automatiquement depuis votre profil.
       </div>
 
       <div className="flex gap-2">
@@ -107,10 +119,11 @@ export default function LoginPage() {
       <div className="space-y-2">
         <label className="text-sm text-gray-600">Email</label>
         <input
-          className="w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           type="email"
+          autoComplete="email"
           disabled={busy}
         />
       </div>
@@ -119,29 +132,36 @@ export default function LoginPage() {
         <div className="space-y-2">
           <label className="text-sm text-gray-600">Mot de passe</label>
           <input
-            className="w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
+            autoComplete="current-password"
             disabled={busy}
           />
         </div>
       )}
 
       {msg && (
-        <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-700">
+        <div
+          className={`rounded-2xl p-3 text-sm ${
+            isError
+              ? "bg-red-50 border border-red-200 text-red-700"
+              : "bg-gray-50 border border-gray-100 text-gray-700"
+          }`}
+        >
           {msg}
         </div>
       )}
 
       <button
-        type="button"
+        type="submit"
         className="sn-btn-primary sn-press w-full"
         onClick={mode === "password" ? onPasswordLogin : onMagicLink}
         disabled={busy || !email.trim() || (mode === "password" && !password)}
       >
         {busy ? "Connexion..." : "Se connecter"}
       </button>
-    </div>
+    </form>
   );
 }

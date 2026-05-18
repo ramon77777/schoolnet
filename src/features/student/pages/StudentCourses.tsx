@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useNavigate } from "react-router-dom";
 
 type DbCourse = {
   id: string;
@@ -70,6 +71,7 @@ function clampProgress(value: number | null | undefined): number {
 
 export default function StudentCourses() {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   const [courses, setCourses] = useState<DbCourse[]>([]);
   const [progressByCourse, setProgressByCourse] = useState<Record<string, number>>({});
@@ -218,7 +220,11 @@ export default function StudentCourses() {
       {!isInitialLoading && !error && courseCards.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courseCards.map((course) => (
-            <CourseCard key={course.id} course={course} />
+            <CourseCard
+              key={course.id}
+              course={course}
+              onOpen={() => navigate(`/app/student/courses/${course.id}`)}
+            />
           ))}
         </div>
       )}
@@ -226,7 +232,13 @@ export default function StudentCourses() {
   );
 }
 
-function CourseCard({ course }: { course: StudentCourseCardView }) {
+function CourseCard({
+  course,
+  onOpen,
+}: {
+  course: StudentCourseCardView;
+  onOpen: () => void;
+}) {
   return (
     <div className="sn-card sn-card-hover sn-pop p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -255,7 +267,12 @@ function CourseCard({ course }: { course: StudentCourseCardView }) {
         <div className="h-full bg-blue-600" style={{ width: `${course.progress}%` }} />
       </div>
 
-      <button className="sn-btn-primary w-full sn-press">Continuer</button>
+      <button
+        className="sn-btn-primary w-full sn-press"
+        onClick={onOpen}
+      >
+        Continuer
+      </button>
     </div>
   );
 }

@@ -218,7 +218,7 @@ export default function StudentAssessmentTake() {
       }
 
       const { data: existingSubmissionData, error: existingSubmissionError } = await supabase
-        .from("submissions")
+        .from("assessment_submissions")
         .select("id, status")
         .eq("assessment_id", id)
         .eq("student_id", user.id)
@@ -477,7 +477,7 @@ export default function StudentAssessmentTake() {
 
         if (!submissionId) {
           const { data: insertedSubmission, error: insertSubmissionError } = await supabase
-            .from("submissions")
+            .from("assessment_submissions")
             .insert({
               assessment_id: id,
               student_id: user.id,
@@ -492,7 +492,7 @@ export default function StudentAssessmentTake() {
           submissionId = insertedSubmission.id as string;
         } else {
           const { error: updateSubmissionError } = await supabase
-            .from("submissions")
+            .from("assessment_submissions")
             .update({
               submitted_at: new Date().toISOString(),
               status: "submitted",

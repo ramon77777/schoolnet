@@ -108,7 +108,7 @@ export default function ParentResultsDetail() {
   const questions: Question[] = useMemo(() => {
     if (!id || !assessment) return [];
     return getQuestionsForAssessment(id, assessment.type);
-  }, [id, assessment?.type]);
+  }, [id, assessment]);
 
   const answers = useMemo(
     () => ((attempt?.answers || {}) as Record<string, string>),

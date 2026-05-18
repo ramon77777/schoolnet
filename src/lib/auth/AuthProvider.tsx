@@ -1,26 +1,18 @@
+/* eslint-disable react-refresh/only-export-components */
+
 // src/lib/auth/AuthProvider.tsx
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  AuthContext,
+  type AuthContextValue,
+  type AuthUser,
+  type UserRole,
+} from "./auth-context";
 
-export type UserRole = "student" | "parent" | "teacher" | "admin";
+export type { UserRole } from "./auth-context";
 
-export type AuthUser = {
-  id: string;
-  email?: string | null;
-  role: UserRole;
-  fullName?: string | null;
-  isDemo?: boolean;
-};
-
-type AuthContextValue = {
-  user: AuthUser | null;
-  loading: boolean;
-  setDemoRole: (role: UserRole) => void;
-  clearDemo: () => void;
-};
-
-export const AuthContext = createContext<AuthContextValue | null>(null);
 
 const DEMO_KEY = "sn_demo_role";
 
@@ -57,10 +49,9 @@ async function fetchProfileSafe(userId: string): Promise<{ role: UserRole; full_
       full_name: data?.full_name ?? null,
     };
   } catch (e) {
-    // ✅ IMPORTANT: on NE BLOQUE JAMAIS l'app si profiles est lent / RLS / row manquante
-    console.warn("[AuthProvider] profile fetch failed, fallback student:", e);
-    return { role: "student", full_name: null };
-  }
+      console.error("[AuthProvider] profile fetch failed:", e);
+      throw e;
+    }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -91,6 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const profile = await fetchProfileSafe(session.user.id);
+
+        if (!profile?.role) {
+          throw new Error("Profil utilisateur introuvable ou rôle manquant.");
+        }
 
         if (!mountedRef.current) return;
 

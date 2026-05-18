@@ -294,8 +294,16 @@ export default function TeacherGradingDetail() {
           .single(),
 
         supabase
-          .from("submissions")
-          .select("id, assessment_id, student_id, submitted_at, status, score, feedback")
+          .from("assessment_submissions")
+          .select(`
+            id,
+            assessment_id,
+            student_id,
+            submitted_at,
+            status,
+            score,
+            feedback
+          `)
           .eq("assessment_id", id)
           .eq("student_id", studentId)
           .maybeSingle(),
@@ -603,6 +611,7 @@ export default function TeacherGradingDetail() {
     try {
       setSaving(true);
 
+      // 1. Upsert des notes par question
       const perQuestionPayload = questions.map((question) => {
         const rawPoints = questionGrades[question.id]?.points ?? "";
         const parsedPoints = parseLocalizedNumber(rawPoints);
@@ -620,34 +629,64 @@ export default function TeacherGradingDetail() {
         };
       });
 
-      const { error: upsertGradesError } = await supabase
+      const { error: upsertError } = await supabase
         .from("submission_question_grades")
         .upsert(perQuestionPayload, {
           onConflict: "submission_id,question_id",
         });
 
-      if (upsertGradesError) throw upsertGradesError;
+      if (upsertError) throw upsertError;
 
-      const { error: updateSubmissionError } = await supabase
-        .from("submissions")
-        .update({
-          score: computedTotal,
-          feedback: feedback.trim() || null,
-          status: "graded",
-        })
-        .eq("id", submission.id);
+      // 2. RPC sécurisé (remplace update manuel)
+      const { error: rpcError } = await supabase.rpc("mark_submission_as_graded", {
+        p_submission_id: submission.id,
+        p_feedback: feedback.trim() || null,
+      });
 
-      if (updateSubmissionError) throw updateSubmissionError;
+      if (rpcError) throw rpcError;
 
       initialDraftRef.current = currentDraftFingerprint;
 
-      alert("✅ Correction enregistrée.");
-      navigate(`/app/teacher/grading?assessmentId=${encodeURIComponent(submission.assessment_id)}`, {
-        replace: true,
-      });
+      alert("✅ Correction enregistrée");
+
+      navigate(
+        `/app/teacher/grading?assessmentId=${encodeURIComponent(submission.assessment_id)}`,
+        { replace: true }
+      );
     } catch (err) {
-      console.error("[TeacherGradingDetail] onSaveGrade error:", err);
-      alert(safeErrorMessage(err, "Impossible d’enregistrer la correction."));
+      console.error(err);
+      alert(safeErrorMessage(err, "Erreur enregistrement"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onPublishGrade() {
+    if (!submission || saving) return;
+
+    const ok = window.confirm(
+      "Publier cette correction ? L’élève pourra voir sa note et le feedback."
+    );
+    if (!ok) return;
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase.rpc("publish_assessment_submission", {
+        p_submission_id: submission.id,
+      });
+
+      if (error) throw error;
+
+      alert("✅ Correction publiée");
+
+      navigate(
+        `/app/teacher/grading?assessmentId=${encodeURIComponent(submission.assessment_id)}`,
+        { replace: true }
+      );
+    } catch (err) {
+      console.error(err);
+      alert(safeErrorMessage(err, "Erreur publication"));
     } finally {
       setSaving(false);
     }
@@ -776,6 +815,16 @@ export default function TeacherGradingDetail() {
               >
                 {saving ? "Enregistrement..." : "Enregistrer correction"}
               </button>
+              {submission.status === "graded" && (
+                <button
+                  className="sn-btn-primary sn-press w-full"
+                  onClick={onPublishGrade}
+                  disabled={saving || hasUnsaved}
+                  type="button"
+                >
+                  {saving ? "Publication..." : "Publier la correction"}
+                </button>
+              )}
             </div>
 
             <div className="text-xs text-gray-500">

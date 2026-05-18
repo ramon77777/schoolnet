@@ -52,7 +52,8 @@ type AssessmentView = {
   sectionTitle: string;
   when: string;
   isNew: boolean;
-  studentStatus: "À faire" | "Terminé";
+  studentStatus: "À faire" | "En cours" | "Terminé";
+  submissionStatus?: SubmissionStatus;
   scoreLabel?: string;
 };
 
@@ -159,7 +160,7 @@ export default function StudentAssessments() {
       let submissionsByAssessmentId: Record<string, SubmissionRow> = {};
       if (assessmentIds.length > 0) {
         const { data: submissionsData, error: submissionsError } = await supabase
-          .from("submissions")
+          .from("assessment_submissions")
           .select("assessment_id, status, score")
           .eq("student_id", user.id)
           .in("assessment_id", assessmentIds);
@@ -187,7 +188,14 @@ export default function StudentAssessments() {
           sectionTitle: section?.title ?? "Sans section",
           when: formatDueAt(row.due_at),
           isNew: isRecentlyCreated(row.created_at),
-          studentStatus: submission ? "Terminé" : "À faire",
+          submissionStatus: submission?.status,
+          studentStatus:
+            submission?.status === "in_progress"
+              ? "En cours"
+              : submission &&
+                ["submitted", "graded", "published"].includes(submission.status)
+              ? "Terminé"
+              : "À faire",
           scoreLabel:
             submission?.score !== null && submission?.score !== undefined
               ? String(submission.score)
@@ -318,26 +326,26 @@ export default function StudentAssessments() {
                 </div>
 
                 <div className="flex gap-2">
-                  {row.studentStatus === "À faire" ? (
+                  {row.studentStatus === "Terminé" ? (
+                    <button
+                      className="sn-btn-ghost sn-press"
+                      onClick={() => navigate(`/app/student/assessments/${row.id}/result`)}
+                    >
+                      Voir résultat
+                    </button>
+                  ) : (
                     <button
                       className="sn-btn-primary sn-press"
                       onClick={() => navigate(`/app/student/assessments/${row.id}`)}
                     >
-                      Commencer
-                    </button>
-                  ) : (
-                    <button
-                      className="sn-btn-ghost sn-press"
-                      onClick={() => alert("Le détail résultat sera branché ensuite.")}
-                    >
-                      Voir résultat
+                      {row.studentStatus === "En cours" ? "Continuer" : "Commencer"}
                     </button>
                   )}
 
                   <button
                     className="sn-btn-ghost sn-press"
-                    onClick={() => alert("Détails supplémentaires (à venir)")}
-                  >
+                    onClick={() => navigate(`/app/student/assessments/${row.id}/details`)}
+                                      >
                     Détails
                   </button>
                 </div>

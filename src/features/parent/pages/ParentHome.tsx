@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ensureSeed,
@@ -111,13 +111,12 @@ export default function ParentHome() {
     [children, selectedChildId]
   );
 
-  const [rows, setRows] = useState<Row[]>([]);
-
-  useEffect(() => {
+  const rows = useMemo<Row[]>(() => {
     ensureSeed();
+
     const published = getPublishedAssessments();
 
-    const mapped: Row[] = published.map((a) => {
+    return published.map((a) => {
       const attempt = getAttemptFor(a.id, selectedChildId);
       const done = Boolean(attempt);
 
@@ -134,15 +133,15 @@ export default function ParentHome() {
         childLabel: selectedChild?.label || "Enfant",
 
         status: done ? "Terminé" : "À faire",
+
         scoreLabel:
           attempt?.score !== undefined && attempt?.score !== null
             ? String(attempt.score)
             : undefined,
+
         submittedAtISO: attempt?.submittedAtISO,
       };
     });
-
-    setRows(mapped);
   }, [selectedChildId, selectedChild?.label]);
 
   // ===== Option 3: Focus stats =====

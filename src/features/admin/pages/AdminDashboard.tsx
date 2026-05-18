@@ -1,5 +1,5 @@
 // src/features/admin/pages/AdminDashboard.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ensureSeed,
   getAssessments,
@@ -55,7 +55,7 @@ function labelAttemptStatus(s: Attempt["status"]) {
 }
 
 export default function AdminDashboard() {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [, setRefreshKey] = useState(0);
 
   useEffect(() => {
     ensureSeed();
@@ -71,7 +71,6 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const { kpis, activity, alerts } = useMemo(() => {
     const assessments = getAssessments();
     const publishedAssessments = assessments.filter((a) => a.status === "published");
     const attempts = getAttempts();
@@ -90,27 +89,30 @@ export default function AdminDashboard() {
       classes: classes.length,
     };
 
-    // ===== Activity (derivée des attempts) =====
     const recentAttempts = [...attempts]
       .sort((a, b) => {
-        // priorité à la date la plus récente parmi publishedAt / gradedAt / submittedAt
         const ta = Math.max(
           safeTime(a.grading?.publishedAtISO),
           safeTime(a.grading?.gradedAtISO),
           safeTime(a.submittedAtISO)
         );
+
         const tb = Math.max(
           safeTime(b.grading?.publishedAtISO),
           safeTime(b.grading?.gradedAtISO),
           safeTime(b.submittedAtISO)
         );
+
         return tb - ta;
       })
       .slice(0, 8);
 
-    const activityItems: ActivityItem[] = recentAttempts.map((at) => {
-      const a = assessments.find((x) => x.id === at.assessmentId);
-      const labelEval = a ? `${a.title} (${a.className})` : at.assessmentId;
+    const activity: ActivityItem[] = recentAttempts.map((at) => {
+      const assessment = assessments.find((x) => x.id === at.assessmentId);
+
+      const labelEval = assessment
+        ? `${assessment.title} (${assessment.className})`
+        : at.assessmentId;
 
       const when =
         at.status === "published"
@@ -120,38 +122,50 @@ export default function AdminDashboard() {
           : at.submittedAtISO;
 
       const icon =
-        at.status === "published" ? "📣" : at.status === "graded" ? "✅" : at.status === "submitted" ? "📝" : "⏳";
+        at.status === "published"
+          ? "📣"
+          : at.status === "graded"
+          ? "✅"
+          : at.status === "submitted"
+          ? "📝"
+          : "⏳";
 
       return {
         id: at.id,
         icon,
-        text: `${labelAttemptStatus(at.status)} — ${labelEval} • ${formatDateTime(when)}`,
+        text: `${labelAttemptStatus(at.status)} — ${labelEval} • ${formatDateTime(
+          when
+        )}`,
         badge: at.status === "submitted" ? "À traiter" : undefined,
         ts: Math.max(safeTime(when), 0),
       };
     });
 
-    // ===== Alerts (actions admin utiles) =====
-    const toGrade = counts.submitted; // copies à corriger
-    const gradedNotPublished = counts.graded; // corrigées non publiées (parents ne voient rien)
+    const toGrade = counts.submitted;
+    const gradedNotPublished = counts.graded;
 
-    // évaluations publiées sans aucune copie
     const attemptsByAssessment: Record<string, number> = {};
-    for (const at of attempts) attemptsByAssessment[at.assessmentId] = (attemptsByAssessment[at.assessmentId] || 0) + 1;
 
-    const noSubmission = publishedAssessments.filter((a) => (attemptsByAssessment[a.id] || 0) === 0);
+    for (const at of attempts) {
+      attemptsByAssessment[at.assessmentId] =
+        (attemptsByAssessment[at.assessmentId] || 0) + 1;
+    }
 
-    const alertItems: AlertItem[] = [];
+    const noSubmission = publishedAssessments.filter(
+      (assessment) => (attemptsByAssessment[assessment.id] || 0) === 0
+    );
+
+    const alerts: AlertItem[] = [];
 
     if (toGrade > 0) {
-      alertItems.push({
+      alerts.push({
         id: "a_to_grade",
         title: "Copies à corriger",
         text: `${toGrade} copie(s) soumise(s) attend(ent) une correction.`,
         badge: "À traiter",
       });
     } else {
-      alertItems.push({
+      alerts.push({
         id: "a_to_grade_ok",
         title: "Corrections",
         text: "Aucune copie en attente de correction.",
@@ -160,16 +174,16 @@ export default function AdminDashboard() {
     }
 
     if (gradedNotPublished > 0) {
-      alertItems.push({
+      alerts.push({
         id: "a_graded_not_pub",
         title: "Résultats non publiés",
-        text: `${gradedNotPublished} copie(s) corrigée(s) mais pas encore publiée(s) (parents/élèves ne voient rien).`,
+        text: `${gradedNotPublished} copie(s) corrigée(s) mais pas encore publiée(s).`,
         badge: "À traiter",
       });
     }
 
     if (noSubmission.length > 0) {
-      alertItems.push({
+      alerts.push({
         id: "a_no_submission",
         title: "Évaluations sans soumission",
         text: `${noSubmission.length} évaluation(s) publiée(s) sans aucune soumission.`,
@@ -178,30 +192,46 @@ export default function AdminDashboard() {
     }
 
     if (counts.inProgress > 0) {
-      alertItems.push({
+      alerts.push({
         id: "a_in_progress",
         title: "Tentatives en cours",
-        text: `${counts.inProgress} tentative(s) non soumise(s) (en cours).`,
+        text: `${counts.inProgress} tentative(s) non soumise(s).`,
         badge: "Info",
       });
     }
 
-    // KPIs (tu peux changer l'ordre/labels)
-    const kpiCards = [
-      { title: "Évaluations publiées", value: String(counts.assessmentsPublished), icon: "📚" },
-      { title: "Copies soumises", value: String(counts.submitted), icon: "📝" },
-      { title: "Copies corrigées", value: String(counts.graded), icon: "✅" },
-      { title: "Copies publiées", value: String(counts.published), icon: "📣" },
-      { title: "Apprenants", value: String(counts.students), icon: "🎓" },
-      { title: "Classes", value: String(counts.classes), icon: "🏫" },
+    const kpis = [
+      {
+        title: "Évaluations publiées",
+        value: String(counts.assessmentsPublished),
+        icon: "📚",
+      },
+      {
+        title: "Copies soumises",
+        value: String(counts.submitted),
+        icon: "📝",
+      },
+      {
+        title: "Copies corrigées",
+        value: String(counts.graded),
+        icon: "✅",
+      },
+      {
+        title: "Copies publiées",
+        value: String(counts.published),
+        icon: "📣",
+      },
+      {
+        title: "Apprenants",
+        value: String(counts.students),
+        icon: "🎓",
+      },
+      {
+        title: "Classes",
+        value: String(counts.classes),
+        icon: "🏫",
+      },
     ];
-
-    return {
-      kpis: kpiCards,
-      activity: activityItems,
-      alerts: alertItems.slice(0, 5),
-    };
-  }, [refreshKey]);
 
   return (
     <div className="space-y-6">

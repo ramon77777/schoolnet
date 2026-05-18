@@ -1,3 +1,4 @@
+// src/features/teacher/pages/TeacherAssessments.tsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
@@ -5,7 +6,6 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 
 type AssessmentType = "quiz" | "assignment" | "exam";
 type AssessmentStatus = "draft" | "published" | "closed";
-type SubmissionStatus = "in_progress" | "submitted" | "graded" | "published";
 
 type CourseRow = {
   id: string;
@@ -42,6 +42,12 @@ type AssessmentView = {
   sectionTitle: string;
   when: string;
   isNew: boolean;
+};
+
+type SafeError = {
+  message?: string;
+  error_description?: string;
+  details?: string;
 };
 
 function normalizeCourse(value: AssessmentRow["courses"]): CourseRow | null {
@@ -82,14 +88,23 @@ function isRecentlyCreated(createdAt: string): boolean {
 
 function safeErrorMessage(err: unknown, fallback: string): string {
   if (typeof err === "object" && err !== null) {
-    const maybe = err as {
-      message?: string;
-      error_description?: string;
-      details?: string;
-    };
+    const maybe = err as SafeError;
     return maybe.message || maybe.error_description || maybe.details || fallback;
   }
+
   return fallback;
+}
+
+function typeBadge(type: AssessmentView["type"]) {
+  if (type === "Examen") return "sn-badge sn-badge-red";
+  if (type === "Devoir") return "sn-badge sn-badge-blue";
+  return "sn-badge sn-badge-gray";
+}
+
+function statusBadge(status: AssessmentView["status"]) {
+  if (status === "Publié") return "sn-badge sn-badge-green";
+  if (status === "Clôturé") return "sn-badge sn-badge-red";
+  return "sn-badge sn-badge-gray";
 }
 
 export default function TeacherAssessments() {
@@ -159,9 +174,9 @@ export default function TeacherAssessments() {
       });
 
       setRows(mapped);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[TeacherAssessments] loadAssessments error:", err);
-      setError("Impossible de charger les évaluations.");
+      setError(safeErrorMessage(err, "Impossible de charger les évaluations."));
       setRows([]);
     } finally {
       setLoading(false);
@@ -177,71 +192,25 @@ export default function TeacherAssessments() {
     return rows.filter((row) => (filter === "Tous" ? true : row.type === filter));
   }, [rows, filter]);
 
-  function typeBadge(type: AssessmentView["type"]) {
-    if (type === "Examen") return "sn-badge sn-badge-red";
-    if (type === "Devoir") return "sn-badge sn-badge-blue";
-    return "sn-badge sn-badge-gray";
-  }
-
-  function statusBadge(status: AssessmentView["status"]) {
-    if (status === "Publié") return "sn-badge sn-badge-green";
-    if (status === "Clôturé") return "sn-badge sn-badge-red";
-    return "sn-badge sn-badge-gray";
-  }
-
-  async function syncSubmissionStatusesForAssessment(
-    assessmentId: string,
-    mode: "publish" | "unpublish"
-  ) {
-    if (mode === "publish") {
-      const { error } = await supabase
-        .from("submissions")
-        .update({ status: "published" satisfies SubmissionStatus })
-        .eq("assessment_id", assessmentId)
-        .eq("status", "graded" satisfies SubmissionStatus);
-
-      if (error) throw error;
-      return;
-    }
-
-    const { error } = await supabase
-      .from("submissions")
-      .update({ status: "graded" satisfies SubmissionStatus })
-      .eq("assessment_id", assessmentId)
-      .eq("status", "published" satisfies SubmissionStatus);
-
-    if (error) throw error;
-  }
-
   async function togglePublish(row: AssessmentView) {
     try {
       setPublishingId(row.id);
 
-      const isCurrentlyPublished = row.status === "Publié";
-      const nextStatus: AssessmentStatus = isCurrentlyPublished ? "draft" : "published";
+      const isPublished = row.status === "Publié";
 
-      const { error: updateAssessmentError } = await supabase
-        .from("assessments")
-        .update({ status: nextStatus })
-        .eq("id", row.id);
+      const { error: rpcError } = await supabase.rpc("set_assessment_publication", {
+        p_assessment_id: row.id,
+        p_publish: !isPublished,
+      });
 
-      if (updateAssessmentError) throw updateAssessmentError;
-
-      await syncSubmissionStatusesForAssessment(
-        row.id,
-        isCurrentlyPublished ? "unpublish" : "publish"
-      );
+      if (rpcError) throw rpcError;
 
       await loadAssessments();
 
-      if (isCurrentlyPublished) {
-        alert("✅ Évaluation dépubliée. Les copies publiées repassent en corrigé non publié.");
-      } else {
-        alert("✅ Évaluation publiée.");
-      }
-    } catch (err) {
+      alert(isPublished ? "✅ Évaluation dépubliée." : "✅ Évaluation publiée.");
+    } catch (err: unknown) {
       console.error("[TeacherAssessments] togglePublish error:", err);
-      alert(safeErrorMessage(err, "Impossible de modifier le statut de publication."));
+      alert(safeErrorMessage(err, "Impossible de modifier la publication."));
     } finally {
       setPublishingId(null);
     }
@@ -264,6 +233,7 @@ export default function TeacherAssessments() {
         </div>
 
         <button
+          type="button"
           className="sn-btn-primary sn-press"
           onClick={() => navigate("/app/teacher/assessments/new")}
         >
@@ -323,6 +293,7 @@ export default function TeacherAssessments() {
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="font-semibold text-gray-900">{row.title}</div>
                     <span className={typeBadge(row.type)}>{row.type}</span>
+                    <span className={statusBadge(row.status)}>{row.status}</span>
                     {row.isNew && row.status === "Publié" && (
                       <span className="sn-badge sn-badge-blue">Nouveau</span>
                     )}
@@ -334,19 +305,18 @@ export default function TeacherAssessments() {
                   <div className="mt-1 text-sm text-gray-500">{row.when}</div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className={statusBadge(row.status)}>{row.status}</span>
-                  <button
-                    className="sn-btn-ghost sn-press"
-                    onClick={() => navigate(`/app/teacher/assessments/${row.id}`)}
-                  >
-                    Ouvrir
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="sn-btn-ghost sn-press"
+                  onClick={() => navigate(`/app/teacher/assessments/${row.id}`)}
+                >
+                  Ouvrir
+                </button>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <button
+                  type="button"
                   className="sn-btn-ghost sn-press"
                   onClick={() => navigate(`/app/teacher/assessments/${row.id}/edit`)}
                 >
@@ -354,6 +324,7 @@ export default function TeacherAssessments() {
                 </button>
 
                 <button
+                  type="button"
                   className="sn-btn-ghost sn-press"
                   onClick={() => void togglePublish(row)}
                   disabled={publishingId === row.id}
@@ -366,6 +337,7 @@ export default function TeacherAssessments() {
                 </button>
 
                 <button
+                  type="button"
                   className="sn-btn-primary sn-press"
                   onClick={() => goToCorrections(row.id)}
                 >
@@ -378,7 +350,8 @@ export default function TeacherAssessments() {
       )}
 
       <div className="text-xs text-gray-500">
-        *La publication d’une évaluation publie aussi les copies déjà corrigées, et la dépublication les remet en corrigé non publié.*
+        *La publication est maintenant sécurisée via la fonction SQL
+        set_assessment_publication.*
       </div>
     </div>
   );
@@ -390,7 +363,7 @@ function Pill({
   onClick,
   tone,
 }: {
-  label: string;
+  label: FilterValue;
   active: boolean;
   onClick: () => void;
   tone?: "danger";

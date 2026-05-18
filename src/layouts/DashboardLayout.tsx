@@ -122,6 +122,7 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/dashboard">📊 Tableau de bord</NavLink>
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
+            <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
             <NavLink className={navItem} to="/app/admin/content">📚 Contenu</NavLink>
             <NavLink className={navItem} to="/app/admin/settings">⚙️ Paramètres</NavLink>
           </>

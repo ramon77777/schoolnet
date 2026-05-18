@@ -8,8 +8,6 @@ import LoginPage from "../features/auth/pages/LoginPage";
 
 import { ProtectedRoute, RoleGate } from "./guards";
 
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { getDefaultPathByRole } from "@/lib/auth";
 
 // Admin
 import AdminDashboard from "../features/admin/pages/AdminDashboard";
@@ -17,6 +15,7 @@ import AdminUsers from "../features/admin/pages/AdminUsers";
 import AdminClasses from "../features/admin/pages/AdminClasses";
 import AdminContent from "../features/admin/pages/AdminContent";
 import AdminSettings from "../features/admin/pages/AdminSettings";
+import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
 
 // Teacher
 import TeacherCourses from "../features/teacher/pages/TeacherCourses";
@@ -36,6 +35,8 @@ import StudentProgress from "../features/student/pages/StudentProgress";
 import StudentAssessments from "../features/student/pages/StudentAssessments";
 import StudentAssessmentTake from "../features/student/pages/StudentAssessmentTake";
 import StudentAssessmentResult from "../features/student/pages/StudentAssessmentResult";
+import StudentCourseDetail from "../features/student/pages/StudentCourseDetail";
+import StudentAssessmentDetails from "../features/student/pages/StudentAssessmentDetails";
 
 // Parent
 import ParentHome from "../features/parent/pages/ParentHome";
@@ -44,19 +45,7 @@ import ParentDeadlines from "../features/parent/pages/ParentDeadlines";
 import ParentResults from "../features/parent/pages/ParentResults";
 import ParentResultsDetail from "../features/parent/pages/ParentResultsDetail";
 
-function AppIndexRedirect() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div className="sn-card p-6">Chargement…</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/auth/login" replace />;
-  }
-
-  return <Navigate to={getDefaultPathByRole(user.role)} replace />;
-}
+import AppIndexRedirect from "./AppIndexRedirect";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/auth/login" replace /> },
@@ -83,11 +72,13 @@ export const router = createBrowserRouter([
             children: [
               { path: "student", element: <Navigate to="/app/student/courses" replace /> },
               { path: "student/courses", element: <StudentCourses /> },
+              { path: "student/courses/:courseId", element: <StudentCourseDetail /> },
               { path: "student/homework", element: <StudentHomework /> },
               { path: "student/progress", element: <StudentProgress /> },
               { path: "student/assessments", element: <StudentAssessments /> },
               { path: "student/assessments/:id", element: <StudentAssessmentTake /> },
               { path: "student/assessments/:id/result", element: <StudentAssessmentResult /> },
+              { path: "student/assessments/:id/details", element: <StudentAssessmentDetails /> },
             ],
           },
 
@@ -131,6 +122,7 @@ export const router = createBrowserRouter([
               { path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/content", element: <AdminContent /> },
               { path: "admin/settings", element: <AdminSettings /> },
+              { path: "admin/school-years", element: <AdminSchoolYears /> },
             ],
           },
         ],

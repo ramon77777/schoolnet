@@ -1,10 +1,9 @@
 // src/lib/mockStore.ts
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export type AssessmentType = "Quiz" | "Devoir" | "Examen";
 
 export type MockAssessment = {
-  id: string; // a1/a2/a3...
+  id: string;
   type: AssessmentType;
   title: string;
   courseTitle: string;
@@ -42,14 +41,8 @@ export type Attempt = {
   submittedAtISO?: string;
   answers: Record<string, string>;
   status: AttemptStatus;
-
-  // ✅ snapshot des questions vues par l'élève au moment de la soumission
   questions?: AttemptQuestion[];
-
-  // Score final (ex "16/20" ou "7/10")
   score?: string;
-
-  // Correction (enseignant)
   grading?: Grading;
 };
 
@@ -57,20 +50,15 @@ export type Grading = {
   status: "pending" | "graded" | "published";
   gradedAtISO?: string;
   publishedAtISO?: string;
-
   overallComment?: string;
-
-  // points par question
   perQuestion?: Record<
     string,
     {
-      pointsAwarded?: number; // ex 1.5
+      pointsAwarded?: number;
       comment?: string;
     }
   >;
-
-  // score final calculé
-  finalScore?: string; // ex "16/20"
+  finalScore?: string;
 };
 
 export type Student = {
@@ -206,11 +194,26 @@ export function getAssessments(): MockAssessment[] {
 }
 
 export function getPublishedAssessments(): MockAssessment[] {
-  return getAssessments().filter((a) => a.status === "published");
+  return getAssessments().filter((assessment) => assessment.status === "published");
 }
 
-export function getAssessmentById(id: string) {
-  return getAssessments().find((a) => a.id === id) || null;
+export function getAssessmentById(id: string): MockAssessment | null {
+  return getAssessments().find((assessment) => assessment.id === id) || null;
+}
+
+export function updateAssessment(assessmentPatch: Partial<MockAssessment> & { id: string }): boolean {
+  const assessments = getAssessments();
+  const index = assessments.findIndex((assessment) => assessment.id === assessmentPatch.id);
+
+  if (index < 0) return false;
+
+  assessments[index] = {
+    ...assessments[index],
+    ...assessmentPatch,
+  };
+
+  write(LS.assessments, assessments);
+  return true;
 }
 
 /* =========================
@@ -221,8 +224,8 @@ export function getStudents(): Student[] {
   return read<Student[]>(LS.students, []);
 }
 
-export function getStudentById(id: string) {
-  return getStudents().find((s) => s.id === id) || null;
+export function getStudentById(id: string): Student | null {
+  return getStudents().find((student) => student.id === id) || null;
 }
 
 /* =========================
@@ -234,26 +237,30 @@ export function getAttempts(): Attempt[] {
 }
 
 export function getAttemptsForAssessment(assessmentId: string): Attempt[] {
-  return getAttempts().filter((a) => a.assessmentId === assessmentId);
+  return getAttempts().filter((attempt) => attempt.assessmentId === assessmentId);
 }
 
 export function getAttemptFor(assessmentId: string, studentId: string): Attempt | null {
-  return getAttempts().find((a) => a.assessmentId === assessmentId && a.studentId === studentId) || null;
+  return (
+    getAttempts().find(
+      (attempt) => attempt.assessmentId === assessmentId && attempt.studentId === studentId
+    ) || null
+  );
 }
 
 export function upsertAttempt(attempt: Attempt) {
-  const all = getAttempts();
-  const idx = all.findIndex((a) => a.id === attempt.id);
-  if (idx >= 0) all[idx] = attempt;
-  else all.unshift(attempt);
-  write(LS.attempts, all);
+  const attempts = getAttempts();
+  const index = attempts.findIndex((item) => item.id === attempt.id);
+
+  if (index >= 0) {
+    attempts[index] = attempt;
+  } else {
+    attempts.unshift(attempt);
+  }
+
+  write(LS.attempts, attempts);
 }
 
-/**
- * ✅ compat ascendante :
- * - anciens appels: submitAttempt({ assessmentId, studentId, answers })
- * - nouveaux appels: submitAttempt({ assessmentId, studentId, answers, questions })
- */
 export function submitAttempt(params: {
   assessmentId: string;
   studentId: string;
@@ -335,12 +342,6 @@ export function publishAttempt(params: { assessmentId: string; studentId: string
   return next;
 }
 
-// ✅ helper utile pour les vues enseignant / parent mock
 export function getAttemptQuestions(assessmentId: string, studentId: string): AttemptQuestion[] {
   return getAttemptFor(assessmentId, studentId)?.questions ?? [];
-}
-
-// ✅ compat: utilisé par TeacherAssessments.tsx
-export function updateAssessment(_: any) {
-  return true;
 }

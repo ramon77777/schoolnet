@@ -473,7 +473,7 @@ export default function TeacherAssessmentCreate() {
         if (insertChoicesError) throw insertChoicesError;
       }
 
-      navigate("/app/teacher/assessments");
+      navigate(`/app/teacher/assessments/${createdAssessmentId}`);
     } catch (err) {
       console.error("[TeacherAssessmentCreate] submit error:", err);
 
