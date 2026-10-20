@@ -20,6 +20,7 @@ type AssessmentRow = {
   id: string;
   title: string;
   type: AssessmentType;
+  submission_mode: "online" | "file_upload" | null;
   course_id: string;
   courses: CourseRow | CourseRow[] | null;
 };
@@ -33,6 +34,16 @@ type SubmissionRow = {
   score: number | null;
   feedback: string | null;
   assessments: AssessmentRow | AssessmentRow[] | null;
+};
+
+type HomeworkSubmissionRow = {
+  id: string;
+  homework_id: string;
+  student_id: string;
+  submitted_at: string | null;
+  status: SubmissionStatus;
+  score: number | null;
+  feedback: string | null;
 };
 
 type ClassStudentRow = {
@@ -174,6 +185,7 @@ export default function TeacherGrading() {
           id,
           title,
           type,
+          submission_mode,
           course_id,
           courses (
             id,
@@ -222,37 +234,113 @@ export default function TeacherGrading() {
         setTargetAssessment(null);
       }
 
-      const { data: submissionsData, error: submissionsError } = await supabase
-        .from("assessment_submissions")
-        .select(
-          `
-          id,
-          assessment_id,
-          student_id,
-          submitted_at,
-          status,
-          score,
-          feedback,
-          assessments (
+      const [onlineSubmissionsResult, homeworkSubmissionsResult] = await Promise.all([
+        supabase
+          .from("assessment_submissions")
+          .select(
+            `
             id,
-            title,
-            type,
-            course_id,
-            courses (
+            assessment_id,
+            student_id,
+            submitted_at,
+            status,
+            score,
+            feedback,
+            assessments (
               id,
-              title
+              title,
+              type,
+              submission_mode,
+              course_id,
+              courses (
+                id,
+                title
+              )
             )
+          `
           )
-        `
-        )
-        .in("assessment_id", effectiveAssessmentIds)
-        .in("status", ["submitted", "graded", "published"])
-        .order("submitted_at", { ascending: false });
+          .in("assessment_id", effectiveAssessmentIds)
+          .in("status", ["submitted", "graded", "published"])
+          .order("submitted_at", { ascending: false }),
 
-      if (submissionsError) throw submissionsError;
+        supabase
+          .from("homework_submissions")
+          .select(
+            `
+            id,
+            homework_id,
+            student_id,
+            submitted_at,
+            status,
+            score,
+            feedback
+          `
+          )
+          .in("homework_id", effectiveAssessmentIds)
+          .in("status", ["submitted", "graded", "published"])
+          .order("submitted_at", { ascending: false }),
+      ]);
 
-      const submissionRows = (submissionsData ?? []) as SubmissionRow[];
-      const studentIds = Array.from(new Set(submissionRows.map((row) => row.student_id)));
+      if (onlineSubmissionsResult.error) {
+        throw onlineSubmissionsResult.error;
+      }
+
+      if (homeworkSubmissionsResult.error) {
+        throw homeworkSubmissionsResult.error;
+      }
+
+      const submissionRows =
+        (onlineSubmissionsResult.data ?? []) as SubmissionRow[];
+
+      const homeworkSubmissionRows =
+        (homeworkSubmissionsResult.data ?? []) as HomeworkSubmissionRow[];
+
+      /**
+       * Index des évaluations de l'enseignant.
+       * Il nous permet de retrouver rapidement le devoir lié
+       * à une ligne de homework_submissions.
+       */
+      const assessmentById = teacherAssessments.reduce<Record<string, AssessmentRow>>(
+        (acc, assessment) => {
+          acc[assessment.id] = assessment;
+          return acc;
+        },
+        {}
+      );
+
+      /**
+       * Sécurité :
+       * assessment_submissions ne doit représenter que les évaluations
+       * réalisées directement sur la plateforme.
+       */
+      const onlineSubmissionRows = submissionRows.filter((submission) => {
+        const assessment = normalizeAssessment(submission.assessments);
+
+        if (!assessment) return false;
+
+        return assessment.submission_mode !== "file_upload";
+      });
+
+      /**
+       * Sécurité :
+       * homework_submissions ne doit représenter que les devoirs
+       * assignment + file_upload.
+       */
+      const fileHomeworkSubmissionRows = homeworkSubmissionRows.filter((submission) => {
+        const assessment = assessmentById[submission.homework_id];
+
+        return (
+          assessment?.type === "assignment" &&
+          assessment.submission_mode === "file_upload"
+        );
+      });
+
+      const studentIds = Array.from(
+        new Set([
+          ...onlineSubmissionRows.map((row) => row.student_id),
+          ...fileHomeworkSubmissionRows.map((row) => row.student_id),
+        ])
+      );
 
       let profilesById: Record<string, string> = {};
       if (studentIds.length > 0) {
@@ -311,8 +399,12 @@ export default function TeacherGrading() {
 
       const mapped: Row[] = [];
 
-      for (const submission of submissionRows) {
+      /**
+       * 1. Quiz, examens et devoirs réalisés sur la plateforme.
+       */
+      for (const submission of onlineSubmissionRows) {
         const assessment = normalizeAssessment(submission.assessments);
+
         if (!assessment) continue;
 
         const course = normalizeCourse(assessment.courses);
@@ -322,6 +414,31 @@ export default function TeacherGrading() {
           assessmentId: assessment.id,
           assessmentTitle: assessment.title,
           type: mapType(assessment.type),
+          className: classByStudentId[submission.student_id] ?? "Non assigné",
+          attemptStatus: submission.status,
+          submittedAtISO: submission.submitted_at,
+          studentId: submission.student_id,
+          studentName: profilesById[submission.student_id] ?? "Élève",
+          score: scoreLabel(submission.score),
+          courseTitle: course?.title ?? "Cours",
+        });
+      }
+
+      /**
+       * 2. Devoirs maison avec fichier.
+       */
+      for (const submission of fileHomeworkSubmissionRows) {
+        const assessment = assessmentById[submission.homework_id];
+
+        if (!assessment) continue;
+
+        const course = normalizeCourse(assessment.courses);
+
+        mapped.push({
+          submissionId: submission.id,
+          assessmentId: assessment.id,
+          assessmentTitle: assessment.title,
+          type: "Devoir",
           className: classByStudentId[submission.student_id] ?? "Non assigné",
           attemptStatus: submission.status,
           submittedAtISO: submission.submitted_at,

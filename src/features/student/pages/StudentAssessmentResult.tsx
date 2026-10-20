@@ -5,6 +5,10 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 
 type AssessmentType = "quiz" | "assignment" | "exam";
 type SubmissionStatus = "in_progress" | "submitted" | "graded" | "published";
+type ExamContentMode =
+  | "online_questions"
+  | "file_and_questions"
+  | "file_only";
 
 type AssessmentRow = {
   id: string;
@@ -12,6 +16,8 @@ type AssessmentRow = {
   description: string | null;
   type: AssessmentType;
   max_score: number | null;
+  exam_content_mode: ExamContentMode | null;
+  exam_file_max_score: number | null;
   course_id: string;
   section_id: string | null;
   courses: { id: string; title: string } | { id: string; title: string }[] | null;
@@ -23,6 +29,9 @@ type SubmissionRow = {
   assessment_id: string;
   student_id: string;
   submitted_at: string | null;
+  freeform_answer: string | null;
+  freeform_score: number | null;
+  freeform_feedback: string | null;
   status: SubmissionStatus;
   score: number | null;
   feedback: string | null;
@@ -106,6 +115,8 @@ export default function StudentAssessmentResult() {
             description,
             type,
             max_score,
+            exam_content_mode,
+            exam_file_max_score,
             course_id,
             section_id,
             courses (id, title),
@@ -116,7 +127,9 @@ export default function StudentAssessmentResult() {
 
         supabase
           .from("assessment_submissions")
-          .select("id, assessment_id, student_id, submitted_at, status, score, feedback")
+          .select(
+            "id, assessment_id, student_id, submitted_at, status, score, feedback, freeform_answer, freeform_score, freeform_feedback"
+          )
           .eq("assessment_id", id)
           .eq("student_id", user.id)
           .maybeSingle(),
@@ -127,6 +140,7 @@ export default function StudentAssessmentResult() {
 
       const assessmentData = assessmentResult.data as AssessmentRow;
       const submissionData = submissionResult.data as SubmissionRow | null;
+
 
       if (!submissionData) {
         setAssessment(assessmentData);
@@ -155,6 +169,23 @@ export default function StudentAssessmentResult() {
   const isLoading = authLoading || loading;
   const isPublished = submission?.status === "published";
   const canShowTeacherDetails = isPublished;
+  const hasExamFilePart =
+    assessment?.type === "exam" &&
+    (
+      assessment.exam_content_mode === "file_and_questions" ||
+      assessment.exam_content_mode === "file_only"
+    );
+
+    const isFileOnlyExam =
+      assessment?.type === "exam" &&
+      assessment.exam_content_mode === "file_only";
+
+  const displayedFileScoreLabel =
+    canShowTeacherDetails && hasExamFilePart && assessment
+      ? `${formatPoints(submission?.freeform_score)} / ${formatPoints(
+          assessment.exam_file_max_score
+        )}`
+      : "—";
 
   const teacherStatusLabel = (() => {
     if (!submission) return "Non soumis";
@@ -264,22 +295,83 @@ export default function StudentAssessmentResult() {
             </div>
           </div>
 
-          <div className="sn-card p-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="font-semibold text-gray-900">Correction détaillée</div>
-              <div className="text-sm text-gray-500">
-                Consulte tes réponses, les points par question et les commentaires de l’enseignant.
+          {hasExamFilePart && (
+            <div className="sn-card p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    Correction du sujet fichier
+                  </div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    Partie de l’examen traitée à partir du document fourni par l’enseignant.
+                  </div>
+                </div>
+
+                <span className="sn-badge sn-badge-blue">
+                  Sujet fichier
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <div className="text-xs text-gray-500">
+                    Note obtenue
+                  </div>
+
+                  <div className="mt-1 text-xl font-bold text-gray-900">
+                    {displayedFileScoreLabel}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="text-xs font-semibold text-gray-700">
+                    Commentaire enseignant
+                  </div>
+
+                  <div className="mt-2 text-sm text-gray-800 whitespace-pre-wrap">
+                    {canShowTeacherDetails
+                      ? submission.freeform_feedback ||
+                        "Aucun commentaire sur le sujet fichier."
+                      : "Le commentaire sera visible après publication par l’enseignant."}
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            <button
-              className="sn-btn-primary sn-press"
-              onClick={() => navigate(`/app/student/assessments/${id}/details`)}
-              type="button"
-            >
-              Voir les détails
-            </button>
-          </div>
+          {!isFileOnlyExam && (
+            <div className="sn-card p-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-semibold text-gray-900">
+                  Correction détaillée
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  {canShowTeacherDetails
+                    ? "Consulte tes réponses, les points obtenus par question et les commentaires de l’enseignant."
+                    : submission.status === "graded"
+                    ? "La correction a été effectuée par l’enseignant. Les détails seront disponibles après publication."
+                    : "La correction détaillée sera disponible après correction et publication par l’enseignant."}
+                </div>
+              </div>
+
+              {canShowTeacherDetails ? (
+                <button
+                  className="sn-btn-primary sn-press"
+                  onClick={() =>
+                    navigate(`/app/student/assessments/${id}/details`)
+                  }
+                  type="button"
+                >
+                  Voir les détails
+                </button>
+              ) : (
+                <span className="sn-badge sn-badge-gray">
+                  Non disponible
+                </span>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

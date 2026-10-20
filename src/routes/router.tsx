@@ -1,4 +1,4 @@
-// src/routes/router.tsx
+﻿// src/routes/router.tsx
 import React from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
@@ -16,6 +16,7 @@ import AdminClasses from "../features/admin/pages/AdminClasses";
 import AdminContent from "../features/admin/pages/AdminContent";
 import AdminSettings from "../features/admin/pages/AdminSettings";
 import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
+import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 
 // Teacher
 import TeacherCourses from "../features/teacher/pages/TeacherCourses";
@@ -47,8 +48,32 @@ import ParentResultsDetail from "../features/parent/pages/ParentResultsDetail";
 
 import AppIndexRedirect from "./AppIndexRedirect";
 
+import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
+
+import StudentDashboard from "@/features/student/pages/StudentDashboard";
+import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
+
+import PublicLayout from "../layouts/PublicLayout";
+import PublicHome from "../features/public/pages/PublicHome";
+import PublicLibrary from "../features/public/pages/PublicLibrary";
+import PublicLevels from "../features/public/pages/PublicLevels";
+import PublicPricing from "../features/public/pages/PublicPricing";
+import PublicAbout from "../features/public/pages/PublicAbout";
+import PublicContact from "../features/public/pages/PublicContact";
+
 export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/auth/login" replace /> },
+  {
+    path: "/",
+    element: <PublicLayout />,
+    children: [
+      { index: true, element: <PublicHome /> },
+      { path: "bibliotheque", element: <PublicLibrary /> },
+      { path: "niveaux", element: <PublicLevels /> },
+      { path: "tarifs", element: <PublicPricing /> },
+      { path: "a-propos", element: <PublicAbout /> },
+      { path: "contact", element: <PublicContact /> },
+    ],
+  },
 
   {
     path: "/auth",
@@ -70,23 +95,108 @@ export const router = createBrowserRouter([
           {
             element: <RoleGate allowed={["student"]} />,
             children: [
-              { path: "student", element: <Navigate to="/app/student/courses" replace /> },
-              { path: "student/courses", element: <StudentCourses /> },
-              { path: "student/courses/:courseId", element: <StudentCourseDetail /> },
-              { path: "student/homework", element: <StudentHomework /> },
-              { path: "student/progress", element: <StudentProgress /> },
-              { path: "student/assessments", element: <StudentAssessments /> },
-              { path: "student/assessments/:id", element: <StudentAssessmentTake /> },
-              { path: "student/assessments/:id/result", element: <StudentAssessmentResult /> },
-              { path: "student/assessments/:id/details", element: <StudentAssessmentDetails /> },
+              {
+                path: "student",
+                element: <Navigate to="/app/student/dashboard" replace />,
+              },
+
+              {
+                path: "student/dashboard",
+                element: <StudentDashboard />,
+              },
+
+              {
+                path: "student/courses",
+                element: <StudentCourses />,
+              },
+
+              {
+                path: "student/courses/:courseId",
+                element: <StudentCourseDetail />,
+              },
+
+              {
+                path: "student/quiz",
+                element: (
+                  <StudentAssessments
+                    key="student-quiz"
+                    initialFilter="Quiz"
+                  />
+                ),
+              },
+
+              {
+                path: "student/homework",
+                element: <StudentHomework />,
+              },
+
+              {
+                path: "student/exams",
+                element: (
+                  <StudentAssessments
+                    key="student-exams"
+                    initialFilter="Examen"
+                  />
+                ),
+              },
+
+              {
+                path: "student/progress",
+                element: <StudentProgress />,
+              },
+
+              // Route conservée pour compatibilité avec les liens existants.
+              {
+                path: "student/assessments",
+                element: (
+                  <StudentAssessments
+                    key="student-assessments"
+                    initialFilter="Tous"
+                  />
+                ),
+              },
+
+              {
+                path: "student/assessments/:id",
+                element: <StudentAssessmentTake />,
+              },
+
+              {
+                path: "student/assessments/:id/result",
+                element: <StudentAssessmentResult />,
+              },
+
+              {
+                path: "student/assessments/:id/details",
+                element: <StudentAssessmentDetails />,
+              },
+
+              {
+                path: "student/homework/:id",
+                element: <StudentHomeworkDetail />,
+              },
             ],
           },
 
           {
             element: <RoleGate allowed={["parent"]} />,
             children: [
-              { path: "parent", element: <Navigate to="/app/parent/home" replace /> },
-              { path: "parent/home", element: <ParentHome /> },
+              {
+                path: "parent",
+                element: <Navigate to="/app/parent/dashboard" replace />,
+              },
+
+              {
+                path: "parent/dashboard",
+                element: <ParentHome />,
+              },
+
+              // Ancienne URL conservée pour ne casser aucun lien existant.
+              {
+                path: "parent/home",
+                element: <Navigate to="/app/parent/dashboard" replace />,
+              },
+
               { path: "parent/children", element: <ParentChildren /> },
               { path: "parent/deadlines", element: <ParentDeadlines /> },
               { path: "parent/results", element: <ParentResults /> },
@@ -97,19 +207,46 @@ export const router = createBrowserRouter([
           {
             element: <RoleGate allowed={["teacher"]} />,
             children: [
-              { path: "teacher", element: <Navigate to="/app/teacher/courses" replace /> },
+              {
+                path: "teacher",
+                element: <Navigate to="/app/teacher/dashboard" replace />,
+              },
+
+              {
+                path: "teacher/dashboard",
+                element: <TeacherDashboard />,
+              },
+
               { path: "teacher/courses", element: <TeacherCourses /> },
-              { path: "teacher/courses/:courseId", element: <TeacherCourseDetail /> },
+              {
+                path: "teacher/courses/:courseId",
+                element: <TeacherCourseDetail />,
+              },
 
               { path: "teacher/classes", element: <TeacherClasses /> },
 
-              { path: "teacher/assessments", element: <TeacherAssessments /> },
-              { path: "teacher/assessments/new", element: <TeacherAssessmentCreate /> },
-              { path: "teacher/assessments/:id", element: <TeacherAssessmentDetail /> },
-              { path: "teacher/assessments/:id/edit", element: <TeacherAssessmentEdit /> },
+              {
+                path: "teacher/assessments",
+                element: <TeacherAssessments />,
+              },
+              {
+                path: "teacher/assessments/new",
+                element: <TeacherAssessmentCreate />,
+              },
+              {
+                path: "teacher/assessments/:id",
+                element: <TeacherAssessmentDetail />,
+              },
+              {
+                path: "teacher/assessments/:id/edit",
+                element: <TeacherAssessmentEdit />,
+              },
 
               { path: "teacher/grading", element: <TeacherGrading /> },
-              { path: "teacher/grading/:id", element: <TeacherGradingDetail /> },
+              {
+                path: "teacher/grading/:id",
+                element: <TeacherGradingDetail />,
+              },
             ],
           },
 
@@ -121,6 +258,7 @@ export const router = createBrowserRouter([
               { path: "admin/users", element: <AdminUsers /> },
               { path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/content", element: <AdminContent /> },
+              { path: "admin/public-site", element: <AdminPublicSite /> },
               { path: "admin/settings", element: <AdminSettings /> },
               { path: "admin/school-years", element: <AdminSchoolYears /> },
             ],

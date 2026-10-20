@@ -2,9 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import RichTextEditor from "@/components/editor/RichTextEditor";
 
 type AssessmentTypeUi = "Quiz" | "Devoir" | "Examen";
 type AssessmentTypeDb = "quiz" | "assignment" | "exam";
+type ExamContentMode =
+  | "online_questions"
+  | "file_and_questions"
+  | "file_only";
 type DraftQuestionType = "mcq" | "true_false" | "short_text";
 
 type CourseRow = {
@@ -117,13 +122,24 @@ export default function TeacherAssessmentCreate() {
 
   const [courses, setCourses] = useState<CourseView[]>([]);
   const [type, setType] = useState<AssessmentTypeUi>("Quiz");
+  const [submissionMode, setSubmissionMode] = useState<
+    "online" | "file_upload"
+  >("online");
+  const [examContentMode, setExamContentMode] =
+    useState<ExamContentMode>("online_questions");
   const [courseId, setCourseId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
+
   const [duration, setDuration] = useState(30);
   const [totalPoints, setTotalPoints] = useState(20);
+
+  const [examFileMaxScore, setExamFileMaxScore] = useState(10);
+
   const [instructions, setInstructions] = useState("");
+
+  const [instructionFile, setInstructionFile] = useState<File | null>(null);
   const [windowMinutes, setWindowMinutes] = useState(60);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
 
@@ -136,6 +152,39 @@ export default function TeacherAssessmentCreate() {
   const [error, setError] = useState<string | null>(null);
 
   const isExam = type === "Examen";
+
+  const isHomeworkFile =
+    type === "Devoir" &&
+    submissionMode === "file_upload";
+
+  const isExamFileOnly =
+    type === "Examen" &&
+    examContentMode === "file_only";
+
+  const isExamWithFile =
+    type === "Examen" &&
+    (
+      examContentMode === "file_and_questions" ||
+      examContentMode === "file_only"
+    );
+
+  const usesQuestions =
+    !isHomeworkFile &&
+    !isExamFileOnly;
+
+    const effectiveExamFileMaxScore =
+      !isExam
+        ? 0
+        : examContentMode === "file_only"
+        ? totalPoints
+        : examContentMode === "file_and_questions"
+        ? examFileMaxScore
+        : 0;
+
+    const schoolnetQuestionsMaxScore =
+      isExam
+        ? Math.max(0, totalPoints - effectiveExamFileMaxScore)
+        : totalPoints;
 
   const loadData = useCallback(async () => {
     if (!user || user.isDemo) {
@@ -230,7 +279,9 @@ export default function TeacherAssessmentCreate() {
     [activeCourse, sectionId]
   );
 
-  const questionCount = questions.length;
+  const questionCount = usesQuestions
+    ? questions.length
+    : 0;
 
   function onCourseChange(nextCourseId: string) {
     setCourseId(nextCourseId);
@@ -318,7 +369,7 @@ export default function TeacherAssessmentCreate() {
       const q = questions[i];
       const label = `Question ${i + 1}`;
 
-      if (!q.prompt.trim()) {
+      if (!richTextToPlainText(q.prompt)) {
         return `${label} : le libellé est obligatoire.`;
       }
 
@@ -349,6 +400,18 @@ export default function TeacherAssessmentCreate() {
     return null;
   }
 
+  function richTextToPlainText(html: string) {
+    return html
+      .replace(/<style[^>]*>.*?<\/style>/gis, "")
+      .replace(/<script[^>]*>.*?<\/script>/gis, "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .trim();
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -367,10 +430,38 @@ export default function TeacherAssessmentCreate() {
       return;
     }
 
-    const questionsError = validateQuestions();
-    if (questionsError) {
-      setError(questionsError);
+    if (isExam && (!Number.isFinite(windowMinutes) || windowMinutes <= 0)) {
+      setError("Veuillez renseigner une fenêtre de passage valide pour l’examen.");
       return;
+    }
+
+    if (
+      isExam &&
+      examContentMode === "file_and_questions" &&
+      (
+        !Number.isFinite(examFileMaxScore) ||
+        examFileMaxScore <= 0 ||
+        examFileMaxScore >= totalPoints
+      )
+    ) {
+      setError(
+        `Pour un examen "Fichier + questions", le barème du sujet fichier doit être supérieur à 0 et inférieur à ${totalPoints} points.`
+      );
+      return;
+    }
+
+    if (isExamWithFile && !instructionFile) {
+      setError("Veuillez ajouter le fichier du sujet de l’examen.");
+      return;
+    }
+
+    if (usesQuestions) {
+      const questionsError = validateQuestions();
+
+      if (questionsError) {
+        setError(questionsError);
+        return;
+      }
     }
 
     let createdAssessmentId: string | null = null;
@@ -381,18 +472,88 @@ export default function TeacherAssessmentCreate() {
 
       const dueAt = date ? new Date(date).toISOString() : null;
 
+      let instructionFileUrl: string | null = null;
+      let instructionFileName: string | null = null;
+
+      if ((isHomeworkFile || isExamWithFile) && instructionFile) {
+        const safeName = instructionFile.name.replace(/[^\w.\-() ]+/g, "_");
+        const filePath = `${user.id}/${Date.now()}-${safeName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("assessment-instructions")
+          .upload(filePath, instructionFile, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from("assessment-instructions")
+          .getPublicUrl(filePath);
+
+        instructionFileUrl = publicUrlData.publicUrl;
+        instructionFileName = instructionFile.name;
+      }
+
       const { data: insertedAssessment, error: insertAssessmentError } = await supabase
         .from("assessments")
         .insert({
           course_id: courseId,
           section_id: sectionId || null,
+
           type: toDbType(type),
+
+          submission_mode:
+            type === "Devoir"
+              ? submissionMode
+              : "online",
+
+          exam_content_mode:
+            type === "Examen"
+              ? examContentMode
+              : null,
+
+          exam_file_max_score:
+            type === "Examen" && isExamWithFile
+              ? effectiveExamFileMaxScore
+              : null,
+
+          exam_window_minutes:
+            type === "Examen"
+              ? windowMinutes
+              : null,
+
+          shuffle_questions:
+            type === "Examen"
+              ? isExamFileOnly
+                ? false
+                : shuffleQuestions
+              : false,
+
+          instruction_file_url:
+            isHomeworkFile || isExamWithFile
+              ? instructionFileUrl
+              : null,
+
+          instruction_file_name:
+            isHomeworkFile || isExamWithFile
+              ? instructionFileName
+              : null,
+
           title: title.trim(),
-          description: instructions.trim() || null,
+
+          description:
+            richTextToPlainText(instructions)
+              ? instructions.trim()
+              : null,
+
           due_at: dueAt,
+
           time_limit_minutes: duration,
+
           max_score: totalPoints,
+
+
           status: "draft",
+
           created_by: user.id,
         })
         .select("id")
@@ -401,6 +562,11 @@ export default function TeacherAssessmentCreate() {
       if (insertAssessmentError) throw insertAssessmentError;
 
       createdAssessmentId = insertedAssessment.id as string;
+
+      if (isHomeworkFile || isExamFileOnly) {
+        navigate(`/app/teacher/assessments/${createdAssessmentId}`);
+        return;
+      }
 
       const questionPayload = questions.map((question, index) => ({
         assessment_id: createdAssessmentId,
@@ -556,6 +722,45 @@ export default function TeacherAssessmentCreate() {
               </div>
             </div>
 
+            {type === "Devoir" && (
+  <div className="sn-card p-4 bg-gray-50 border border-gray-100 space-y-3">
+    <div className="font-semibold text-gray-900">
+      Mode du devoir
+    </div>
+
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => setSubmissionMode("online")}
+        className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${
+          submissionMode === "online"
+            ? "bg-blue-600 text-white"
+            : "bg-white border border-gray-200 text-gray-700"
+        }`}
+      >
+        Devoir sur plateforme
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubmissionMode("file_upload")}
+                className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${
+                  submissionMode === "file_upload"
+                    ? "bg-blue-600 text-white"
+                    : "bg-white border border-gray-200 text-gray-700"
+                }`}
+              >
+                Devoir maison avec fichier
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              • Sur plateforme : questions/réponses directement dans Schoolnet.<br />
+              • Avec fichier : l’élève dépose un PDF, Word, image, etc.
+            </div>
+          </div>
+        )}
+
             <div className="sn-card p-4 bg-gray-50 border border-gray-100 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="font-semibold text-gray-900">Liaison</div>
@@ -653,15 +858,34 @@ export default function TeacherAssessmentCreate() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Consignes</label>
-              <textarea
-                className="sn-input"
-                style={{ minHeight: 110 }}
-                placeholder="Donnez les consignes aux apprenants..."
+              <label className="text-sm font-medium text-gray-700">
+                Consignes
+              </label>
+
+              <RichTextEditor
                 value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
+                onChange={setInstructions}
+                placeholder="Donnez les consignes aux apprenants..."
               />
             </div>
+
+            {type === "Devoir" && submissionMode === "file_upload" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Fichier du devoir maison
+                </label>
+
+                <input
+                  type="file"
+                  className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                  onChange={(e) => setInstructionFile(e.target.files?.[0] ?? null)}
+                />
+
+                <div className="text-xs text-gray-500">
+                  Ajoutez ici le PDF, Word, image ou document de consigne que l’élève devra télécharger.
+                </div>
+              </div>
+            )}
 
             {isExam && (
               <div className="sn-card p-4 bg-red-50/40 ring-1 ring-red-100 space-y-3">
@@ -669,6 +893,189 @@ export default function TeacherAssessmentCreate() {
                   <div className="font-semibold text-gray-900">Options Examen</div>
                   <span className="sn-badge sn-badge-red">Examen</span>
                 </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-700">
+                    Contenu de l’examen
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => setExamContentMode("online_questions")}
+                      className={`rounded-2xl border px-4 py-3 text-left text-sm transition sn-press ${
+                        examContentMode === "online_questions"
+                          ? "border-red-500 bg-red-50 text-red-800"
+                          : "border-gray-200 bg-white text-gray-700"
+                      }`}
+                    >
+                      <div className="font-semibold">
+                        Questions Schoolnet
+                      </div>
+                      <div className="mt-1 text-xs opacity-80">
+                        L’examen est entièrement créé dans Schoolnet.
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExamContentMode("file_and_questions")}
+                      className={`rounded-2xl border px-4 py-3 text-left text-sm transition sn-press ${
+                        examContentMode === "file_and_questions"
+                          ? "border-red-500 bg-red-50 text-red-800"
+                          : "border-gray-200 bg-white text-gray-700"
+                      }`}
+                    >
+                      <div className="font-semibold">
+                        Fichier + questions
+                      </div>
+                      <div className="mt-1 text-xs opacity-80">
+                        Un sujet est fourni et des questions sont ajoutées dans Schoolnet.
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExamContentMode("file_only")}
+                      className={`rounded-2xl border px-4 py-3 text-left text-sm transition sn-press ${
+                        examContentMode === "file_only"
+                          ? "border-red-500 bg-red-50 text-red-800"
+                          : "border-gray-200 bg-white text-gray-700"
+                      }`}
+                    >
+                      <div className="font-semibold">
+                        Sujet uniquement en fichier
+                      </div>
+                      <div className="mt-1 text-xs opacity-80">
+                        Le document importé constitue tout le sujet de l’examen.
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {isExamWithFile && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Fichier du sujet d’examen
+                    </label>
+
+                    <input
+                      type="file"
+                      className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200"
+                      onChange={(e) =>
+                        setInstructionFile(e.target.files?.[0] ?? null)
+                      }
+                      disabled={saving}
+                    />
+
+                    {instructionFile ? (
+                      <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-800">
+                        Sujet sélectionné :{" "}
+                        <span className="font-semibold">
+                          {instructionFile.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500">
+                        Le fichier est obligatoire pour ce mode d’examen.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {examContentMode === "file_and_questions" && (
+                  <div className="rounded-2xl border border-red-100 bg-white p-4 space-y-3">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        Répartition du barème
+                      </div>
+
+                      <div className="mt-1 text-xs text-gray-500">
+                        Définissez la part de la note réservée aux réponses portant sur le sujet fichier.
+                        Le reste sera automatiquement réservé aux questions Schoolnet.
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Points du sujet fichier
+                        </label>
+
+                        <input
+                          className="sn-input"
+                          type="number"
+                          min={0.25}
+                          max={Math.max(0.25, totalPoints - 0.25)}
+                          step="0.25"
+                          value={examFileMaxScore}
+                          onChange={(e) =>
+                            setExamFileMaxScore(Number(e.target.value))
+                          }
+                        />
+
+                        <div className="text-xs text-gray-500">
+                          Sur un total de {totalPoints} pts.
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Points des questions Schoolnet
+                        </label>
+
+                        <div className="sn-input bg-gray-50 flex items-center font-semibold text-gray-900">
+                          {schoolnetQuestionsMaxScore} pts
+                        </div>
+
+                        <div className="text-xs text-gray-500">
+                          Calculé automatiquement.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                      Total :{" "}
+                      <span className="font-semibold">
+                        {effectiveExamFileMaxScore} + {schoolnetQuestionsMaxScore} = {totalPoints} pts
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {examContentMode === "file_only" && (
+                  <div className="rounded-2xl border border-red-100 bg-white p-4">
+                    <div className="text-sm font-semibold text-gray-900">
+                      Répartition du barème
+                    </div>
+
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-red-50 border border-red-100 p-3">
+                        <div className="text-xs text-gray-600">Sujet fichier</div>
+                        <div className="mt-1 text-lg font-bold text-gray-900">
+                          {totalPoints} pts
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
+                        <div className="text-xs text-gray-600">Questions Schoolnet</div>
+                        <div className="mt-1 text-lg font-bold text-gray-900">
+                          0 pt
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 text-xs text-gray-500">
+                      Le sujet fichier constitue la totalité de l’examen.
+                    </div>
+                  </div>
+                )}
+
+                {examContentMode === "online_questions" && (
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+                    Les {totalPoints} points de l’examen sont entièrement attribués aux questions Schoolnet.
+                  </div>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -684,202 +1091,206 @@ export default function TeacherAssessmentCreate() {
                       onChange={(e) => setWindowMinutes(Number(e.target.value))}
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Mélanger questions</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={shuffleQuestions}
-                        onChange={(e) => setShuffleQuestions(e.target.checked)}
-                      />
-                      <span className="text-sm text-gray-700">
-                        Activer le mélange pour limiter la copie.
-                      </span>
+                  {!isExamFileOnly && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Mélanger questions</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={shuffleQuestions}
+                          onChange={(e) => setShuffleQuestions(e.target.checked)}
+                        />
+                        <span className="text-sm text-gray-700">
+                          Activer le mélange pour limiter la copie.
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
 
-            <div className="sn-card p-4 bg-gray-50 border border-gray-100 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="font-semibold text-gray-900">Questions</div>
-                  <div className="text-sm text-gray-500">
-                    Ajoutez les questions réelles qui seront vues par les apprenants.
+            {usesQuestions && (
+              <div className="sn-card p-4 bg-gray-50 border border-gray-100 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-gray-900">Questions</div>
+                    <div className="text-sm text-gray-500">
+                      Ajoutez les questions réelles qui seront vues par les apprenants.
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="sn-btn-ghost sn-press" onClick={() => addQuestion("short_text")}>
+                      + Ouverte
+                    </button>
+                    <button type="button" className="sn-btn-ghost sn-press" onClick={() => addQuestion("mcq")}>
+                      + QCM
+                    </button>
+                    <button type="button" className="sn-btn-ghost sn-press" onClick={() => addQuestion("true_false")}>
+                      + Vrai / Faux
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" className="sn-btn-ghost sn-press" onClick={() => addQuestion("short_text")}>
-                    + Ouverte
-                  </button>
-                  <button type="button" className="sn-btn-ghost sn-press" onClick={() => addQuestion("mcq")}>
-                    + QCM
-                  </button>
-                  <button type="button" className="sn-btn-ghost sn-press" onClick={() => addQuestion("true_false")}>
-                    + Vrai / Faux
-                  </button>
-                </div>
-              </div>
-
-              {questions.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-                  Aucune question pour le moment.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {questions.map((question, index) => (
-                    <div key={question.localId} className="rounded-2xl border border-gray-100 bg-white p-4 space-y-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="text-xs text-gray-500">Question {index + 1}</div>
-                          <div className="font-semibold text-gray-900">
-                            {question.questionType === "mcq"
-                              ? "QCM"
-                              : question.questionType === "true_false"
-                              ? "Vrai / Faux"
-                              : "Réponse ouverte"}
+                {questions.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">
+                    Aucune question pour le moment.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {questions.map((question, index) => (
+                      <div key={question.localId} className="rounded-2xl border border-gray-100 bg-white p-4 space-y-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-xs text-gray-500">Question {index + 1}</div>
+                            <div className="font-semibold text-gray-900">
+                              {question.questionType === "mcq"
+                                ? "QCM"
+                                : question.questionType === "true_false"
+                                ? "Vrai / Faux"
+                                : "Réponse ouverte"}
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <select
-                            className="sn-input"
-                            value={question.questionType}
-                            onChange={(e) =>
-                              changeQuestionType(question.localId, e.target.value as DraftQuestionType)
-                            }
-                          >
-                            <option value="short_text">Réponse ouverte</option>
-                            <option value="mcq">QCM</option>
-                            <option value="true_false">Vrai / Faux</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <select
+                              className="sn-input"
+                              value={question.questionType}
+                              onChange={(e) =>
+                                changeQuestionType(question.localId, e.target.value as DraftQuestionType)
+                              }
+                            >
+                              <option value="short_text">Réponse ouverte</option>
+                              <option value="mcq">QCM</option>
+                              <option value="true_false">Vrai / Faux</option>
+                            </select>
 
-                          <button
-                            type="button"
-                            className="sn-btn-ghost sn-press"
-                            onClick={() => removeQuestion(question.localId)}
-                            disabled={questions.length === 1}
-                            title={questions.length === 1 ? "Au moins une question est requise" : "Supprimer"}
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Intitulé</label>
-                        <textarea
-                          className="sn-input"
-                          style={{ minHeight: 90 }}
-                          placeholder="Ex: Quel est le résultat de 8 + 5 ?"
-                          value={question.prompt}
-                          onChange={(e) =>
-                            updateQuestion(question.localId, { prompt: e.target.value })
-                          }
-                        />
-                      </div>
-
-                      {question.questionType === "mcq" && (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-gray-700">Choix</label>
                             <button
                               type="button"
                               className="sn-btn-ghost sn-press"
-                              onClick={() => addChoice(question.localId)}
+                              onClick={() => removeQuestion(question.localId)}
+                              disabled={questions.length === 1}
+                              title={questions.length === 1 ? "Au moins une question est requise" : "Supprimer"}
                             >
-                              + Ajouter un choix
+                              Supprimer
                             </button>
                           </div>
-
-                          <div className="space-y-2">
-                            {question.choices.map((choice, choiceIndex) => (
-                              <div key={`${question.localId}_${choiceIndex}`} className="flex items-center gap-2">
-                                <input
-                                  type="radio"
-                                  name={`correct_${question.localId}`}
-                                  checked={question.correctChoiceIndex === choiceIndex}
-                                  onChange={() =>
-                                    updateQuestion(question.localId, { correctChoiceIndex: choiceIndex })
-                                  }
-                                  title="Bonne réponse"
-                                />
-
-                                <input
-                                  className="sn-input flex-1"
-                                  placeholder={`Choix ${choiceIndex + 1}`}
-                                  value={choice}
-                                  onChange={(e) =>
-                                    updateChoice(question.localId, choiceIndex, e.target.value)
-                                  }
-                                />
-
-                                <button
-                                  type="button"
-                                  className="sn-btn-ghost sn-press"
-                                  onClick={() => removeChoice(question.localId, choiceIndex)}
-                                  disabled={question.choices.length <= 2}
-                                  title={
-                                    question.choices.length <= 2
-                                      ? "Un QCM doit garder au moins 2 choix"
-                                      : "Supprimer ce choix"
-                                  }
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="text-xs text-gray-500">
-                            Cochez la bonne réponse avec le rond à gauche.
-                          </div>
                         </div>
-                      )}
 
-                      {question.questionType === "true_false" && (
                         <div className="space-y-2">
-                          <div className="text-sm font-medium text-gray-700">Bonne réponse</div>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className={`rounded-full px-4 py-2 text-sm font-semibold transition sn-press ${
-                                question.correctChoiceIndex === 0
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                              }`}
-                              onClick={() => updateQuestion(question.localId, { correctChoiceIndex: 0 })}
-                            >
-                              Vrai
-                            </button>
-                            <button
-                              type="button"
-                              className={`rounded-full px-4 py-2 text-sm font-semibold transition sn-press ${
-                                question.correctChoiceIndex === 1
-                                  ? "bg-blue-600 text-white"
-                                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                              }`}
-                              onClick={() => updateQuestion(question.localId, { correctChoiceIndex: 1 })}
-                            >
-                              Faux
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                          <label className="text-sm font-medium text-gray-700">
+                            Intitulé
+                          </label>
 
-                      {question.questionType === "short_text" && (
-                        <div className="text-xs text-gray-500">
-                          Réponse ouverte : l’apprenant saisira un texte libre, corrigé ensuite par l’enseignant.
+                          <RichTextEditor
+                            value={question.prompt}
+                            onChange={(value) =>
+                              updateQuestion(question.localId, { prompt: value })
+                            }
+                            placeholder="Ex: Quel est le résultat de 8 + 5 ?"
+                          />
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+                        {question.questionType === "mcq" && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm font-medium text-gray-700">Choix</label>
+                              <button
+                                type="button"
+                                className="sn-btn-ghost sn-press"
+                                onClick={() => addChoice(question.localId)}
+                              >
+                                + Ajouter un choix
+                              </button>
+                            </div>
+
+                            <div className="space-y-2">
+                              {question.choices.map((choice, choiceIndex) => (
+                                <div key={`${question.localId}_${choiceIndex}`} className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name={`correct_${question.localId}`}
+                                    checked={question.correctChoiceIndex === choiceIndex}
+                                    onChange={() =>
+                                      updateQuestion(question.localId, { correctChoiceIndex: choiceIndex })
+                                    }
+                                    title="Bonne réponse"
+                                  />
+
+                                  <input
+                                    className="sn-input flex-1"
+                                    placeholder={`Choix ${choiceIndex + 1}`}
+                                    value={choice}
+                                    onChange={(e) =>
+                                      updateChoice(question.localId, choiceIndex, e.target.value)
+                                    }
+                                  />
+
+                                  <button
+                                    type="button"
+                                    className="sn-btn-ghost sn-press"
+                                    onClick={() => removeChoice(question.localId, choiceIndex)}
+                                    disabled={question.choices.length <= 2}
+                                    title={
+                                      question.choices.length <= 2
+                                        ? "Un QCM doit garder au moins 2 choix"
+                                        : "Supprimer ce choix"
+                                    }
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="text-xs text-gray-500">
+                              Cochez la bonne réponse avec le rond à gauche.
+                            </div>
+                          </div>
+                        )}
+
+                        {question.questionType === "true_false" && (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium text-gray-700">Bonne réponse</div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className={`rounded-full px-4 py-2 text-sm font-semibold transition sn-press ${
+                                  question.correctChoiceIndex === 0
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                }`}
+                                onClick={() => updateQuestion(question.localId, { correctChoiceIndex: 0 })}
+                              >
+                                Vrai
+                              </button>
+                              <button
+                                type="button"
+                                className={`rounded-full px-4 py-2 text-sm font-semibold transition sn-press ${
+                                  question.correctChoiceIndex === 1
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                }`}
+                                onClick={() => updateQuestion(question.localId, { correctChoiceIndex: 1 })}
+                              >
+                                Faux
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {question.questionType === "short_text" && (
+                          <div className="text-xs text-gray-500">
+                            Réponse ouverte : l’apprenant saisira un texte libre, corrigé ensuite par l’enseignant.
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="pt-2 flex flex-wrap gap-2">
               <button type="submit" className="sn-btn-primary sn-press" disabled={saving}>
@@ -924,8 +1335,41 @@ export default function TeacherAssessmentCreate() {
             {isExam && (
               <div className="pt-2 space-y-2">
                 <div className="text-sm font-semibold text-gray-800">Spécifique Examen</div>
+                <SummaryRow
+                  label="Mode"
+                  value={
+                    examContentMode === "file_only"
+                      ? "Sujet fichier uniquement"
+                      : examContentMode === "file_and_questions"
+                      ? "Fichier + questions"
+                      : "Questions Schoolnet"
+                  }
+                />
+
+                {isExamWithFile && (
+                  <SummaryRow
+                    label="Sujet"
+                    value={instructionFile?.name || "Non sélectionné"}
+                  />
+                )}
+
+                <SummaryRow
+                  label="Barème fichier"
+                  value={`${effectiveExamFileMaxScore} pts`}
+                />
+
+                <SummaryRow
+                  label="Barème Schoolnet"
+                  value={`${schoolnetQuestionsMaxScore} pts`}
+                />
+
                 <SummaryRow label="Fenêtre" value={`${windowMinutes} min`} />
-                <SummaryRow label="Mélange" value={shuffleQuestions ? "Activé" : "Désactivé"} />
+                {!isExamFileOnly && (
+                  <SummaryRow
+                    label="Mélange"
+                    value={shuffleQuestions ? "Activé" : "Désactivé"}
+                  />
+                )}
               </div>
             )}
 

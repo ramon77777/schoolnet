@@ -1,3 +1,4 @@
+// src/features/admin/pages/AdminSchoolYears.tsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -17,22 +18,133 @@ type FormState = {
   endsOn: string;
 };
 
+type ErrorLike = {
+  code?: string;
+  message?: string;
+  error_description?: string;
+  details?: string;
+  hint?: string;
+};
+
 function safeErrorMessage(err: unknown, fallback: string): string {
   if (typeof err === "object" && err !== null) {
-    const maybe = err as {
-      message?: string;
-      error_description?: string;
-      details?: string;
-    };
-    return maybe.message || maybe.error_description || maybe.details || fallback;
+    const maybe = err as ErrorLike;
+
+    return (
+      maybe.message ||
+      maybe.error_description ||
+      maybe.details ||
+      fallback
+    );
   }
+
   return fallback;
+}
+
+function createSchoolYearErrorMessage(err: unknown): string {
+  if (typeof err === "object" && err !== null) {
+    const maybe = err as ErrorLike;
+
+    const code = maybe.code ?? "";
+    const rawMessage = [
+      maybe.message,
+      maybe.error_description,
+      maybe.details,
+      maybe.hint,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (
+      code === "23505" ||
+      rawMessage.includes("school_years_name_key") ||
+      rawMessage.includes("duplicate key")
+    ) {
+      return "Cette année scolaire existe déjà.";
+    }
+
+    if (
+      code === "23514" ||
+      rawMessage.includes("school_years_dates_check")
+    ) {
+      return "Les dates renseignées pour cette année scolaire ne sont pas valides.";
+    }
+
+    if (
+      code === "42501" ||
+      rawMessage.includes("permission denied")
+    ) {
+      return "Vous n’avez pas l’autorisation de créer une année scolaire.";
+    }
+
+    if (
+      maybe.message === "Dates invalides." ||
+      maybe.message ===
+        "La date de fin doit être postérieure à la date de début."
+    ) {
+      return maybe.message;
+    }
+  }
+
+  if (err instanceof Error) {
+    if (
+      err.message === "Dates invalides." ||
+      err.message ===
+        "La date de fin doit être postérieure à la date de début."
+    ) {
+      return err.message;
+    }
+  }
+
+  return "Impossible de créer l’année scolaire.";
+}
+
+function deleteSchoolYearErrorMessage(err: unknown): string {
+  if (typeof err === "object" && err !== null) {
+    const maybe = err as ErrorLike;
+
+    const code = maybe.code ?? "";
+    const rawMessage = [
+      maybe.message,
+      maybe.error_description,
+      maybe.details,
+      maybe.hint,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (
+      code === "23503" ||
+      rawMessage.includes("foreign key") ||
+      rawMessage.includes("violates foreign key constraint")
+    ) {
+      return (
+        "Cette année scolaire ne peut pas être supprimée car elle est déjà " +
+        "utilisée par une ou plusieurs classes ou d’autres données de SchoolNet."
+      );
+    }
+
+    if (
+      code === "42501" ||
+      rawMessage.includes("permission denied")
+    ) {
+      return "Vous n’avez pas l’autorisation de supprimer cette année scolaire.";
+    }
+  }
+
+  return "Impossible de supprimer cette année scolaire.";
 }
 
 function formatDate(value: string) {
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString();
+
+  if (Number.isNaN(d.getTime())) {
+    return value;
+  }
+
+  return d.toLocaleDateString("fr-FR");
 }
 
 const initialForm: FormState = {
@@ -46,11 +158,15 @@ export default function AdminSchoolYears() {
 
   const [rows, setRows] = useState<SchoolYearRow[]>([]);
   const [form, setForm] = useState<FormState>(initialForm);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadSchoolYears = useCallback(async () => {
     if (!user || user.isDemo) {
@@ -66,15 +182,29 @@ export default function AdminSchoolYears() {
 
       const { data, error: queryError } = await supabase
         .from("school_years")
-        .select("id, name, starts_on, ends_on, is_current, created_at")
+        .select(
+          "id, name, starts_on, ends_on, is_current, created_at",
+        )
         .order("starts_on", { ascending: false });
 
-      if (queryError) throw queryError;
+      if (queryError) {
+        throw queryError;
+      }
 
       setRows((data ?? []) as SchoolYearRow[]);
     } catch (err) {
-      console.error("[AdminSchoolYears] loadSchoolYears error:", err);
-      setError(safeErrorMessage(err, "Impossible de charger les années scolaires."));
+      console.error(
+        "[AdminSchoolYears] loadSchoolYears error:",
+        err,
+      );
+
+      setError(
+        safeErrorMessage(
+          err,
+          "Impossible de charger les années scolaires.",
+        ),
+      );
+
       setRows([]);
     } finally {
       setLoading(false);
@@ -82,11 +212,17 @@ export default function AdminSchoolYears() {
   }, [user]);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      return;
+    }
+
     void loadSchoolYears();
   }, [authLoading, loadSchoolYears]);
 
-  const currentYear = useMemo(() => rows.find((row) => row.is_current) ?? null, [rows]);
+  const currentYear = useMemo(
+    () => rows.find((row) => row.is_current) ?? null,
+    [rows],
+  );
 
   const canSubmit = useMemo(() => {
     return (
@@ -97,12 +233,42 @@ export default function AdminSchoolYears() {
     );
   }, [form, saving]);
 
+  function updateForm<K extends keyof FormState>(
+    field: K,
+    value: FormState[K],
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    if (formError) {
+      setFormError(null);
+    }
+  }
+
   async function createSchoolYear() {
-    if (!canSubmit) return;
+    if (!canSubmit) {
+      return;
+    }
 
     try {
       setSaving(true);
       setError(null);
+      setFormError(null);
+
+      const cleanName = form.name.trim();
+
+      const alreadyExists = rows.some(
+        (row) =>
+          row.name.trim().toLowerCase() ===
+          cleanName.toLowerCase(),
+      );
+
+      if (alreadyExists) {
+        setFormError("Cette année scolaire existe déjà.");
+        return;
+      }
 
       const starts = new Date(form.startsOn).getTime();
       const ends = new Date(form.endsOn).getTime();
@@ -112,55 +278,81 @@ export default function AdminSchoolYears() {
       }
 
       if (ends <= starts) {
-        throw new Error("La date de fin doit être après la date de début.");
+        throw new Error(
+          "La date de fin doit être postérieure à la date de début.",
+        );
       }
 
-      const { error: insertError } = await supabase.from("school_years").insert({
-        name: form.name.trim(),
-        starts_on: form.startsOn,
-        ends_on: form.endsOn,
-        is_current: rows.length === 0,
-      });
+      const { error: insertError } = await supabase
+        .from("school_years")
+        .insert({
+          name: cleanName,
+          starts_on: form.startsOn,
+          ends_on: form.endsOn,
+          is_current: rows.length === 0,
+        });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        throw insertError;
+      }
 
       setForm(initialForm);
+      setFormError(null);
+
       await loadSchoolYears();
     } catch (err) {
-      console.error("[AdminSchoolYears] createSchoolYear error:", err);
-      alert(safeErrorMessage(err, "Impossible de créer l’année scolaire."));
+      console.error(
+        "[AdminSchoolYears] createSchoolYear error:",
+        err,
+      );
+
+      setFormError(createSchoolYearErrorMessage(err));
     } finally {
       setSaving(false);
     }
   }
 
   async function setCurrentYear(row: SchoolYearRow) {
-    if (row.is_current || activatingId) return;
+    if (row.is_current || activatingId) {
+      return;
+    }
 
-    const ok = window.confirm(`Définir "${row.name}" comme année scolaire active ?`);
-    if (!ok) return;
+    const ok = window.confirm(
+      `Définir "${row.name}" comme année scolaire active ?`,
+    );
+
+    if (!ok) {
+      return;
+    }
 
     try {
       setActivatingId(row.id);
+      setError(null);
 
-      const { error: clearError } = await supabase
-        .from("school_years")
-        .update({ is_current: false })
-        .neq("id", row.id);
+      const { error: rpcError } = await supabase.rpc(
+        "admin_set_current_school_year",
+        {
+          p_school_year_id: row.id,
+        },
+      );
 
-      if (clearError) throw clearError;
-
-      const { error: activateError } = await supabase
-        .from("school_years")
-        .update({ is_current: true })
-        .eq("id", row.id);
-
-      if (activateError) throw activateError;
+      if (rpcError) {
+        throw rpcError;
+      }
 
       await loadSchoolYears();
     } catch (err) {
-      console.error("[AdminSchoolYears] setCurrentYear error:", err);
-      alert(safeErrorMessage(err, "Impossible d’activer cette année scolaire."));
+      console.error(
+        "[AdminSchoolYears] setCurrentYear error:",
+        err,
+      );
+
+      alert(
+        safeErrorMessage(
+          err,
+          "Impossible d’activer cette année scolaire.",
+        ),
+      );
     } finally {
       setActivatingId(null);
     }
@@ -168,32 +360,44 @@ export default function AdminSchoolYears() {
 
   async function deleteSchoolYear(row: SchoolYearRow) {
     if (row.is_current) {
-      alert("Impossible de supprimer l’année scolaire active.");
+      alert(
+        "Suppression impossible.\n\n" +
+          "L’année scolaire active ne peut pas être supprimée. " +
+          "Définissez d’abord une autre année comme année active.",
+      );
+
       return;
     }
 
-    const ok = window.confirm(`Supprimer définitivement "${row.name}" ?`);
-    if (!ok) return;
+    const ok = window.confirm(
+      `Supprimer définitivement "${row.name}" ?`,
+    );
+
+    if (!ok) {
+      return;
+    }
 
     try {
       setDeletingId(row.id);
+      setError(null);
 
       const { error: deleteError } = await supabase
         .from("school_years")
         .delete()
         .eq("id", row.id);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        throw deleteError;
+      }
 
       await loadSchoolYears();
     } catch (err) {
-      console.error("[AdminSchoolYears] deleteSchoolYear error:", err);
-      alert(
-        safeErrorMessage(
-          err,
-          "Impossible de supprimer cette année scolaire. Elle est peut-être déjà liée à des classes."
-        )
+      console.error(
+        "[AdminSchoolYears] deleteSchoolYear error:",
+        err,
       );
+
+      alert(deleteSchoolYearErrorMessage(err));
     } finally {
       setDeletingId(null);
     }
@@ -204,7 +408,10 @@ export default function AdminSchoolYears() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-xl font-semibold">Années scolaires</div>
+        <div className="text-xl font-semibold">
+          Années scolaires
+        </div>
+
         <div className="text-sm text-gray-500">
           Gérez les périodes académiques et définissez l’année active.
         </div>
@@ -212,49 +419,74 @@ export default function AdminSchoolYears() {
 
       {user?.isDemo && (
         <div className="sn-card p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200">
-          Mode démo actif : les années scolaires réelles ne sont pas chargées.
+          Mode démo actif : les années scolaires réelles ne sont pas
+          chargées.
         </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="sn-card p-5 space-y-4">
           <div>
-            <div className="font-semibold text-gray-900">Nouvelle année</div>
+            <div className="font-semibold text-gray-900">
+              Nouvelle année
+            </div>
+
             <div className="text-sm text-gray-500">
-              Exemple : 2025-2026.
+              Exemple : 2026-2027.
             </div>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-gray-700">Nom</label>
+              <label className="text-xs font-semibold text-gray-700">
+                Nom
+              </label>
+
               <input
                 className="mt-1 w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
-                placeholder="2025-2026"
+                placeholder="2026-2027"
                 value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={(e) =>
+                  updateForm("name", e.target.value)
+                }
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-700">Début</label>
+              <label className="text-xs font-semibold text-gray-700">
+                Début
+              </label>
+
               <input
                 type="date"
                 className="mt-1 w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                 value={form.startsOn}
-                onChange={(e) => setForm((prev) => ({ ...prev, startsOn: e.target.value }))}
+                onChange={(e) =>
+                  updateForm("startsOn", e.target.value)
+                }
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-700">Fin</label>
+              <label className="text-xs font-semibold text-gray-700">
+                Fin
+              </label>
+
               <input
                 type="date"
                 className="mt-1 w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                 value={form.endsOn}
-                onChange={(e) => setForm((prev) => ({ ...prev, endsOn: e.target.value }))}
+                onChange={(e) =>
+                  updateForm("endsOn", e.target.value)
+                }
               />
             </div>
+
+            {formError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
+                {formError}
+              </div>
+            )}
 
             <button
               type="button"
@@ -262,7 +494,9 @@ export default function AdminSchoolYears() {
               onClick={() => void createSchoolYear()}
               disabled={!canSubmit}
             >
-              {saving ? "Création..." : "Créer l’année scolaire"}
+              {saving
+                ? "Création..."
+                : "Créer l’année scolaire"}
             </button>
           </div>
         </div>
@@ -271,9 +505,13 @@ export default function AdminSchoolYears() {
           <div className="sn-card p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="font-semibold text-gray-900">Année active</div>
+                <div className="font-semibold text-gray-900">
+                  Année active
+                </div>
+
                 <div className="text-sm text-gray-500">
-                  Utilisée par défaut pour les classes, cours et inscriptions.
+                  Utilisée par défaut pour les classes, cours et
+                  inscriptions.
                 </div>
               </div>
 
@@ -286,7 +524,10 @@ export default function AdminSchoolYears() {
           {isLoading && (
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, idx) => (
-                <div key={idx} className="sn-card p-5 animate-pulse space-y-3">
+                <div
+                  key={idx}
+                  className="sn-card p-5 animate-pulse space-y-3"
+                >
                   <div className="h-5 w-1/3 rounded bg-gray-200" />
                   <div className="h-4 w-1/2 rounded bg-gray-100" />
                   <div className="h-8 w-40 rounded bg-gray-200" />
@@ -310,18 +551,27 @@ export default function AdminSchoolYears() {
           {!isLoading && !error && rows.length > 0 && (
             <div className="space-y-3">
               {rows.map((row) => (
-                <div key={row.id} className="sn-card sn-card-hover p-5 space-y-3">
+                <div
+                  key={row.id}
+                  className="sn-card sn-card-hover p-5 space-y-3"
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-semibold text-gray-900">{row.name}</div>
+                        <div className="font-semibold text-gray-900">
+                          {row.name}
+                        </div>
+
                         {row.is_current && (
-                          <span className="sn-badge sn-badge-green">Active</span>
+                          <span className="sn-badge sn-badge-green">
+                            Active
+                          </span>
                         )}
                       </div>
 
                       <div className="mt-1 text-sm text-gray-500">
-                        {formatDate(row.starts_on)} → {formatDate(row.ends_on)}
+                        {formatDate(row.starts_on)} →{" "}
+                        {formatDate(row.ends_on)}
                       </div>
                     </div>
 
@@ -330,18 +580,29 @@ export default function AdminSchoolYears() {
                         type="button"
                         className="sn-btn-ghost sn-press"
                         onClick={() => void setCurrentYear(row)}
-                        disabled={row.is_current || activatingId === row.id}
+                        disabled={
+                          row.is_current ||
+                          activatingId !== null
+                        }
                       >
-                        {activatingId === row.id ? "Activation..." : "Définir active"}
+                        {row.is_current
+                          ? "Année active"
+                          : activatingId === row.id
+                            ? "Activation..."
+                            : "Définir active"}
                       </button>
 
                       <button
                         type="button"
                         className="sn-btn-ghost sn-press text-red-600"
-                        onClick={() => void deleteSchoolYear(row)}
-                        disabled={row.is_current || deletingId === row.id}
+                        onClick={() =>
+                          void deleteSchoolYear(row)
+                        }
+                        disabled={deletingId !== null}
                       >
-                        {deletingId === row.id ? "Suppression..." : "Supprimer"}
+                        {deletingId === row.id
+                          ? "Suppression..."
+                          : "Supprimer"}
                       </button>
                     </div>
                   </div>

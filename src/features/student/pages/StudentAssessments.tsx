@@ -12,6 +12,7 @@ type AssessmentRow = {
   title: string;
   type: AssessmentType;
   status: AssessmentStatus;
+  submission_mode: "online" | "file_upload" | null;
   created_at: string;
   due_at: string | null;
   course_id: string;
@@ -44,10 +45,17 @@ type SubmissionRow = {
   score: number | null;
 };
 
+type HomeworkSubmissionRow = {
+  homework_id: string;
+  status: SubmissionStatus;
+  score: number | null;
+};
+
 type AssessmentView = {
   id: string;
   title: string;
   type: "Quiz" | "Devoir" | "Examen";
+  submissionMode: "online" | "file_upload";
   courseTitle: string;
   sectionTitle: string;
   when: string;
@@ -55,6 +63,13 @@ type AssessmentView = {
   studentStatus: "À faire" | "En cours" | "Terminé";
   submissionStatus?: SubmissionStatus;
   scoreLabel?: string;
+};
+
+
+type AssessmentFilter = "Tous" | "Quiz" | "Devoir" | "Examen";
+
+type StudentAssessmentsProps = {
+  initialFilter?: AssessmentFilter;
 };
 
 function normalizeCourse(value: AssessmentRow["courses"]) {
@@ -87,11 +102,14 @@ function isRecentlyCreated(createdAt: string) {
   return diffDays <= 7;
 }
 
-export default function StudentAssessments() {
+export default function StudentAssessments({
+  initialFilter = "Tous",
+}: StudentAssessmentsProps) {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  const [filter, setFilter] = useState<"Tous" | "Quiz" | "Devoir" | "Examen">("Tous");
+  const [filter, setFilter] =
+    useState<AssessmentFilter>(initialFilter);
   const [rows, setRows] = useState<AssessmentView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +150,7 @@ export default function StudentAssessments() {
           title,
           type,
           status,
+          submission_mode,
           created_at,
           due_at,
           course_id,
@@ -157,20 +176,49 @@ export default function StudentAssessments() {
       const assessmentIds = assessmentRows.map((row) => row.id);
 
       // 3) soumissions éventuelles de l'élève
+      //
+      // Deux sources sont utilisées :
+      // - assessment_submissions : quiz, examens et devoirs sur plateforme
+      // - homework_submissions   : devoirs maison avec fichier
+
       let submissionsByAssessmentId: Record<string, SubmissionRow> = {};
+      let homeworkSubmissionsByHomeworkId: Record<string, HomeworkSubmissionRow> = {};
+
       if (assessmentIds.length > 0) {
-        const { data: submissionsData, error: submissionsError } = await supabase
-          .from("assessment_submissions")
-          .select("assessment_id, status, score")
-          .eq("student_id", user.id)
-          .in("assessment_id", assessmentIds);
+        const [assessmentSubmissionsResult, homeworkSubmissionsResult] =
+          await Promise.all([
+            supabase
+              .from("assessment_submissions")
+              .select("assessment_id, status, score")
+              .eq("student_id", user.id)
+              .in("assessment_id", assessmentIds),
 
-        if (submissionsError) throw submissionsError;
+            supabase
+              .from("homework_submissions")
+              .select("homework_id, status, score")
+              .eq("student_id", user.id)
+              .in("homework_id", assessmentIds),
+          ]);
 
-        submissionsByAssessmentId = ((submissionsData ?? []) as SubmissionRow[]).reduce<
-          Record<string, SubmissionRow>
-        >((acc, row) => {
+        if (assessmentSubmissionsResult.error) {
+          throw assessmentSubmissionsResult.error;
+        }
+
+        if (homeworkSubmissionsResult.error) {
+          throw homeworkSubmissionsResult.error;
+        }
+
+        submissionsByAssessmentId = (
+          (assessmentSubmissionsResult.data ?? []) as SubmissionRow[]
+        ).reduce<Record<string, SubmissionRow>>((acc, row) => {
           acc[row.assessment_id] = row;
+          return acc;
+        }, {});
+
+        homeworkSubmissionsByHomeworkId = (
+          (homeworkSubmissionsResult.data ?? []) as HomeworkSubmissionRow[]
+        ).reduce<Record<string, HomeworkSubmissionRow>>((acc, row) => {
+          acc[row.homework_id] = row;
           return acc;
         }, {});
       }
@@ -178,12 +226,19 @@ export default function StudentAssessments() {
       const mapped: AssessmentView[] = assessmentRows.map((row) => {
         const course = normalizeCourse(row.courses);
         const section = normalizeSection(row.course_sections);
-        const submission = submissionsByAssessmentId[row.id];
+        const submission =
+          row.submission_mode === "file_upload"
+            ? homeworkSubmissionsByHomeworkId[row.id]
+            : submissionsByAssessmentId[row.id];
 
         return {
           id: row.id,
           title: row.title,
           type: mapType(row.type),
+          submissionMode:
+            row.submission_mode === "file_upload"
+              ? "file_upload"
+              : "online",
           courseTitle: course?.title ?? "Cours",
           sectionTitle: section?.title ?? "Sans section",
           when: formatDueAt(row.due_at),
@@ -197,7 +252,9 @@ export default function StudentAssessments() {
               ? "Terminé"
               : "À faire",
           scoreLabel:
-            submission?.score !== null && submission?.score !== undefined
+            submission?.status === "published" &&
+            submission.score !== null &&
+            submission.score !== undefined
               ? String(submission.score)
               : undefined,
         };
@@ -329,14 +386,28 @@ export default function StudentAssessments() {
                   {row.studentStatus === "Terminé" ? (
                     <button
                       className="sn-btn-ghost sn-press"
-                      onClick={() => navigate(`/app/student/assessments/${row.id}/result`)}
+                      onClick={() => {
+                        if (row.submissionMode === "file_upload") {
+                          navigate(`/app/student/homework/${row.id}`);
+                          return;
+                        }
+
+                        navigate(`/app/student/assessments/${row.id}/result`);
+                      }}
                     >
                       Voir résultat
                     </button>
                   ) : (
                     <button
                       className="sn-btn-primary sn-press"
-                      onClick={() => navigate(`/app/student/assessments/${row.id}`)}
+                      onClick={() => {
+                        if (row.submissionMode === "file_upload") {
+                          navigate(`/app/student/homework/${row.id}`);
+                          return;
+                        }
+
+                        navigate(`/app/student/assessments/${row.id}`);
+                      }}
                     >
                       {row.studentStatus === "En cours" ? "Continuer" : "Commencer"}
                     </button>
@@ -344,7 +415,14 @@ export default function StudentAssessments() {
 
                   <button
                     className="sn-btn-ghost sn-press"
-                    onClick={() => navigate(`/app/student/assessments/${row.id}/details`)}
+                    onClick={() => {
+                      if (row.submissionMode === "file_upload") {
+                        navigate(`/app/student/homework/${row.id}`);
+                        return;
+                      }
+
+                      navigate(`/app/student/assessments/${row.id}/details`);
+                    }}
                                       >
                     Détails
                   </button>

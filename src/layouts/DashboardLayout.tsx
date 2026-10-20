@@ -1,9 +1,18 @@
 // src/layouts/DashboardLayout.tsx
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useCallback } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  usePlatformBranding,
+} from "@/lib/platform/usePlatformBranding";
 import { useAuth, type UserRole } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { getDefaultPathByRole } from "@/lib/auth";
+import NotificationBell from "@/features/notifications/components/NotificationBell";
 
 const navItem = ({ isActive }: { isActive: boolean }) =>
   `sn-nav-item ${isActive ? "sn-nav-item-active" : "sn-nav-item-inactive"}`;
@@ -22,6 +31,38 @@ function roleInitial(role: UserRole) {
   return "A";
 }
 
+function platformInitials(value: string) {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return "SN";
+  }
+
+  const capitalLetters =
+    normalizedValue.match(/[A-ZÀ-ÖØ-Þ]/g) ?? [];
+
+  if (capitalLetters.length >= 2) {
+    return capitalLetters
+      .slice(0, 2)
+      .join("");
+  }
+
+  const words = normalizedValue
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length >= 2) {
+    return words
+      .slice(0, 2)
+      .map((word) => word.charAt(0).toUpperCase())
+      .join("");
+  }
+
+  return normalizedValue
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function spaceLabel(role: UserRole) {
   if (role === "admin") return "🛠️ Espace Admin";
   if (role === "teacher") return "👩‍🏫 Espace Enseignant";
@@ -29,11 +70,23 @@ function spaceLabel(role: UserRole) {
   return "🎓 Espace Apprenant";
 }
 
-function subtitle(role: UserRole) {
-  if (role === "admin") return "Gestion de la plateforme et des utilisateurs";
-  if (role === "teacher") return "Gestion de vos classes et évaluations";
-  if (role === "parent") return "Suivi et informations pour vos enfants";
-  return "Ravi de te revoir sur Schoolnet";
+function subtitle(
+  role: UserRole,
+  platformName: string
+) {
+  if (role === "admin") {
+    return "Gestion de la plateforme et des utilisateurs";
+  }
+
+  if (role === "teacher") {
+    return "Gestion de vos classes et évaluations";
+  }
+
+  if (role === "parent") {
+    return "Suivi et informations pour vos enfants";
+  }
+
+  return `Ravi de te revoir sur ${platformName}`;
 }
 
 function isPathAllowedForRole(pathname: string, role: UserRole) {
@@ -47,6 +100,24 @@ export default function DashboardLayout() {
   const { user, loading, clearDemo } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { branding } = usePlatformBranding();
+
+  const [failedLogoUrl, setFailedLogoUrl] =
+    useState<string | null>(null);
+
+  const platformName = branding.platformName;
+  const institutionName = branding.institutionName;
+  const logoUrl = branding.logoUrl;
+
+  const brandLogoError =
+    Boolean(
+      logoUrl &&
+        failedLogoUrl === logoUrl
+    );
+
+  useEffect(() => {
+    document.title = platformName;
+  }, [platformName]);
 
   // ✅ IMPORTANT: pas de Navigate en "render" qui change les hooks.
   useEffect(() => {
@@ -63,7 +134,9 @@ export default function DashboardLayout() {
   const displayName = user?.fullName ?? user?.email ?? "Utilisateur";
   const rLabel = user ? roleLabel(user.role) : "";
   const rInitial = user ? roleInitial(user.role) : "";
-  const rSubtitle = user ? subtitle(user.role) : "";
+  const rSubtitle = user
+    ? subtitle(user.role, platformName)
+    : "";
   const rSpace = user ? spaceLabel(user.role) : "";
 
   const onLogout = useCallback(async () => {
@@ -83,10 +156,48 @@ export default function DashboardLayout() {
             <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
               Espace apprenant
             </div>
-            <NavLink className={navItem} to="/app/student/courses">📘 Mes cours</NavLink>
-            <NavLink className={navItem} to="/app/student/homework">📝 Devoirs</NavLink>
-            <NavLink className={navItem} to="/app/student/assessments">🧪 Évaluations</NavLink>
-            <NavLink className={navItem} to="/app/student/progress">📊 Progression</NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/student/dashboard"
+            >
+              📊 Tableau de bord
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/student/courses"
+            >
+              📘 Mes cours
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/student/quiz"
+            >
+              🧪 Quiz
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/student/homework"
+            >
+              📫 Devoirs
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/student/exams"
+            >
+              📝 Examens
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/student/progress"
+            >
+              📈 Progression
+            </NavLink>
           </>
         )}
 
@@ -95,10 +206,34 @@ export default function DashboardLayout() {
             <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
               Espace parent
             </div>
-            <NavLink className={navItem} to="/app/parent/home">🧭 Résumé du mois</NavLink>
-            <NavLink className={navItem} to="/app/parent/children">🧒 Mes enfants</NavLink>
-            <NavLink className={navItem} to="/app/parent/deadlines">📅 Échéances</NavLink>
-            <NavLink className={navItem} to="/app/parent/results">📈 Résultats</NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/parent/dashboard"
+            >
+              📊 Tableau de bord
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/parent/children"
+            >
+              👧 Mes enfants
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/parent/deadlines"
+            >
+              🗓️ Échéances
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/parent/results"
+            >
+              📈 Résultats
+            </NavLink>
           </>
         )}
 
@@ -107,10 +242,41 @@ export default function DashboardLayout() {
             <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
               Espace enseignant
             </div>
-            <NavLink className={navItem} to="/app/teacher/courses">📚 Mes cours</NavLink>
-            <NavLink className={navItem} to="/app/teacher/classes">🏫 Mes classes</NavLink>
-            <NavLink className={navItem} to="/app/teacher/assessments">🧪 Évaluations</NavLink>
-            <NavLink className={navItem} to="/app/teacher/grading">✅ Corrections</NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/dashboard"
+            >
+              📊 Tableau de bord
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/courses"
+            >
+              📚 Mes cours
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/classes"
+            >
+              🏫 Mes classes
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/assessments"
+            >
+              🧪 Évaluations
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/grading"
+            >
+              ✅ Corrections
+            </NavLink>
           </>
         )}
 
@@ -124,6 +290,7 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
             <NavLink className={navItem} to="/app/admin/content">📚 Contenu</NavLink>
+            <NavLink className={navItem} to="/app/admin/public-site">🌐 Site public</NavLink>
             <NavLink className={navItem} to="/app/admin/settings">⚙️ Paramètres</NavLink>
           </>
         )}
@@ -160,17 +327,55 @@ export default function DashboardLayout() {
         <aside className="w-72 p-4 space-y-4">
           <div className="sn-card p-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-lg font-bold">Schoolnet</div>
-                <div className="text-xs text-gray-500">{rSpace}</div>
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-600 text-sm font-bold text-white shadow-sm">
+                  {logoUrl && !brandLogoError ? (
+                    <img
+                      src={logoUrl}
+                      alt={`Logo ${platformName}`}
+                      className="h-full w-full bg-white object-contain p-1"
+                      onError={() => {
+                        if (logoUrl) {
+                          setFailedLogoUrl(logoUrl);
+                        }
+                      }}
+
+                      onLoad={() => {
+                        setFailedLogoUrl(null);
+                      }}
+                    />
+                  ) : (
+                    platformInitials(platformName)
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="truncate text-lg font-bold text-gray-900">
+                    {platformName}
+                  </div>
+
+                  {institutionName && (
+                    <div className="truncate text-xs font-medium text-gray-600">
+                      {institutionName}
+                    </div>
+                  )}
+
+                  <div className="mt-0.5 text-xs text-gray-500">
+                    {rSpace}
+                  </div>
+                </div>
               </div>
-              <div className="h-10 min-w-10 px-3 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold shadow-sm">
+
+              <div className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 px-3 font-semibold text-white shadow-sm">
                 {rInitial}
               </div>
             </div>
 
             <div className="mt-3 text-xs text-gray-500">
-              Connecté : <span className="font-semibold text-gray-700">{displayName}</span>
+              Connecté :{" "}
+              <span className="font-semibold text-gray-700">
+                {displayName}
+              </span>
             </div>
           </div>
 
@@ -189,9 +394,16 @@ export default function DashboardLayout() {
                 Bonjour 👋 <span className="text-gray-900">{displayName}</span>
               </div>
               <div className="text-sm text-gray-500">{rSubtitle}</div>
+              {institutionName && (
+                <div className="mt-0.5 text-xs font-medium text-blue-600">
+                  {institutionName}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
+              <NotificationBell />
+
               <div className="text-right">
                 <div className="text-sm font-medium">{rLabel}</div>
                 <div className="text-xs text-gray-500">{user.isDemo ? "Mode démo" : "Compte réel"}</div>

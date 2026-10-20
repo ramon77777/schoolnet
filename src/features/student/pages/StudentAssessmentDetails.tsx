@@ -5,6 +5,10 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 
 type AssessmentType = "quiz" | "assignment" | "exam";
 type SubmissionStatus = "in_progress" | "submitted" | "graded" | "published";
+type ExamContentMode =
+  | "online_questions"
+  | "file_and_questions"
+  | "file_only";
 
 type AssessmentRow = {
   id: string;
@@ -12,6 +16,8 @@ type AssessmentRow = {
   description: string | null;
   type: AssessmentType;
   max_score: number | null;
+  exam_content_mode: ExamContentMode | null;
+  exam_file_max_score: number | null;
   course_id: string;
   section_id: string | null;
   courses:
@@ -41,6 +47,9 @@ type SubmissionRow = {
   assessment_id: string;
   student_id: string;
   submitted_at: string | null;
+  freeform_answer: string | null;
+  freeform_score: number | null;
+  freeform_feedback: string | null;
   status: SubmissionStatus;
   score: number | null;
   feedback: string | null;
@@ -200,6 +209,8 @@ export default function StudentAssessmentDetails() {
             description,
             type,
             max_score,
+            exam_content_mode,
+            exam_file_max_score,
             course_id,
             section_id,
             courses (
@@ -217,7 +228,9 @@ export default function StudentAssessmentDetails() {
 
         supabase
           .from("assessment_submissions")
-          .select("id, assessment_id, student_id, submitted_at, status, score, feedback")
+          .select(
+            "id, assessment_id, student_id, submitted_at, status, score, feedback, freeform_answer, freeform_score, freeform_feedback"
+          )
           .eq("assessment_id", id)
           .eq("student_id", user.id)
           .maybeSingle(),
@@ -398,6 +411,16 @@ export default function StudentAssessmentDetails() {
   const isPublished = submission?.status === "published";
   const isSubmitted = Boolean(submission);
   const canShowTeacherDetails = isPublished;
+  const hasExamFilePart =
+    assessment?.type === "exam" &&
+    (
+      assessment.exam_content_mode === "file_and_questions" ||
+      assessment.exam_content_mode === "file_only"
+  );
+
+  const isFileOnlyExam =
+    assessment?.type === "exam" &&
+    assessment.exam_content_mode === "file_only";
 
   const teacherStatusLabel = (() => {
     if (!isSubmitted) return "Non soumis";
@@ -420,7 +443,7 @@ export default function StudentAssessmentDetails() {
         continue;
       }
 
-      if (canShowTeacherDetails && question.teacherPoints !== null) {
+      if (question.teacherPoints !== null) {
         corrected += 1;
       } else {
         pending += 1;
@@ -428,7 +451,7 @@ export default function StudentAssessmentDetails() {
     }
 
     return { corrected, pending, unanswered };
-  }, [questions, canShowTeacherDetails]);
+  }, [questions]);
 
   const displayedScoreLabel =
     canShowTeacherDetails && assessment
@@ -461,7 +484,11 @@ export default function StudentAssessmentDetails() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xl font-semibold">Détails de la correction</div>
+          <div className="text-xl font-semibold">
+            {canShowTeacherDetails
+              ? "Détails de la correction"
+              : "Correction en attente de publication"}
+          </div>
           <div className="text-sm text-gray-500">
             {assessment?.title ?? "Évaluation"} • {courseTitle} • {sectionTitle}
           </div>
@@ -529,26 +556,36 @@ export default function StudentAssessmentDetails() {
               <span>Soumis le : {formatDate(submission.submitted_at)}</span>
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-4">
-              <div className="text-sm font-semibold text-gray-900">Résumé pédagogique</div>
-
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl bg-green-50 border border-green-100 p-3">
-                  <div className="text-xs text-gray-600">Questions corrigées</div>
-                  <div className="text-lg font-bold text-gray-900">✅ {summary.corrected}</div>
+            {!isFileOnlyExam && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="text-sm font-semibold text-gray-900">
+                  Résumé pédagogique
                 </div>
 
-                <div className="rounded-2xl bg-amber-50 border border-amber-100 p-3">
-                  <div className="text-xs text-gray-600">En attente</div>
-                  <div className="text-lg font-bold text-gray-900">⏳ {summary.pending}</div>
-                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-green-50 border border-green-100 p-3">
+                    <div className="text-xs text-gray-600">Questions corrigées</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      ✅ {summary.corrected}
+                    </div>
+                  </div>
 
-                <div className="rounded-2xl bg-gray-50 border border-gray-100 p-3">
-                  <div className="text-xs text-gray-600">Non répondu</div>
-                  <div className="text-lg font-bold text-gray-900">⚪ {summary.unanswered}</div>
+                  <div className="rounded-2xl bg-amber-50 border border-amber-100 p-3">
+                    <div className="text-xs text-gray-600">En attente</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      ⏳ {summary.pending}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-gray-50 border border-gray-100 p-3">
+                    <div className="text-xs text-gray-600">Non répondu</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      ⚪ {summary.unanswered}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="rounded-2xl border border-gray-100 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
@@ -592,86 +629,191 @@ export default function StudentAssessmentDetails() {
             </div>
           </div>
 
-          <div className="sn-card p-5 space-y-4">
-            <div className="font-semibold">Correction détaillée question par question</div>
-
-            <div className="space-y-4">
-              {questions.map((question, idx) => {
-                const answered = question.studentAnswerLabel !== "Aucune réponse.";
-
-                return (
-                  <div key={question.id} className="rounded-2xl border border-gray-100 p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-xs text-gray-500">
-                          Question {idx + 1} • {formatPoints(question.maxPoints)} pts
-                          {canShowTeacherDetails && question.teacherPoints !== null ? (
-                            <span className="ml-2">
-                              {" "}
-                              • Noté : {formatPoints(question.teacherPoints)}/{formatPoints(question.maxPoints)}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="font-semibold text-gray-900">{question.prompt}</div>
-                      </div>
-
-                      <span className={answered ? "sn-badge sn-badge-blue" : "sn-badge sn-badge-gray"}>
-                        {answered ? "Répondu" : "Non répondu"}
-                      </span>
-                    </div>
-
-                    {question.type === "mcq" ? (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {question.choices.map((choice) => {
-                          const cls = choice.selected
-                            ? "border-blue-500 bg-blue-50"
-                            : canShowTeacherDetails && choice.isCorrect
-                            ? "border-green-200 bg-green-50/40"
-                            : "border-gray-100 bg-white";
-
-                          return (
-                            <div
-                              key={choice.id}
-                              className={`rounded-2xl border p-3 text-left ${cls}`}
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-sm text-gray-900">{choice.label}</div>
-                                <div className="flex gap-2">
-                                  {canShowTeacherDetails && choice.isCorrect && (
-                                    <span className="sn-badge sn-badge-green">Bonne</span>
-                                  )}
-                                  {choice.selected && (
-                                    <span className="sn-badge sn-badge-blue">Choisi</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl bg-gray-50 border border-gray-100 p-3 text-sm text-gray-800 whitespace-pre-wrap">
-                        {question.studentAnswerLabel}
-                      </div>
-                    )}
-
-                    {canShowTeacherDetails && question.teacherFeedback && (
-                      <div className="rounded-2xl bg-white border border-gray-100 p-3 text-sm text-gray-800">
-                        <div className="text-xs font-semibold text-gray-700 mb-1">
-                          Commentaire enseignant
-                        </div>
-                        {question.teacherFeedback}
-                      </div>
-                    )}
+          {hasExamFilePart && (
+            <div className="sn-card p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-gray-900">
+                    Correction du sujet fichier
                   </div>
-                );
-              })}
-            </div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    Réponses saisies à partir du document fourni par l’enseignant.
+                  </div>
+                </div>
 
-            <div className="text-xs text-gray-500">
-              *La correction détaillée est visible uniquement après publication par l’enseignant.*
+                <span className="sn-badge sn-badge-blue">
+                  Sujet fichier
+                </span>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                <div className="mb-2 text-xs font-semibold text-gray-700">
+                  Tes réponses
+                </div>
+
+                {submission.freeform_answer ? (
+                  <div
+                    className="prose max-w-none text-sm text-gray-900"
+                    dangerouslySetInnerHTML={{
+                      __html: submission.freeform_answer,
+                    }}
+                  />
+                ) : (
+                  <div className="text-sm text-gray-500">
+                    Aucune réponse n’a été saisie pour le sujet fichier.
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
+                  <div className="text-xs text-gray-600">
+                    Note obtenue
+                  </div>
+
+                  <div className="mt-1 text-xl font-bold text-gray-900">
+                    {canShowTeacherDetails
+                      ? `${formatPoints(
+                          submission.freeform_score
+                        )} / ${formatPoints(
+                          assessment.exam_file_max_score
+                        )} pts`
+                      : `— / ${formatPoints(
+                          assessment.exam_file_max_score
+                        )} pts`}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="text-xs font-semibold text-gray-700">
+                    Commentaire enseignant
+                  </div>
+
+                  <div className="mt-2 text-sm text-gray-800 whitespace-pre-wrap">
+                    {canShowTeacherDetails
+                      ? submission.freeform_feedback ||
+                        "Aucun commentaire sur le sujet fichier."
+                      : "Le commentaire sera visible après publication par l’enseignant."}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {!isFileOnlyExam && (
+            canShowTeacherDetails ? (
+              <div className="sn-card p-5 space-y-4">
+                <div className="font-semibold">Correction détaillée question par question</div>
+
+                <div className="space-y-4">
+                  {questions.map((question, idx) => {
+                    const answered = question.studentAnswerLabel !== "Aucune réponse.";
+
+                    return (
+                      <div key={question.id} className="rounded-2xl border border-gray-100 p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs text-gray-500">
+                              Question {idx + 1} • {formatPoints(question.maxPoints)} pts
+                              {canShowTeacherDetails && question.teacherPoints !== null ? (
+                                <span className="ml-2">
+                                  {" "}
+                                  • Noté : {formatPoints(question.teacherPoints)}/{formatPoints(question.maxPoints)}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div
+                              className="prose max-w-none font-semibold text-gray-900"
+                              dangerouslySetInnerHTML={{
+                                __html: question.prompt,
+                              }}
+                            />
+                          </div>
+
+                          <span className={answered ? "sn-badge sn-badge-blue" : "sn-badge sn-badge-gray"}>
+                            {answered ? "Répondu" : "Non répondu"}
+                          </span>
+                        </div>
+
+                        {question.type === "mcq" ? (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {question.choices.map((choice) => {
+                              const cls = choice.selected
+                                ? "border-blue-500 bg-blue-50"
+                                : canShowTeacherDetails && choice.isCorrect
+                                ? "border-green-200 bg-green-50/40"
+                                : "border-gray-100 bg-white";
+
+                              return (
+                                <div
+                                  key={choice.id}
+                                  className={`rounded-2xl border p-3 text-left ${cls}`}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-sm text-gray-900">{choice.label}</div>
+                                    <div className="flex gap-2">
+                                      {canShowTeacherDetails && choice.isCorrect && (
+                                        <span className="sn-badge sn-badge-green">Bonne</span>
+                                      )}
+                                      {choice.selected && (
+                                        <span className="sn-badge sn-badge-blue">Choisi</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl bg-gray-50 border border-gray-100 p-3 text-sm text-gray-800">
+                            {question.studentAnswerLabel === "Aucune réponse." ? (
+                              <div className="text-gray-500">
+                                Aucune réponse.
+                              </div>
+                            ) : (
+                              <div
+                                className="prose max-w-none"
+                                dangerouslySetInnerHTML={{
+                                  __html: question.studentAnswerLabel,
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        {canShowTeacherDetails && question.teacherFeedback && (
+                          <div className="rounded-2xl bg-white border border-gray-100 p-3 text-sm text-gray-800">
+                            <div className="text-xs font-semibold text-gray-700 mb-1">
+                              Commentaire enseignant
+                            </div>
+                            {question.teacherFeedback}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="text-xs text-gray-500">
+                  *La correction détaillée est visible uniquement après publication par l’enseignant.*
+                </div>
+              </div>
+            ) : (
+              <div className="sn-card p-6">
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                  <div className="font-semibold text-blue-900">
+                    Correction détaillée non encore disponible
+                  </div>
+
+                  <div className="mt-2 text-sm text-blue-800">
+                    {submission.status === "graded"
+                      ? "L’enseignant a corrigé cette évaluation, mais la correction n’a pas encore été publiée. Tes notes, les bonnes réponses et les commentaires détaillés seront disponibles après publication."
+                      : "Cette évaluation a été soumise. La correction détaillée sera disponible après correction et publication par l’enseignant."}
+                  </div>
+                </div>
+              </div>
+            )
+          )}
         </>
       )}
     </div>

@@ -8,6 +8,11 @@ type AssessmentStatus = "draft" | "published" | "closed";
 type SubmissionStatus = "in_progress" | "submitted" | "graded" | "published";
 type QuestionType = "mcq" | "true_false" | "short_text";
 
+type ExamContentMode =
+  | "online_questions"
+  | "file_and_questions"
+  | "file_only";
+
 type AssessmentRow = {
   id: string;
   title: string;
@@ -21,6 +26,17 @@ type AssessmentRow = {
   updated_at: string;
   course_id: string;
   section_id: string | null;
+  submission_mode: "online" | "file_upload" | null;
+
+  exam_content_mode: ExamContentMode | null;
+  exam_window_minutes: number | null;
+  shuffle_questions: boolean | null;
+
+  instruction_file_url: string | null;
+  instruction_file_name: string | null;
+
+  exam_file_max_score: number | null;
+
   courses:
     | {
         id: string;
@@ -199,6 +215,13 @@ export default function TeacherAssessmentDetail() {
             title,
             description,
             type,
+            submission_mode,
+            instruction_file_url,
+            instruction_file_name,
+            exam_content_mode,
+            exam_window_minutes,
+            shuffle_questions,
+            exam_file_max_score,
             status,
             due_at,
             time_limit_minutes,
@@ -270,13 +293,23 @@ export default function TeacherAssessmentDetail() {
         }, {});
       }
 
+      const totalAssessmentPoints = Number(assessmentData.max_score ?? 0);
+
+      const fileExamPoints =
+        assessmentData.type === "exam" &&
+        assessmentData.exam_content_mode === "file_and_questions"
+          ? Number(assessmentData.exam_file_max_score ?? 0)
+          : 0;
+
+      const schoolnetQuestionPoints = Math.max(
+        0,
+        round2(totalAssessmentPoints - fileExamPoints)
+      );
+
       const defaultMaxPoints =
         questionRows.length > 0
-          ? Math.max(
-              1,
-              round2(Number(assessmentData.max_score ?? 0) / questionRows.length || 1)
-            )
-          : Math.max(1, Number(assessmentData.max_score ?? 0) || 1);
+          ? round2(schoolnetQuestionPoints / questionRows.length)
+          : schoolnetQuestionPoints;
 
       const mappedQuestions: QuestionView[] = questionRows.map((q) => {
         const maxPoints = gradedMaxPointsByQuestionId[q.id] ?? defaultMaxPoints;
@@ -368,6 +401,38 @@ export default function TeacherAssessmentDetail() {
     () => (assessment ? mapAssessmentStatus(assessment.status) : "Brouillon"),
     [assessment]
   );
+
+  const isFileUploadHomework =
+    assessment?.type === "assignment" &&
+    assessment.submission_mode === "file_upload";
+
+  const isExam = assessment?.type === "exam";
+
+  const isExamFileOnly =
+    isExam &&
+    assessment?.exam_content_mode === "file_only";
+
+  const isExamWithFile =
+    isExam &&
+    (
+      assessment?.exam_content_mode === "file_and_questions" ||
+      assessment?.exam_content_mode === "file_only"
+    );
+
+  const shouldShowQuestions =
+    !isFileUploadHomework &&
+    !isExamFileOnly;
+
+  const displayedQuestionCount = shouldShowQuestions
+    ? questions.length
+    : 0;
+
+  const examModeLabel =
+    assessment?.exam_content_mode === "file_only"
+      ? "Sujet uniquement en fichier"
+      : assessment?.exam_content_mode === "file_and_questions"
+      ? "Fichier + questions"
+      : "Questions Schoolnet";
 
   const courseTitle = useMemo(
     () => (assessment ? normalizeCourse(assessment.courses)?.title ?? "Cours" : "Cours"),
@@ -556,69 +621,203 @@ export default function TeacherAssessmentDetail() {
                     : "Non définie"
                 }
               />
-              <InfoCard label="Questions" value={String(questions.length)} />
+              <InfoCard
+                label="Questions"
+                value={String(displayedQuestionCount)}
+              />
             </div>
+
+            {assessment.type === "exam" &&
+              assessment.exam_content_mode === "file_and_questions" && (
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                  <div className="text-sm font-semibold text-gray-900">
+                    Répartition du barème
+                  </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <div className="text-xs text-gray-500">Sujet fichier</div>
+                      <div className="mt-1 font-semibold text-gray-900">
+                        {Number(assessment.exam_file_max_score ?? 0)} pts
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <div className="text-xs text-gray-500">Questions Schoolnet</div>
+                      <div className="mt-1 font-semibold text-gray-900">
+                        {Math.max(
+                          0,
+                          Number(assessment.max_score ?? 0) -
+                            Number(assessment.exam_file_max_score ?? 0)
+                        )}{" "}
+                        pts
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-100 bg-white p-3">
+                      <div className="text-xs text-gray-500">Total examen</div>
+                      <div className="mt-1 font-semibold text-gray-900">
+                        {Number(assessment.max_score ?? 0)} pts
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
               <div className="text-sm font-semibold text-gray-900">Consignes / Description</div>
-              <div className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">
-                {assessment.description?.trim() || "Aucune consigne fournie."}
-              </div>
+              <div
+                className="mt-2 text-sm text-gray-700"
+                dangerouslySetInnerHTML={{
+                  __html: assessment.description || "Aucune consigne fournie.",
+                }}
+              />
             </div>
+
+            {isExam && (
+              <div className="rounded-2xl border border-red-100 bg-red-50/40 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-semibold text-gray-900">
+                    Paramètres de l’examen
+                  </div>
+
+                  <span className="sn-badge sn-badge-red">
+                    Examen
+                  </span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <InfoCard
+                    label="Mode"
+                    value={examModeLabel}
+                  />
+
+                  <InfoCard
+                    label="Fenêtre de passage"
+                    value={
+                      assessment.exam_window_minutes
+                        ? `${assessment.exam_window_minutes} min`
+                        : "Non définie"
+                    }
+                  />
+
+                  <InfoCard
+                    label="Mélange des questions"
+                    value={
+                      isExamFileOnly
+                        ? "Non applicable"
+                        : assessment.shuffle_questions
+                        ? "Activé"
+                        : "Désactivé"
+                    }
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <div className="sn-card p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold">Questions de l’évaluation</div>
-                  <span className="sn-badge sn-badge-gray">{questions.length} question(s)</span>
-                </div>
+            <div className="lg:col-span-2 space-y-4">
+              {isFileUploadHomework && (
+                <TeacherFilePanel
+                  title="Fichier du devoir maison"
+                  badgeLabel="Fichier enseignant"
+                  fileUrl={assessment.instruction_file_url}
+                  fileName={assessment.instruction_file_name}
+                  description="Ce fichier sera téléchargé par les apprenants pour traiter le devoir."
+                  emptyMessage="Aucun fichier de consigne n’est associé à ce devoir maison."
+                  iframeTitle="Fichier du devoir maison"
+                />
+              )}
 
-                {questions.length === 0 ? (
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
-                    Aucune question enregistrée pour cette évaluation.
+              {isExamWithFile && (
+                <TeacherFilePanel
+                  title="Sujet de l’examen"
+                  badgeLabel={
+                    assessment.exam_content_mode === "file_only"
+                      ? "Sujet complet"
+                      : "Fichier enseignant"
+                  }
+                  fileUrl={assessment.instruction_file_url}
+                  fileName={assessment.instruction_file_name}
+                  description={
+                    assessment.exam_content_mode === "file_only"
+                      ? "Ce document constitue l’intégralité du sujet de l’examen."
+                      : "Ce document accompagne les questions créées dans Schoolnet."
+                  }
+                  emptyMessage="Aucun fichier de sujet n’est associé à cet examen."
+                  iframeTitle="Sujet de l’examen"
+                  exam
+                />
+              )}
+
+              {shouldShowQuestions && (
+                <div className="sn-card p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold">
+                      Questions de l’évaluation
+                    </div>
+
+                    <span className="sn-badge sn-badge-gray">
+                      {questions.length} question(s)
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {questions.map((question, idx) => (
-                      <div
-                        key={question.id}
-                        className="rounded-2xl border border-gray-100 p-4 space-y-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="text-xs text-gray-500">
-                              Question {idx + 1} • ordre {question.order + 1} •{" "}
-                              {formatPoints(question.maxPoints)} pts
-                            </div>
-                            <div className="font-semibold text-gray-900">{question.prompt}</div>
-                          </div>
 
-                          <span className="sn-badge sn-badge-gray">{question.type}</span>
-                        </div>
-
-                        {"choices" in question ? (
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {question.choices.map((choice) => (
-                              <div
-                                key={choice.id}
-                                className="rounded-2xl border border-gray-100 bg-white p-3"
-                              >
-                                <div className="text-sm text-gray-900">{choice.label}</div>
+                  {questions.length === 0 ? (
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
+                      Aucune question enregistrée pour cette évaluation.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {questions.map((question, idx) => (
+                        <div
+                          key={question.id}
+                          className="rounded-2xl border border-gray-100 p-4 space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs text-gray-500">
+                                Question {idx + 1} • ordre {question.order + 1} •{" "}
+                                {formatPoints(question.maxPoints)} pts
                               </div>
-                            ))}
+
+                              <div
+                                className="prose max-w-none font-semibold text-gray-900"
+                                dangerouslySetInnerHTML={{
+                                  __html: question.prompt,
+                                }}
+                              />
+                            </div>
+
+                            <span className="sn-badge sn-badge-gray">
+                              {question.type}
+                            </span>
                           </div>
-                        ) : (
-                          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
-                            Réponse libre attendue de l’apprenant.
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+
+                          {"choices" in question ? (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {question.choices.map((choice) => (
+                                <div
+                                  key={choice.id}
+                                  className="rounded-2xl border border-gray-100 bg-white p-3"
+                                >
+                                  <div className="text-sm text-gray-900">
+                                    {choice.label}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+                              Réponse libre attendue de l’apprenant.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -674,6 +873,111 @@ function InfoCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-gray-100 bg-white p-4">
       <div className="text-xs text-gray-500">{label}</div>
       <div className="mt-1 text-sm font-semibold text-gray-900">{value}</div>
+    </div>
+  );
+}
+
+function TeacherFilePanel({
+  title,
+  badgeLabel,
+  fileUrl,
+  fileName,
+  description,
+  emptyMessage,
+  iframeTitle,
+  exam = false,
+}: {
+  title: string;
+  badgeLabel: string;
+  fileUrl: string | null;
+  fileName: string | null;
+  description: string;
+  emptyMessage: string;
+  iframeTitle: string;
+  exam?: boolean;
+}) {
+  const normalizedName = fileName?.toLowerCase() ?? "";
+
+  const normalizedUrl =
+    fileUrl?.split("?")[0].toLowerCase() ?? "";
+
+  const isPdf =
+    normalizedName.endsWith(".pdf") ||
+    normalizedUrl.endsWith(".pdf");
+
+  return (
+    <div className="sn-card p-5 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-gray-900">
+            {title}
+          </div>
+
+          <div className="mt-1 text-xs text-gray-500">
+            {description}
+          </div>
+        </div>
+
+        <span
+          className={
+            exam
+              ? "sn-badge sn-badge-red"
+              : "sn-badge sn-badge-blue"
+          }
+        >
+          {badgeLabel}
+        </span>
+      </div>
+
+      {fileUrl ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+            <div className="text-xs text-gray-500">
+              Fichier
+            </div>
+
+            <div className="mt-1 text-sm font-semibold text-gray-900">
+              {fileName || "Document"}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="sn-btn-primary sn-press"
+            >
+              Ouvrir le fichier
+            </a>
+
+            <a
+              href={fileUrl}
+              download
+              className="sn-btn-ghost sn-press"
+            >
+              Télécharger
+            </a>
+          </div>
+
+          {isPdf ? (
+            <iframe
+              src={fileUrl}
+              className="w-full h-[720px] rounded-2xl border border-gray-200 bg-white"
+              title={iframeTitle}
+            />
+          ) : (
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
+              L’aperçu intégré est disponible pour les fichiers PDF.
+              Utilisez « Ouvrir le fichier » pour consulter ce document.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800">
+          {emptyMessage}
+        </div>
+      )}
     </div>
   );
 }

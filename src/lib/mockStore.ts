@@ -5,6 +5,7 @@ export type AssessmentType = "Quiz" | "Devoir" | "Examen";
 export type MockAssessment = {
   id: string;
   type: AssessmentType;
+  submission_mode?: "online" | "file_upload";
   title: string;
   courseTitle: string;
   sectionTitle: string;
@@ -99,6 +100,7 @@ export function ensureSeed() {
     {
       id: "a1",
       type: "Quiz",
+      submission_mode: "online",
       title: "Quiz — Chapitre 1",
       courseTitle: "Maths — 6e B",
       sectionTitle: "Chapitre 1 — Nombres entiers",
@@ -111,6 +113,7 @@ export function ensureSeed() {
     {
       id: "a2",
       type: "Devoir",
+      submission_mode: "online",
       title: "Devoir — Exercices Fractions",
       courseTitle: "Maths — 6e B",
       sectionTitle: "Chapitre 2 — Fractions",
@@ -122,6 +125,7 @@ export function ensureSeed() {
     {
       id: "a3",
       type: "Examen",
+      submission_mode: "online",
       title: "Examen — Trimestre 1",
       courseTitle: "Sciences — 6e B",
       sectionTitle: "Chapitre 2 — Énergie",
@@ -130,6 +134,18 @@ export function ensureSeed() {
       status: "published",
       totalPoints: 20,
     },
+    {
+    id: "a4",
+    type: "Devoir",
+    submission_mode: "file_upload",
+    title: "Devoir maison — Rédaction PDF",
+    courseTitle: "Français — 6e B",
+    sectionTitle: "Expression écrite",
+    className: "6e B",
+    when: "À rendre • vendredi",
+    status: "published",
+    totalPoints: 20,
+  },
   ];
 
   const students: Student[] = [

@@ -1,20 +1,41 @@
 // src/features/auth/pages/LoginPage.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getDefaultPathByRole, signInWithMagicLink, signInWithPassword } from "@/lib/auth";
+import {
+  getDefaultPathByRole,
+  signInWithMagicLink,
+  signInWithPassword,
+} from "@/lib/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 function getErrorMessage(error: unknown, fallback: string) {
+  let rawMessage = "";
+
   if (typeof error === "object" && error !== null) {
     const maybe = error as {
       message?: string;
       error_description?: string;
     };
 
-    return maybe.message || maybe.error_description || fallback;
+    rawMessage = maybe.message || maybe.error_description || "";
   }
 
-  return fallback;
+  if (!rawMessage) {
+    return fallback;
+  }
+
+  const normalizedMessage = rawMessage.toLowerCase().trim();
+
+  // Compte désactivé par un administrateur.
+  // Supabase renvoie actuellement : "User is banned"
+  if (
+    normalizedMessage.includes("user is banned") ||
+    normalizedMessage.includes("banned")
+  ) {
+    return "Ce compte a été désactivé par un administrateur. Veuillez contacter l’établissement.";
+  }
+
+  return rawMessage;
 }
 
 export default function LoginPage() {
@@ -30,7 +51,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (loading || !user) return;
-    navigate(getDefaultPathByRole(user.role), { replace: true });
+
+    navigate(getDefaultPathByRole(user.role), {
+      replace: true,
+    });
   }, [loading, user, navigate]);
 
   async function onPasswordLogin() {
@@ -48,11 +72,19 @@ export default function LoginPage() {
       setIsError(false);
       setMsg(null);
 
-      navigate(getDefaultPathByRole(authUser.role), { replace: true });
+      navigate(getDefaultPathByRole(authUser.role), {
+        replace: true,
+      });
     } catch (e: unknown) {
       console.error("[LoginPage] password login error:", e);
+
       setIsError(true);
-      setMsg(getErrorMessage(e, "Connexion impossible. Vérifie l’email et le mot de passe."));
+      setMsg(
+        getErrorMessage(
+          e,
+          "Connexion impossible. Vérifie l’email et le mot de passe."
+        )
+      );
     } finally {
       setBusy(false);
     }
@@ -69,10 +101,12 @@ export default function LoginPage() {
 
     try {
       await signInWithMagicLink(cleanEmail);
+
       setIsError(false);
       setMsg("✅ Lien envoyé. Vérifie ta boîte mail.");
     } catch (e: unknown) {
       console.error("[LoginPage] magic link error:", e);
+
       setIsError(true);
       setMsg(getErrorMessage(e, "Envoi impossible."));
     } finally {
@@ -81,25 +115,29 @@ export default function LoginPage() {
   }
 
   return (
-      <form
-        className="w-full max-w-md mx-auto space-y-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (mode === "password") {
-            void onPasswordLogin();
-          } else {
-            void onMagicLink();
-          }
-        }}
-      >
+    <form
+      className="w-full max-w-md mx-auto space-y-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+
+        if (mode === "password") {
+          void onPasswordLogin();
+        } else {
+          void onMagicLink();
+        }
+      }}
+    >
       <div className="text-sm text-gray-500">
-        Connexion réelle : le rôle est récupéré automatiquement depuis votre profil.
+        Connexion réelle : le rôle est récupéré automatiquement depuis votre
+        profil.
       </div>
 
       <div className="flex gap-2">
         <button
           type="button"
-          className={`sn-btn-ghost sn-press ${mode === "password" ? "ring-2 ring-blue-200" : ""}`}
+          className={`sn-btn-ghost sn-press ${
+            mode === "password" ? "ring-2 ring-blue-200" : ""
+          }`}
           onClick={() => setMode("password")}
           disabled={busy}
         >
@@ -108,7 +146,9 @@ export default function LoginPage() {
 
         <button
           type="button"
-          className={`sn-btn-ghost sn-press ${mode === "magic" ? "ring-2 ring-blue-200" : ""}`}
+          className={`sn-btn-ghost sn-press ${
+            mode === "magic" ? "ring-2 ring-blue-200" : ""
+          }`}
           onClick={() => setMode("magic")}
           disabled={busy}
         >
@@ -118,6 +158,7 @@ export default function LoginPage() {
 
       <div className="space-y-2">
         <label className="text-sm text-gray-600">Email</label>
+
         <input
           className="w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
           value={email}
@@ -131,6 +172,7 @@ export default function LoginPage() {
       {mode === "password" && (
         <div className="space-y-2">
           <label className="text-sm text-gray-600">Mot de passe</label>
+
           <input
             className="w-full rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
             value={password}
@@ -157,8 +199,11 @@ export default function LoginPage() {
       <button
         type="submit"
         className="sn-btn-primary sn-press w-full"
-        onClick={mode === "password" ? onPasswordLogin : onMagicLink}
-        disabled={busy || !email.trim() || (mode === "password" && !password)}
+        disabled={
+          busy ||
+          !email.trim() ||
+          (mode === "password" && !password)
+        }
       >
         {busy ? "Connexion..." : "Se connecter"}
       </button>

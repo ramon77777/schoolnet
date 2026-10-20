@@ -11,9 +11,15 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
+    "@tiptap/extension-placeholder": "^3.23.5",
+    "@tiptap/extension-text-align": "^3.23.5",
+    "@tiptap/react": "^3.23.5",
+    "@tiptap/starter-kit": "^3.23.5",
+    "katex": "^0.16.47",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.11.0"
+    "react-router-dom": "^7.11.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
