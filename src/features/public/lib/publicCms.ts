@@ -256,3 +256,271 @@ export async function loadPublicPage(
 
   return (data as PublicPage | null) ?? null;
 }
+
+
+export type PublicLevel = {
+  id: string;
+  name: string;
+  slug: string;
+  short_label: string | null;
+  description: string | null;
+  audience: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export type PublicSubject = {
+  id: string;
+  name: string;
+  slug: string;
+  short_label: string | null;
+  description: string | null;
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export type PublicLibraryItem = {
+  id: string;
+
+  title: string;
+  slug: string;
+  description: string | null;
+
+  resource_type: string;
+
+  /*
+   * subject est conservé pour compatibilité
+   * avec les premières données SchoolNet.
+   */
+  subject: string | null;
+  subject_id: string | null;
+
+  level_id: string | null;
+
+  author: string | null;
+
+  file_url: string | null;
+  external_url: string | null;
+  cover_url: string | null;
+
+  download_label: string;
+
+  is_featured: boolean;
+  sort_order: number;
+  is_visible: boolean;
+
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+
+  level: PublicLevel | null;
+  subjectRef: PublicSubject | null;
+};
+
+export type PublicLibraryContent = {
+  items: PublicLibraryItem[];
+  levels: PublicLevel[];
+  subjects: PublicSubject[];
+};
+
+export async function loadPublicLibraryContent(): Promise<
+  PublicLibraryContent
+> {
+  const [
+    itemsResult,
+    levelsResult,
+    subjectsResult,
+  ] = await Promise.all([
+    supabase
+      .from("public_library_items")
+      .select("*")
+      .eq("is_visible", true)
+      .order("sort_order", {
+        ascending: true,
+      })
+      .order("created_at", {
+        ascending: true,
+      }),
+
+    supabase
+      .from("public_levels")
+      .select("*")
+      .eq("is_visible", true)
+      .order("sort_order", {
+        ascending: true,
+      })
+      .order("name", {
+        ascending: true,
+      }),
+
+    supabase
+      .from("public_subjects")
+      .select("*")
+      .eq("is_visible", true)
+      .order("sort_order", {
+        ascending: true,
+      })
+      .order("name", {
+        ascending: true,
+      }),
+  ]);
+
+  if (itemsResult.error) {
+    throw new Error(
+      errorMessage(
+        "Bibliothèque publique",
+        itemsResult.error.message,
+      ),
+    );
+  }
+
+  if (levelsResult.error) {
+    throw new Error(
+      errorMessage(
+        "Niveaux publics",
+        levelsResult.error.message,
+      ),
+    );
+  }
+
+  if (subjectsResult.error) {
+    throw new Error(
+      errorMessage(
+        "Matières publiques",
+        subjectsResult.error.message,
+      ),
+    );
+  }
+
+  const levels =
+    (levelsResult.data as PublicLevel[] | null) ??
+    [];
+
+  const subjects =
+    (subjectsResult.data as PublicSubject[] | null) ??
+    [];
+
+  const levelsById = new Map(
+    levels.map((level) => [
+      level.id,
+      level,
+    ]),
+  );
+
+  const subjectsById = new Map(
+    subjects.map((subject) => [
+      subject.id,
+      subject,
+    ]),
+  );
+
+  type RawLibraryItem = Omit<
+    PublicLibraryItem,
+    "level" | "subjectRef"
+  >;
+
+  const rawItems =
+    (itemsResult.data as RawLibraryItem[] | null) ??
+    [];
+
+  const items: PublicLibraryItem[] =
+    rawItems.map((item) => ({
+      ...item,
+
+      level: item.level_id
+        ? levelsById.get(item.level_id) ??
+          null
+        : null,
+
+      subjectRef: item.subject_id
+        ? subjectsById.get(
+            item.subject_id,
+          ) ?? null
+        : null,
+    }));
+
+  return {
+    items,
+    levels,
+    subjects,
+  };
+}
+
+/*
+ * Conservé pour d'autres composants éventuels
+ * qui auraient déjà besoin uniquement des ressources.
+ */
+export async function loadPublicLibraryItems(): Promise<
+  PublicLibraryItem[]
+> {
+  const content =
+    await loadPublicLibraryContent();
+
+  return content.items;
+}
+
+export type PublicPricingPlan = {
+  id: string;
+
+  name: string;
+  slug: string;
+
+  eyebrow: string | null;
+  description: string | null;
+
+  price_amount: number | string | null;
+  currency: string;
+  billing_period: string | null;
+
+  features: string[];
+
+  cta_label: string;
+  cta_path: string;
+
+  is_featured: boolean;
+  sort_order: number;
+  is_visible: boolean;
+
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export async function loadPublicPricingPlans(): Promise<
+  PublicPricingPlan[]
+> {
+  const { data, error } = await supabase
+    .from("public_pricing_plans")
+    .select("*")
+    .eq("is_visible", true)
+    .order("sort_order", {
+      ascending: true,
+    })
+    .order("created_at", {
+      ascending: true,
+    });
+
+  if (error) {
+    throw new Error(
+      errorMessage(
+        "Tarifs publics",
+        error.message,
+      ),
+    );
+  }
+
+  return (
+    (data as PublicPricingPlan[] | null) ??
+    []
+  );
+}

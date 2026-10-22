@@ -10,11 +10,21 @@ import AdminPublicHomeEditor from "@/features/admin/components/public-site/Admin
 import AdminPublicPagesEditor from "@/features/admin/components/public-site/AdminPublicPagesEditor";
 import AdminPublicNavigationEditor from "@/features/admin/components/public-site/AdminPublicNavigationEditor";
 import AdminPublicFooterEditor from "@/features/admin/components/public-site/AdminPublicFooterEditor";
+import AdminPublicLibraryEditor from "@/features/admin/components/public-site/AdminPublicLibraryEditor";
+import AdminPublicTaxonomiesEditor from "@/features/admin/components/public-site/AdminPublicTaxonomiesEditor";
+import AdminPublicPricingEditor from "@/features/admin/components/public-site/AdminPublicPricingEditor";
+import AdminPublicAboutEditor from "@/features/admin/components/public-site/AdminPublicAboutEditor";
+import AdminPublicContactEditor from "@/features/admin/components/public-site/AdminPublicContactEditor";
 
 type TabKey =
   | "home"
   | "navigation"
   | "pages"
+  | "library"
+  | "taxonomies"
+  | "pricing"
+  | "about"
+  | "contact"
   | "footer";
 
 type CmsCounts = {
@@ -22,6 +32,10 @@ type CmsCounts = {
   navigationItems: number;
   homeCards: number;
   pages: number;
+  libraryItems: number;
+  pricingPlans: number;
+  aboutSections: number;
+  contactItems: number;
   footerLinks: number;
 };
 
@@ -30,6 +44,10 @@ const EMPTY_COUNTS: CmsCounts = {
   navigationItems: 0,
   homeCards: 0,
   pages: 0,
+  libraryItems: 0,
+  pricingPlans: 0,
+  aboutSections: 0,
+  contactItems: 0,
   footerLinks: 0,
 };
 
@@ -59,6 +77,41 @@ const tabs: Array<{
     icon: "📄",
     description:
       "Bibliothèque, niveaux, tarifs, à propos et contact.",
+  },
+  {
+    key: "library",
+    label: "Bibliothèque",
+    icon: "📚",
+    description:
+      "Ressources pédagogiques, niveaux, matières, images, visibilité et mise en avant.",
+  },
+  {
+    key: "taxonomies",
+    label: "Niveaux & Matières",
+    icon: "🎓",
+    description:
+      "Niveaux scolaires et matières utilisés dans la bibliothèque et les filtres publics.",
+  },
+  {
+    key: "pricing",
+    label: "Tarifs",
+    icon: "💳",
+    description:
+      "Offres, prix, avantages, visibilité et appels à l’action.",
+  },
+  {
+    key: "about",
+    label: "À propos",
+    icon: "✨",
+    description:
+      "Mission, vision, communauté, engagement, visibilité et ordre d’affichage.",
+  },
+  {
+    key: "contact",
+    label: "Contact",
+    icon: "☎️",
+    description:
+      "Coordonnées, horaires, informations, liens, visibilité et ordre d’affichage.",
   },
   {
     key: "footer",
@@ -108,6 +161,10 @@ export default function AdminPublicSite() {
         navigationResult,
         homeCardsResult,
         pagesResult,
+        libraryResult,
+        pricingResult,
+        aboutResult,
+        contactResult,
         footerResult,
       ] = await Promise.all([
         supabase
@@ -137,6 +194,34 @@ export default function AdminPublicSite() {
             count: "exact",
             head: true,
           }),
+        
+        supabase
+          .from("public_library_items")
+          .select("*", {
+            count: "exact",
+            head: true,
+          }),
+
+        supabase
+          .from("public_pricing_plans")
+          .select("*", {
+            count: "exact",
+            head: true,
+          }),
+        
+        supabase
+          .from("public_about_sections")
+          .select("*", {
+            count: "exact",
+            head: true,
+          }),
+
+        supabase
+          .from("public_contact_items")
+          .select("*", {
+            count: "exact",
+            head: true,
+          }),
 
         supabase
           .from("public_footer_links")
@@ -151,6 +236,10 @@ export default function AdminPublicSite() {
         navigationResult.error ??
         homeCardsResult.error ??
         pagesResult.error ??
+        libraryResult.error ??
+        pricingResult.error ??
+        aboutResult.error ??
+        contactResult.error ??
         footerResult.error;
 
       if (firstError) {
@@ -166,6 +255,14 @@ export default function AdminPublicSite() {
           homeCardsResult.count ?? 0,
         pages:
           pagesResult.count ?? 0,
+        libraryItems:
+          libraryResult.count ?? 0,
+        pricingPlans:
+          pricingResult.count ?? 0,
+        aboutSections:
+          aboutResult.count ?? 0,
+        contactItems:
+          contactResult.count ?? 0,
         footerLinks:
           footerResult.count ?? 0,
       });
@@ -206,6 +303,21 @@ export default function AdminPublicSite() {
 
       case "pages":
         return counts.pages;
+
+      case "library":
+        return counts.libraryItems;
+
+      case "taxonomies":
+        return 0;
+      
+      case "pricing":
+        return counts.pricingPlans;
+      
+      case "about":
+        return counts.aboutSections;
+
+      case "contact":
+        return counts.contactItems;
 
       case "footer":
         return counts.footerLinks;
@@ -486,6 +598,36 @@ export default function AdminPublicSite() {
 
       {activeTab === "navigation" && (
         <AdminPublicNavigationEditor onChanged={loadOverview} />
+      )}
+
+      {activeTab === "library" && (
+        <AdminPublicLibraryEditor
+          onChanged={loadOverview}
+        />
+      )}
+
+      {activeTab === "taxonomies" && (
+        <AdminPublicTaxonomiesEditor
+          onChanged={loadOverview}
+        />
+      )}
+
+      {activeTab === "pricing" && (
+        <AdminPublicPricingEditor
+          onChanged={loadOverview}
+        />
+      )}
+
+      {activeTab === "about" && (
+        <AdminPublicAboutEditor
+          onChanged={loadOverview}
+        />
+      )}
+
+      {activeTab === "contact" && (
+        <AdminPublicContactEditor
+          onChanged={loadOverview}
+        />
       )}
 
       {activeTab === "footer" && (
