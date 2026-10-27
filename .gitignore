@@ -25,3 +25,5 @@ dist-ssr
 
 .vscode/
 supabase/.temp/
+.vercel
+.env*
