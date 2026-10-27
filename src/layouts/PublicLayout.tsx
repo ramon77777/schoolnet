@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 
 import {
   loadPublicShellContent,
@@ -7,6 +12,8 @@ import {
   type PublicNavigationItem,
   type PublicSiteSettings,
 } from "@/features/public/lib/publicCms";
+
+import schoolnetLogo from "@/assets/branding/schoolnet-logo.png";
 
 const fallbackNavItems: PublicNavigationItem[] = [
   {
@@ -189,6 +196,10 @@ function groupFooterLinks(
 export default function PublicLayout() {
   const currentYear = new Date().getFullYear();
 
+  const location = useLocation();
+
+  const isHomePage = location.pathname === "/";
+
   const [settings, setSettings] =
     useState<PublicSiteSettings | null>(null);
 
@@ -285,22 +296,43 @@ export default function PublicLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-8">
+      <header
+        className={[
+          "z-50 transition-all duration-300",
+          isHomePage
+            ? "absolute inset-x-0 top-0 border-b border-white/10 bg-transparent"
+            : "sticky top-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl",
+        ].join(" ")}
+      >
+        <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-6 px-6 py-4 sm:px-8 lg:px-12 xl:px-16">
           <Link
             to="/"
             className="flex min-w-0 items-center gap-3"
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white shadow-lg shadow-blue-500/20">
-              SN
+            <div
+              className={[
+                "flex items-center justify-center rounded-2xl transition",
+                isHomePage
+                  ? "bg-white/95 px-2.5 py-1.5 shadow-lg"
+                  : "",
+              ].join(" ")}
+            >
+              <img
+                src={schoolnetLogo}
+                alt="SchoolNet"
+                className="h-11 w-auto shrink-0 object-contain"
+              />
             </div>
 
             <div className="min-w-0">
-              <div className="truncate text-lg font-black tracking-tight text-slate-950">
-                SchoolNet
-              </div>
-
-              <div className="truncate text-xs font-medium text-slate-500">
+              <div
+                className={[
+                  "truncate text-xs font-semibold transition",
+                  isHomePage
+                    ? "text-blue-100"
+                    : "text-slate-500",
+                ].join(" ")}
+              >
                 {tagline}
               </div>
             </div>
@@ -314,10 +346,14 @@ export default function PublicLayout() {
                 end={item.path === "/"}
                 className={({ isActive }) =>
                   [
-                    "rounded-xl px-3.5 py-2 text-sm font-semibold transition",
-                    isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
+                    "rounded-xl px-4 py-2.5 text-sm font-bold transition",
+                    isHomePage
+                      ? isActive
+                        ? "bg-white/15 text-white backdrop-blur-md"
+                        : "text-blue-50 hover:bg-white/10 hover:text-white"
+                      : isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
                   ].join(" ")
                 }
               >
@@ -328,14 +364,26 @@ export default function PublicLayout() {
 
           <Link
             to="/auth/login"
-            className="shrink-0 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+            className={[
+              "shrink-0 rounded-2xl px-5 py-3 text-sm font-black transition",
+              isHomePage
+                ? "border border-white/80 bg-white text-blue-700 shadow-xl hover:-translate-y-0.5 hover:bg-blue-50"
+                : "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700",
+            ].join(" ")}
           >
             {loginLabel}
           </Link>
         </div>
 
-        <div className="border-t border-slate-100 px-4 py-2 xl:hidden">
-          <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto">
+        <div
+          className={[
+            "px-4 py-2 xl:hidden",
+            isHomePage
+              ? "border-t border-white/10 bg-[#06132f]/80 backdrop-blur-xl"
+              : "border-t border-slate-100 bg-white",
+          ].join(" ")}
+        >
+          <nav className="mx-auto flex max-w-7xl flex-nowrap gap-1.5 overflow-x-auto pb-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.id}
@@ -343,10 +391,14 @@ export default function PublicLayout() {
                 end={item.path === "/"}
                 className={({ isActive }) =>
                   [
-                    "whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold",
-                    isActive
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-100 text-slate-600",
+                    "shrink-0 whitespace-nowrap rounded-lg px-2.5 py-2 text-[11px] font-semibold sm:px-3 sm:text-xs",
+                    isHomePage
+                      ? isActive
+                        ? "bg-white text-blue-700"
+                        : "bg-white/10 text-white"
+                      : isActive
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-100 text-slate-600",
                   ].join(" ")
                 }
               >
@@ -361,53 +413,109 @@ export default function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-20 bg-slate-950 text-slate-300">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
-          <div>
-            <div className="text-xl font-black text-white">
-              SchoolNet
+      <footer className="relative overflow-hidden bg-[#020817] text-slate-300">
+        {/* Décoration de fond */}
+        <div className="pointer-events-none absolute -left-32 top-0 h-80 w-80 rounded-full bg-blue-600/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-32 bottom-0 h-80 w-80 rounded-full bg-violet-600/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-[1680px] px-6 py-16 sm:px-8 lg:px-12 xl:px-16">
+          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-[1.35fr_.8fr_.8fr_1fr] lg:gap-10">
+            {/* Identité SchoolNet */}
+            <div className="max-w-md">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-4"
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white p-2 shadow-lg">
+                  <img
+                    src={schoolnetLogo}
+                    alt="SchoolNet"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+
+                <div>
+                  <div className="text-xl font-black tracking-tight text-white">
+                    SchoolNet
+                  </div>
+
+                  <div className="mt-1 text-xs font-medium text-slate-500">
+                    {tagline}
+                  </div>
+                </div>
+              </Link>
+
+              <p className="mt-6 max-w-sm text-sm leading-7 text-slate-400">
+                {footerDescription}
+              </p>
+
+              <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-400">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                Plateforme éducative numérique
+              </div>
             </div>
 
-            <p className="mt-4 max-w-sm text-sm leading-6 text-slate-400">
-              {footerDescription}
-            </p>
-          </div>
+            {/* Groupes CMS */}
+            {footerGroups.slice(0, 2).map((group) => (
+              <div key={group.key}>
+                <div className="text-sm font-black uppercase tracking-[0.12em] text-white">
+                  {group.title}
+                </div>
 
-          {footerGroups.slice(0, 2).map((group) => (
-            <div key={group.key}>
-              <div className="font-bold text-white">
-                {group.title}
+                <div className="mt-6 space-y-4 text-sm">
+                  {group.links.map((link) => (
+                    <Link
+                      key={link.id}
+                      to={link.path}
+                      className="group flex w-fit items-center gap-2 text-slate-400 transition hover:text-white"
+                    >
+                      <span>{link.label}</span>
+
+                      <span className="translate-x-0 text-xs text-blue-400 opacity-0 transition group-hover:translate-x-1 group-hover:opacity-100">
+                        →
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Ambition */}
+            <div>
+              <div className="text-sm font-black uppercase tracking-[0.12em] text-white">
+                {ambitionTitle}
               </div>
 
-              <div className="mt-4 space-y-3 text-sm">
-                {group.links.map((link) => (
-                  <Link
-                    key={link.id}
-                    className="block hover:text-white"
-                    to={link.path}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
+              <p className="mt-6 max-w-sm text-sm leading-7 text-slate-400">
+                {ambitionText}
+              </p>
 
-          <div>
-            <div className="font-bold text-white">
-              {ambitionTitle}
+              <Link
+                to="/a-propos"
+                className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-blue-400 transition hover:text-blue-300"
+              >
+                Découvrir SchoolNet
+                <span aria-hidden="true">→</span>
+              </Link>
             </div>
-
-            <p className="mt-4 text-sm leading-6 text-slate-400">
-              {ambitionText}
-            </p>
           </div>
         </div>
 
-        <div className="border-t border-slate-800">
-          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+        {/* Bas du footer */}
+        <div className="relative border-t border-white/[0.07]">
+          <div className="mx-auto flex max-w-[1680px] flex-col gap-4 px-6 py-6 text-xs text-slate-500 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12 xl:px-16">
             <span>{copyrightText}</span>
-            <span>{bottomText}</span>
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <span>{bottomText}</span>
+
+              <Link
+                to="/auth/login"
+                className="font-semibold text-slate-400 transition hover:text-white"
+              >
+                Espace utilisateur
+              </Link>
+            </div>
           </div>
         </div>
       </footer>

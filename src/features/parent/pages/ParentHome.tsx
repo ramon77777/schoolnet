@@ -323,32 +323,132 @@ export default function ParentHome() {
           return;
         }
 
-        const {
-          data: childProfiles,
-          error: childrenError,
-        } = await supabase
-          .from("profiles")
-          .select(
-            "id, full_name, class_name, role",
-          )
-          .in("id", childIds)
-          .eq("role", "student")
-          .order("full_name");
+        const [
+          childProfilesResult,
+          childClassAssignmentsResult,
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select(
+              `
+              id,
+              full_name,
+              role
+              `,
+            )
+            .in("id", childIds)
+            .eq("role", "student")
+            .order("full_name"),
 
-        if (childrenError) {
-          throw childrenError;
+          supabase
+            .from("class_students")
+            .select(
+              `
+              student_id,
+              class_id
+              `,
+            )
+            .in("student_id", childIds),
+        ]);
+
+        if (childProfilesResult.error) {
+          throw childProfilesResult.error;
         }
 
-        const nextChildren: Child[] = (
-          childProfiles ?? []
-        ).map((child) => ({
-          id: child.id,
-          label:
-            child.full_name || "Élève",
-          className:
-            child.class_name ||
-            "Classe non renseignée",
-        }));
+        if (childClassAssignmentsResult.error) {
+          throw childClassAssignmentsResult.error;
+        }
+
+        const childProfiles =
+          childProfilesResult.data ?? [];
+
+        const childClassAssignments =
+          childClassAssignmentsResult.data ?? [];
+
+        /*
+        * Récupérer les classes réellement affectées
+        * aux élèves.
+        */
+        const classIds = Array.from(
+          new Set(
+            childClassAssignments
+              .map((row) => row.class_id)
+              .filter(
+                (classId): classId is string =>
+                  typeof classId === "string" &&
+                  classId.trim().length > 0,
+              ),
+          ),
+        );
+
+        const classNameById =
+          new Map<string, string>();
+
+        if (classIds.length > 0) {
+          const {
+            data: classRows,
+            error: classesError,
+          } = await supabase
+            .from("classes")
+            .select("id, name")
+            .in("id", classIds);
+
+          if (classesError) {
+            throw classesError;
+          }
+
+          for (const classRow of classRows ?? []) {
+            classNameById.set(
+              classRow.id,
+              classRow.name?.trim() ||
+                "Classe non renseignée",
+            );
+          }
+        }
+
+        /*
+        * Associer chaque élève à sa classe.
+        */
+        const classIdByStudentId =
+          new Map<string, string>();
+
+        for (const assignment of childClassAssignments) {
+          if (
+            assignment.student_id &&
+            assignment.class_id &&
+            !classIdByStudentId.has(
+              assignment.student_id,
+            )
+          ) {
+            classIdByStudentId.set(
+              assignment.student_id,
+              assignment.class_id,
+            );
+          }
+        }
+
+        /*
+        * Modèle final utilisé par le tableau de bord.
+        */
+        const nextChildren: Child[] =
+          childProfiles.map((child) => {
+            const classId =
+              classIdByStudentId.get(child.id);
+
+            const resolvedClassName = classId
+              ? classNameById.get(classId)
+              : undefined;
+
+            return {
+              id: child.id,
+              label:
+                child.full_name?.trim() ||
+                "Élève",
+              className:
+                resolvedClassName ||
+                "Classe non renseignée",
+            };
+          });
 
         setChildren(nextChildren);
 

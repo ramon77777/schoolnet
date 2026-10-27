@@ -1,4 +1,6 @@
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
+
+import schoolnetLogo from "@/assets/branding/schoolnet-logo.png";
 
 export default function AuthLayout() {
   return (
@@ -18,14 +20,16 @@ export default function AuthLayout() {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-500" />
 
               <div className="relative z-10 text-white">
+                <img
+                  src={schoolnetLogo}
+                  alt="SchoolNet"
+                  className="mb-6 h-24 w-auto rounded-2xl bg-white p-2 object-contain shadow-sm"
+                />
                 <div className="inline-flex items-center gap-2 rounded-2xl bg-white/15 px-3 py-1 text-sm">
                   <span className="h-2 w-2 rounded-full bg-white" />
                   Plateforme E-learning
                 </div>
 
-                <h1 className="mt-6 text-4xl font-bold leading-tight">
-                  Schoolnet
-                </h1>
                 <p className="mt-3 text-white/90">
                   Une expérience simple, moderne et efficace pour{" "}
                   <span className="font-semibold">Maternelle → Secondaire</span>.
@@ -45,6 +49,16 @@ export default function AuthLayout() {
 
             {/* Colonne droite : formulaire */}
             <div className="p-8 md:p-10">
+              <div className="mb-6">
+                <Link
+                  to="/"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-blue-600"
+                >
+                  <span aria-hidden="true">←</span>
+                  Retour à l’accueil
+                </Link>
+              </div>
+
               <div className="mb-8">
                 <div className="text-2xl font-bold text-gray-900">
                   Connexion

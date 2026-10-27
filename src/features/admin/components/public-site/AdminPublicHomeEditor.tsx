@@ -24,6 +24,8 @@ type HomeTextField =
   | "hero_secondary_label"
   | "hero_secondary_path"
   | "hero_panel_title"
+  | "hero_image_url"
+  | "hero_image_alt"
   | "hero_panel_subtitle"
   | "hero_panel_banner"
   | "intro_eyebrow"
@@ -47,6 +49,8 @@ const HOME_FIELDS: HomeTextField[] = [
   "hero_primary_path",
   "hero_secondary_label",
   "hero_secondary_path",
+  "hero_image_url",
+  "hero_image_alt",
   "hero_panel_title",
   "hero_panel_subtitle",
   "hero_panel_banner",
@@ -89,6 +93,34 @@ const GROUP_CONFIG: Record<
       "Les avantages présentés dans la section Pourquoi SchoolNet.",
     icon: "💡",
   },
+  platform_feature: {
+    title: "Fonctionnalités de la plateforme",
+    description:
+      "Présentez les principales fonctionnalités qui structurent l’expérience SchoolNet.",
+    icon: "🧩",
+  },
+
+  class_space_feature: {
+    title: "Espace de classe",
+    description:
+      "Mettez en avant les fonctions de communication et de vie de classe.",
+    icon: "🏫",
+  },
+
+  library_feature: {
+    title: "Bibliothèque",
+    description:
+      "Présentez les ressources et possibilités offertes par la bibliothèque SchoolNet.",
+    icon: "📚",
+  },
+
+  parent_feature: {
+    title: "Espace Parents / Tuteurs",
+    description:
+      "Présentez les outils destinés au suivi scolaire et à l’accompagnement familial.",
+    icon: "👨‍👩‍👧",
+  },
+
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -403,13 +435,17 @@ export default function AdminPublicHomeEditor() {
 
   const cardsByGroup = useMemo(() => {
     const result: Record<
-      PublicHomeCardGroup,
-      PublicHomeCard[]
-    > = {
-      hero_feature: [],
-      audience: [],
-      benefit: [],
-    };
+    PublicHomeCardGroup,
+    PublicHomeCard[]
+  > = {
+    hero_feature: [],
+    audience: [],
+    benefit: [],
+    platform_feature: [],
+    class_space_feature: [],
+    library_feature: [],
+    parent_feature: [],
+  };
 
     cards.forEach((card) => {
       if (result[card.group_key]) {
@@ -778,6 +814,36 @@ export default function AdminPublicHomeEditor() {
               )
             }
           />
+
+          <div className="lg:col-span-2">
+            <InputField
+              label="Image principale du Hero"
+              value={valueOf("hero_image_url")}
+              placeholder="https://..."
+              help="Adresse de l'image principale affichée dans le Hero."
+              onChange={(value) =>
+                updateSetting(
+                  "hero_image_url",
+                  value
+                )
+              }
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <InputField
+              label="Texte alternatif de l'image"
+              value={valueOf("hero_image_alt")}
+              placeholder="Exemple : Élèves utilisant SchoolNet en classe"
+              help="Description de l'image utilisée pour l'accessibilité."
+              onChange={(value) =>
+                updateSetting(
+                  "hero_image_alt",
+                  value
+                )
+              }
+            />
+          </div>
         </div>
       </EditorSection>
 
@@ -1008,6 +1074,10 @@ export default function AdminPublicHomeEditor() {
           "hero_feature",
           "audience",
           "benefit",
+          "platform_feature",
+          "class_space_feature",
+          "library_feature",
+          "parent_feature",
         ] as PublicHomeCardGroup[]
       ).map((group) => {
         const config =

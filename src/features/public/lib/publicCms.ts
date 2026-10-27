@@ -18,6 +18,9 @@ export type PublicSiteSettings = {
   hero_panel_subtitle: string | null;
   hero_panel_banner: string | null;
 
+  hero_image_url: string | null;
+  hero_image_alt: string | null;
+
   intro_eyebrow: string | null;
   intro_title: string | null;
   intro_description: string | null;
@@ -59,7 +62,11 @@ export type PublicNavigationItem = {
 export type PublicHomeCardGroup =
   | "hero_feature"
   | "audience"
-  | "benefit";
+  | "benefit"
+  | "platform_feature"
+  | "class_space_feature"
+  | "library_feature"
+  | "parent_feature";
 
 export type PublicHomeCard = {
   id: string;
@@ -111,6 +118,11 @@ export type PublicHomeContent = PublicShellContent & {
   heroFeatures: PublicHomeCard[];
   audiences: PublicHomeCard[];
   benefits: PublicHomeCard[];
+
+  platformFeatures: PublicHomeCard[];
+  classSpaceFeatures: PublicHomeCard[];
+  libraryFeatures: PublicHomeCard[];
+  parentFeatures: PublicHomeCard[];
 };
 
 function errorMessage(
@@ -232,6 +244,22 @@ export async function loadPublicHomeContent(): Promise<PublicHomeContent> {
     benefits: cards.filter(
       (card) => card.group_key === "benefit",
     ),
+
+    platformFeatures: cards.filter(
+      (card) => card.group_key === "platform_feature",
+    ),
+
+    classSpaceFeatures: cards.filter(
+      (card) => card.group_key === "class_space_feature",
+    ),
+
+    libraryFeatures: cards.filter(
+      (card) => card.group_key === "library_feature",
+    ),
+
+    parentFeatures: cards.filter(
+      (card) => card.group_key === "parent_feature",
+    ),
   };
 }
 
@@ -325,6 +353,34 @@ export type PublicLibraryItem = {
   level: PublicLevel | null;
   subjectRef: PublicSubject | null;
 };
+
+export async function loadPublicLevels(): Promise<
+  PublicLevel[]
+> {
+  const { data, error } = await supabase
+    .from("public_levels")
+    .select("*")
+    .eq("is_visible", true)
+    .order("sort_order", {
+      ascending: true,
+    })
+    .order("name", {
+      ascending: true,
+    });
+
+  if (error) {
+    throw new Error(
+      errorMessage(
+        "Niveaux publics",
+        error.message,
+      ),
+    );
+  }
+
+  return (
+    (data as PublicLevel[] | null) ?? []
+  );
+}
 
 export type PublicLibraryContent = {
   items: PublicLibraryItem[];

@@ -16,6 +16,7 @@ import AdminClasses from "../features/admin/pages/AdminClasses";
 import AdminContent from "../features/admin/pages/AdminContent";
 import AdminSettings from "../features/admin/pages/AdminSettings";
 import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
+import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 
 // Teacher
@@ -28,16 +29,21 @@ import TeacherAssessmentEdit from "../features/teacher/pages/TeacherAssessmentEd
 import TeacherGrading from "../features/teacher/pages/TeacherGrading";
 import TeacherGradingDetail from "../features/teacher/pages/TeacherGradingDetail";
 import TeacherCourseDetail from "../features/teacher/pages/TeacherCourseDetail";
+import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
+import TeacherAverages from "@/features/teacher/pages/TeacherAverages";
 
 // Student
 import StudentCourses from "../features/student/pages/StudentCourses";
 import StudentHomework from "../features/student/pages/StudentHomework";
 import StudentProgress from "../features/student/pages/StudentProgress";
+import StudentAverages from "../features/student/pages/StudentAverages";
 import StudentAssessments from "../features/student/pages/StudentAssessments";
 import StudentAssessmentTake from "../features/student/pages/StudentAssessmentTake";
 import StudentAssessmentResult from "../features/student/pages/StudentAssessmentResult";
 import StudentCourseDetail from "../features/student/pages/StudentCourseDetail";
 import StudentAssessmentDetails from "../features/student/pages/StudentAssessmentDetails";
+import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
+import StudentDashboard from "@/features/student/pages/StudentDashboard";
 
 // Parent
 import ParentHome from "../features/parent/pages/ParentHome";
@@ -45,13 +51,10 @@ import ParentChildren from "../features/parent/pages/ParentChildren";
 import ParentDeadlines from "../features/parent/pages/ParentDeadlines";
 import ParentResults from "../features/parent/pages/ParentResults";
 import ParentResultsDetail from "../features/parent/pages/ParentResultsDetail";
+import ParentAverages from "../features/parent/pages/ParentAverages";
 
 import AppIndexRedirect from "./AppIndexRedirect";
 
-import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
-
-import StudentDashboard from "@/features/student/pages/StudentDashboard";
-import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 
 import PublicLayout from "../layouts/PublicLayout";
 import PublicHome from "../features/public/pages/PublicHome";
@@ -60,6 +63,8 @@ import PublicLevels from "../features/public/pages/PublicLevels";
 import PublicPricing from "../features/public/pages/PublicPricing";
 import PublicAbout from "../features/public/pages/PublicAbout";
 import PublicContact from "../features/public/pages/PublicContact";
+import MessagingPage from "../features/messages/pages/MessagingPage";
+import ClassFeedPage from "@/features/class-posts/pages/ClassFeedPage";
 
 export const router = createBrowserRouter([
   {
@@ -145,6 +150,21 @@ export const router = createBrowserRouter([
                 element: <StudentProgress />,
               },
 
+              {
+                path: "student/averages",
+                element: <StudentAverages />,
+              },
+
+              {
+                path: "student/messages",
+                element: <MessagingPage />,
+              },
+
+              {
+                  path: "student/class-feed",
+                  element: <ClassFeedPage />,
+              },
+
               // Route conservée pour compatibilité avec les liens existants.
               {
                 path: "student/assessments",
@@ -201,6 +221,9 @@ export const router = createBrowserRouter([
               { path: "parent/deadlines", element: <ParentDeadlines /> },
               { path: "parent/results", element: <ParentResults /> },
               { path: "parent/results/:id", element: <ParentResultsDetail /> },
+              { path: "parent/averages", element: <ParentAverages /> },
+              { path: "parent/messages", element: <MessagingPage />, },
+              { path: "parent/class-feed", element: <ClassFeedPage />, },
             ],
           },
 
@@ -247,6 +270,18 @@ export const router = createBrowserRouter([
                 path: "teacher/grading/:id",
                 element: <TeacherGradingDetail />,
               },
+              {
+                path: "/app/teacher/averages",
+                element: <TeacherAverages />,
+              },
+              {
+                path: "teacher/messages",
+                element: <MessagingPage />,
+              },
+              {
+                path: "teacher/class-feed",
+                element: <ClassFeedPage />,
+              },
             ],
           },
 
@@ -257,10 +292,13 @@ export const router = createBrowserRouter([
               { path: "admin/dashboard", element: <AdminDashboard /> },
               { path: "admin/users", element: <AdminUsers /> },
               { path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/school-years", element: <AdminSchoolYears /> },
+              { path: "admin/averages", element: <AdminAverages /> },
+              { path: "admin/messages", element: <MessagingPage />,},
+              { path: "admin/class-feed", element: <ClassFeedPage />, },
               { path: "admin/content", element: <AdminContent /> },
               { path: "admin/public-site", element: <AdminPublicSite /> },
               { path: "admin/settings", element: <AdminSettings /> },
-              { path: "admin/school-years", element: <AdminSchoolYears /> },
             ],
           },
         ],

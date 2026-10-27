@@ -10,8 +10,17 @@ type ParentProfileRow = {
 type ChildProfileRow = {
   id: string;
   full_name: string | null;
-  class_name: string | null;
   role: string | null;
+};
+
+type ClassStudentRow = {
+  student_id: string;
+  class_id: string;
+};
+
+type ClassRow = {
+  id: string;
+  name: string | null;
 };
 
 type ChildView = {
@@ -43,7 +52,7 @@ export default function ParentChildren() {
        * 1. Lire le profil du parent connecté.
        *
        * La relation Parent -> Enfant est stockée
-       * directement dans profiles.child_ids.
+       * dans profiles.child_ids.
        */
       const {
         data: parentProfileData,
@@ -87,10 +96,6 @@ export default function ParentChildren() {
 
       /*
        * 2. Lire uniquement les profils enfants liés.
-       *
-       * La RLS profiles_select_linked_children
-       * autorise le parent à consulter ces profils,
-       * sans lui donner accès aux autres élèves.
        */
       const {
         data: childProfilesData,
@@ -101,7 +106,6 @@ export default function ParentChildren() {
           `
           id,
           full_name,
-          class_name,
           role
           `,
         )
@@ -116,6 +120,75 @@ export default function ParentChildren() {
       const childProfiles =
         (childProfilesData ?? []) as ChildProfileRow[];
 
+      /*
+       * 3. Lire les inscriptions des enfants dans les classes.
+       *
+       * On n'utilise plus profiles.class_name :
+       * la classe réelle vient de class_students.
+       */
+      const {
+        data: classStudentsData,
+        error: classStudentsError,
+      } = await supabase
+        .from("class_students")
+        .select(
+          `
+          student_id,
+          class_id
+          `,
+        )
+        .in("student_id", childIds);
+
+      if (classStudentsError) {
+        throw classStudentsError;
+      }
+
+      const classStudents =
+        (classStudentsData ?? []) as ClassStudentRow[];
+
+      /*
+       * 4. Récupérer les classes correspondantes.
+       */
+      const classIds = Array.from(
+        new Set(
+          classStudents
+            .map((row) => row.class_id)
+            .filter(
+              (classId): classId is string =>
+                typeof classId === "string" &&
+                classId.trim().length > 0,
+            ),
+        ),
+      );
+
+      let classes: ClassRow[] = [];
+
+      if (classIds.length > 0) {
+        const {
+          data: classesData,
+          error: classesError,
+        } = await supabase
+          .from("classes")
+          .select(
+            `
+            id,
+            name
+            `,
+          )
+          .in("id", classIds);
+
+        if (classesError) {
+          throw classesError;
+        }
+
+        classes =
+          (classesData ?? []) as ClassRow[];
+      }
+
+      /*
+       * 5. Construire les index pour retrouver rapidement
+       * le profil et la classe de chaque enfant.
+       */
       const profileById = new Map(
         childProfiles.map((profile) => [
           profile.id,
@@ -123,9 +196,42 @@ export default function ParentChildren() {
         ]),
       );
 
+      const classById = new Map(
+        classes.map((classRow) => [
+          classRow.id,
+          classRow,
+        ]),
+      );
+
+      const classIdByStudentId =
+        new Map<string, string>();
+
+      classStudents.forEach((row) => {
+        /*
+         * En cas de plusieurs inscriptions historiques,
+         * on conserve ici la première relation trouvée.
+         *
+         * Pour la structure actuelle de SchoolNet,
+         * un élève actif possède une classe principale.
+         */
+        if (
+          !classIdByStudentId.has(row.student_id)
+        ) {
+          classIdByStudentId.set(
+            row.student_id,
+            row.class_id,
+          );
+        }
+      });
+
       /*
-       * On conserve l'ordre de child_ids afin que
-       * l'affichage reste stable.
+       * 6. Construire la liste finale.
+       *
+       * La classe affichée provient maintenant de :
+       *
+       * profiles
+       *   -> class_students
+       *   -> classes.name
        */
       const finalChildren: ChildView[] = childIds
         .map((childId) => {
@@ -136,13 +242,20 @@ export default function ParentChildren() {
             return null;
           }
 
+          const classId =
+            classIdByStudentId.get(childId);
+
+          const classRow = classId
+            ? classById.get(classId)
+            : undefined;
+
           return {
             id: profile.id,
             name:
               profile.full_name?.trim() ||
               "Élève",
             classLabel:
-              profile.class_name?.trim() ||
+              classRow?.name?.trim() ||
               "Classe non renseignée",
           };
         })
@@ -163,6 +276,7 @@ export default function ParentChildren() {
       setError(
         "Impossible de charger les enfants liés à ce compte.",
       );
+
       setChildren([]);
     } finally {
       setLoading(false);
