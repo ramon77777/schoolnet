@@ -70,6 +70,80 @@ const fallbackAudiences: DisplayCard[] = [
   },
 ];
 
+type AudienceDetail = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  features: string[];
+};
+
+const audienceDetails: AudienceDetail[] = [
+  {
+    eyebrow: "Espace Apprenant",
+    title: "Apprendre, s'évaluer et suivre sa progression",
+    description:
+      "L'apprenant retrouve dans un même espace les outils nécessaires à son parcours scolaire et peut suivre son évolution au fil des activités.",
+    features: [
+      "Consulter ses cours et ressources pédagogiques",
+      "Participer aux quiz et évaluations",
+      "Consulter et réaliser ses devoirs",
+      "Accéder aux examens disponibles",
+      "Consulter ses moyennes et ses résultats",
+      "Suivre sa progression scolaire",
+      "Échanger grâce à la messagerie",
+      "Suivre les informations publiées dans l'espace de classe",
+    ],
+  },
+  {
+    eyebrow: "Espace Enseignant",
+    title: "Organiser l'enseignement et accompagner les apprenants",
+    description:
+      "L'enseignant dispose des outils nécessaires pour organiser ses classes, proposer des activités pédagogiques et suivre le travail de ses apprenants.",
+    features: [
+      "Gérer ses cours et contenus pédagogiques",
+      "Consulter et organiser ses classes",
+      "Créer et gérer des évaluations",
+      "Suivre les travaux soumis par les apprenants",
+      "Corriger les évaluations et publier les résultats",
+      "Gérer et consulter les moyennes",
+      "Communiquer grâce à la messagerie",
+      "Publier et consulter les informations de l'espace de classe",
+    ],
+  },
+  {
+    eyebrow: "Espace Parent / Tuteur",
+    title: "Suivre la scolarité et rester connecté à l'établissement",
+    description:
+      "Le parent ou tuteur bénéficie d'une vision claire de la situation scolaire de ses enfants et peut suivre les informations importantes de leur parcours.",
+    features: [
+      "Consulter les enfants associés au compte",
+      "Suivre les échéances scolaires",
+      "Consulter les résultats obtenus",
+      "Consulter les moyennes",
+      "Suivre l'évolution scolaire des enfants",
+      "Échanger grâce à la messagerie",
+      "Consulter les informations de l'espace de classe",
+    ],
+  },
+  {
+    eyebrow: "Espace Administration",
+    title: "Piloter et administrer l'ensemble de SchoolNet",
+    description:
+      "L'administration dispose des outils de pilotage nécessaires pour organiser les utilisateurs, les classes, les contenus et le fonctionnement général de SchoolNet.",
+    features: [
+      "Gérer les utilisateurs et leurs rôles",
+      "Gérer les classes",
+      "Gérer les années scolaires",
+      "Administrer les moyennes",
+      "Utiliser la messagerie",
+      "Administrer l'espace de classe",
+      "Gérer les contenus pédagogiques",
+      "Administrer le site public SchoolNet",
+      "Configurer les paramètres de la plateforme",
+    ],
+  },
+];
+
 const fallbackBenefits: DisplayCard[] = [
   {
     icon: "⚡",
@@ -140,6 +214,9 @@ function ActionLink({
 export default function PublicHome() {
   const [content, setContent] =
     useState<PublicHomeContent | null>(null);
+
+  const [selectedAudienceIndex, setSelectedAudienceIndex] =
+    useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -604,32 +681,160 @@ export default function PublicHome() {
               </p>
             </div>
 
-            <div className="mt-10 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              {audiences.map((profile, index) => (
-                <article
-                  key={`${profile.title}-${index}`}
-                  className="group relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-2 hover:border-blue-200 hover:shadow-xl"
-                >
-                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 opacity-0 transition group-hover:opacity-100" />
+            <div className="mt-10 grid items-start gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              {audiences.map((profile, index) => {
+                const detail =
+                  audienceDetails[index] ?? {
+                    eyebrow: "Espace SchoolNet",
+                    title: profile.title,
+                    description: profile.description,
+                    features: [
+                      "Accéder aux fonctionnalités adaptées à ce profil",
+                      "Retrouver les informations utiles dans un espace sécurisé",
+                    ],
+                  };
 
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-2xl transition group-hover:scale-110">
-                    {profile.icon}
-                  </div>
+                const isOpen =
+                  selectedAudienceIndex === index;
 
-                  <h3 className="mt-5 text-lg font-black text-slate-950">
-                    {profile.title}
-                  </h3>
+                return (
+                  <article
+                    key={`${profile.title}-${index}`}
+                    className={`
+                      group relative overflow-hidden
+                      rounded-[1.75rem]
+                      border bg-white p-6
+                      transition duration-300
+                      ${
+                        isOpen
+                          ? "border-blue-300 shadow-xl"
+                          : "border-slate-200 shadow-sm hover:-translate-y-2 hover:border-blue-200 hover:shadow-xl"
+                      }
+                    `}
+                  >
+                    <div
+                      className={`
+                        absolute inset-x-0 top-0 h-1
+                        bg-gradient-to-r
+                        from-blue-500 via-indigo-500 to-violet-500
+                        transition
+                        ${
+                          isOpen
+                            ? "opacity-100"
+                            : "opacity-0 group-hover:opacity-100"
+                        }
+                      `}
+                    />
 
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    {profile.description}
-                  </p>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-2xl transition group-hover:scale-110">
+                      {profile.icon}
+                    </div>
 
-                  <div className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-blue-600 opacity-0 transition group-hover:opacity-100">
-                    Découvrir
-                    <span>→</span>
-                  </div>
-                </article>
-              ))}
+                    <h3 className="mt-5 text-lg font-black text-slate-950">
+                      {profile.title}
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {profile.description}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAudienceIndex(
+                          isOpen ? null : index,
+                        );
+                      }}
+                      aria-expanded={isOpen}
+                      aria-controls={`audience-details-${index}`}
+                      className="
+                        mt-5 inline-flex items-center gap-2
+                        rounded-xl
+                        text-xs font-black text-blue-600
+                        transition
+                        hover:gap-3 hover:text-blue-700
+                        focus:outline-none
+                        focus-visible:ring-2
+                        focus-visible:ring-blue-500
+                        focus-visible:ring-offset-2
+                      "
+                    >
+                      {isOpen ? "Réduire" : "Découvrir"}
+
+                      <span
+                        aria-hidden="true"
+                        className={`
+                          transition-transform duration-300
+                          ${isOpen ? "rotate-90" : ""}
+                        `}
+                      >
+                        →
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div
+                        id={`audience-details-${index}`}
+                        className="
+                          mt-6
+                          border-t border-slate-100
+                          pt-6
+                          animate-in fade-in
+                        "
+                      >
+                        <div className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-600">
+                          {detail.eyebrow}
+                        </div>
+
+                        <h4 className="mt-3 text-base font-black leading-6 text-slate-950">
+                          {detail.title}
+                        </h4>
+
+                        <p className="mt-3 text-sm leading-6 text-slate-600">
+                          {detail.description}
+                        </p>
+
+                        <div className="mt-5 space-y-3">
+                          {detail.features.map(
+                            (feature, featureIndex) => (
+                              <div
+                                key={`${feature}-${featureIndex}`}
+                                className="flex items-start gap-3"
+                              >
+                                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[10px] font-black text-emerald-600">
+                                  ✓
+                                </div>
+
+                                <div className="text-xs leading-5 text-slate-600">
+                                  {feature}
+                                </div>
+                              </div>
+                            ),
+                          )}
+                        </div>
+
+                        <ActionLink
+                          to="/auth/login"
+                          className="
+                            mt-6 inline-flex w-full
+                            items-center justify-center gap-2
+                            rounded-xl bg-slate-950
+                            px-4 py-3
+                            text-xs font-black text-white
+                            transition
+                            hover:-translate-y-0.5
+                            hover:bg-blue-600
+                          "
+                        >
+                          <span>👤</span>
+                          Accéder à mon espace
+                          <span aria-hidden="true">→</span>
+                        </ActionLink>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
             </div>
           </div>
         </div>
