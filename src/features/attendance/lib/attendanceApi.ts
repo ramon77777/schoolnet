@@ -1,14 +1,18 @@
 import { supabase } from "@/lib/supabaseClient";
 
 import type {
-    AttendanceCourse,
-    AttendanceRecord,
-    AttendanceRecordDraft,
-    AttendanceSession,
-    AttendanceStudent,
-    CreateAttendanceSessionInput,
-    TeacherAssignmentRole,
-    TeacherAttendanceClass,
+  AttendanceCourse,
+  AttendanceJustificationDecision,
+  AttendanceRecord,
+  AttendanceRecordDraft,
+  AttendanceSession,
+  AttendanceStudent,
+  CreateAttendanceSessionInput,
+  StudentAttendanceHistoryItem,
+  StudentAttendanceJustification,
+  TeacherAssignmentRole,
+  TeacherAttendanceClass,
+  TeacherAttendanceJustificationItem,
 } from "../types/attendance.types";
 
 type DbClass = {
@@ -789,3 +793,498 @@ export async function getAttendanceRecordsForSessions(
   );
 }
 
+type DbStudentAttendanceClass = {
+  id: string;
+  name: string;
+};
+
+type DbStudentAttendanceCourse = {
+  id: string;
+  title: string;
+};
+
+type DbAttendanceJustification = {
+  id: string;
+  attendance_record_id: string;
+  submitted_by: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected";
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  created_at: string;
+};
+
+function mapAttendanceJustification(
+  row: DbAttendanceJustification
+): StudentAttendanceJustification {
+  return {
+    id: row.id,
+    attendanceRecordId: row.attendance_record_id,
+    submittedBy: row.submitted_by,
+    reason: row.reason,
+    status: row.status,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    reviewNote: row.review_note,
+    createdAt: row.created_at,
+  };
+}
+
+/**
+ * Retourne les justificatifs liés aux séances clôturées
+ * créées par l'enseignant pour une classe donnée.
+ *
+ * La lecture finale de attendance_justifications reste protégée
+ * par RLS.
+ */
+export async function getTeacherAttendanceJustificationsForClass(
+  teacherId: string,
+  classId: string
+): Promise<TeacherAttendanceJustificationItem[]> {
+  if (!teacherId || !classId) {
+    return [];
+  }
+
+  const sessions = await getClosedAttendanceSessionsForClass(
+    teacherId,
+    classId
+  );
+
+  if (sessions.length === 0) {
+    return [];
+  }
+
+  const sessionById = new Map(
+    sessions.map((session) => [session.id, session])
+  );
+
+  const records = await getAttendanceRecordsForSessions(
+    sessions.map((session) => session.id)
+  );
+
+  if (records.length === 0) {
+    return [];
+  }
+
+  const recordById = new Map(
+    records.map((record) => [record.id, record])
+  );
+
+  const { data, error } = await supabase
+    .from("attendance_justifications")
+    .select(
+      `
+      id,
+      attendance_record_id,
+      submitted_by,
+      reason,
+      status,
+      reviewed_by,
+      reviewed_at,
+      review_note,
+      created_at
+      `
+    )
+    .in(
+      "attendance_record_id",
+      records.map((record) => record.id)
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as DbAttendanceJustification[])
+    .map((row) => {
+      const record = recordById.get(row.attendance_record_id);
+
+      if (!record) {
+        return null;
+      }
+
+      const session = sessionById.get(record.sessionId);
+
+      if (!session) {
+        return null;
+      }
+
+      return {
+        justification: mapAttendanceJustification(row),
+        session,
+        record,
+      } satisfies TeacherAttendanceJustificationItem;
+    })
+    .filter(
+      (item): item is TeacherAttendanceJustificationItem =>
+        item !== null
+    )
+    .sort((a, b) => {
+      if (
+        a.justification.status === "pending" &&
+        b.justification.status !== "pending"
+      ) {
+        return -1;
+      }
+
+      if (
+        a.justification.status !== "pending" &&
+        b.justification.status === "pending"
+      ) {
+        return 1;
+      }
+
+      return b.justification.createdAt.localeCompare(
+        a.justification.createdAt
+      );
+    });
+}
+
+/**
+ * Accepte ou rejette un justificatif via une fonction SQL sécurisée.
+ * La base vérifie que l'utilisateur connecté est bien l'enseignant
+ * responsable de la séance et que le justificatif est encore en attente.
+ */
+export async function reviewAttendanceJustification(
+  justificationId: string,
+  decision: AttendanceJustificationDecision,
+  reviewNote?: string | null
+): Promise<StudentAttendanceJustification> {
+  if (!justificationId) {
+    throw new Error("Le justificatif est obligatoire.");
+  }
+
+  const { data, error } = await supabase.rpc(
+    "review_attendance_justification",
+    {
+      p_justification_id: justificationId,
+      p_status: decision,
+      p_review_note: cleanNullableText(reviewNote),
+    }
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  const rawRow = Array.isArray(data) ? data[0] : data;
+
+  if (!rawRow) {
+    throw new Error(
+      "La base n'a retourné aucun justificatif après la décision."
+    );
+  }
+
+  return mapAttendanceJustification(
+    rawRow as DbAttendanceJustification
+  );
+}
+
+/**
+ * Retourne l'historique d'assiduité de l'apprenant connecté.
+ *
+ * Sécurité :
+ * - filtrage explicite par student_id ;
+ * - seules les séances clôturées sont retenues ;
+ * - les politiques RLS Supabase restent la protection principale.
+ */
+export async function getStudentAttendanceHistory(
+  studentId: string
+): Promise<StudentAttendanceHistoryItem[]> {
+  if (!studentId) {
+    throw new Error("L'apprenant est obligatoire.");
+  }
+
+  // ----------------------------------------------------------
+  // 1. Lignes d'appel appartenant à l'apprenant
+  // ----------------------------------------------------------
+
+  const { data: recordsData, error: recordsError } =
+    await supabase
+      .from("attendance_records")
+      .select(
+        `
+        id,
+        session_id,
+        student_id,
+        status,
+        arrival_time,
+        minutes_late,
+        comment,
+        marked_by,
+        marked_at
+        `
+      )
+      .eq("student_id", studentId)
+      .order("marked_at", {
+        ascending: false,
+      });
+
+  if (recordsError) {
+    throw recordsError;
+  }
+
+  const records =
+    (recordsData ?? []) as DbAttendanceRecord[];
+
+  if (records.length === 0) {
+    return [];
+  }
+
+  // ----------------------------------------------------------
+  // 2. Séances correspondantes
+  //    On ne montre à l'apprenant que les séances clôturées.
+  // ----------------------------------------------------------
+
+  const sessionIds = Array.from(
+    new Set(records.map((record) => record.session_id))
+  );
+
+  const { data: sessionsData, error: sessionsError } =
+    await supabase
+      .from("attendance_sessions")
+      .select(
+        `
+        id,
+        class_id,
+        course_id,
+        teacher_id,
+        session_date,
+        starts_at,
+        ends_at,
+        status,
+        notes,
+        created_by,
+        closed_by,
+        closed_at
+        `
+      )
+      .in("id", sessionIds)
+      .eq("status", "closed");
+
+  if (sessionsError) {
+    throw sessionsError;
+  }
+
+  const sessions =
+    (sessionsData ?? []) as DbAttendanceSession[];
+
+  if (sessions.length === 0) {
+    return [];
+  }
+
+  const sessionById = new Map(
+    sessions.map((session) => [
+      session.id,
+      session,
+    ])
+  );
+
+  // ----------------------------------------------------------
+  // 3. Classes concernées
+  // ----------------------------------------------------------
+
+  const classIds = Array.from(
+    new Set(
+      sessions
+        .map((session) => session.class_id)
+        .filter(Boolean)
+    )
+  );
+
+  let classes: DbStudentAttendanceClass[] = [];
+
+  if (classIds.length > 0) {
+    const { data, error } = await supabase
+      .from("classes")
+      .select("id, name")
+      .in("id", classIds);
+
+    if (error) {
+      throw error;
+    }
+
+    classes =
+      (data ?? []) as DbStudentAttendanceClass[];
+  }
+
+  const classById = new Map(
+    classes.map((classRow) => [
+      classRow.id,
+      classRow,
+    ])
+  );
+
+  // ----------------------------------------------------------
+  // 4. Cours concernés
+  // ----------------------------------------------------------
+
+  const courseIds = Array.from(
+    new Set(
+      sessions
+        .map((session) => session.course_id)
+        .filter(
+          (courseId): courseId is string =>
+            Boolean(courseId)
+        )
+    )
+  );
+
+  let courses: DbStudentAttendanceCourse[] = [];
+
+  if (courseIds.length > 0) {
+    const { data, error } = await supabase
+      .from("courses")
+      .select("id, title")
+      .in("id", courseIds);
+
+    if (error) {
+      throw error;
+    }
+
+    courses =
+      (data ?? []) as DbStudentAttendanceCourse[];
+  }
+
+  const courseById = new Map(
+    courses.map((course) => [
+      course.id,
+      course,
+    ])
+  );
+
+  // ----------------------------------------------------------
+  // 5. Justificatifs associés aux lignes d'appel
+  // ----------------------------------------------------------
+
+  const recordIds = records.map(
+    (record) => record.id
+  );
+
+  let justifications: DbAttendanceJustification[] =
+    [];
+
+  if (recordIds.length > 0) {
+    const { data, error } = await supabase
+      .from("attendance_justifications")
+      .select(
+        `
+        id,
+        attendance_record_id,
+        submitted_by,
+        reason,
+        status,
+        reviewed_by,
+        reviewed_at,
+        review_note,
+        created_at
+        `
+      )
+      .in("attendance_record_id", recordIds)
+      .order("created_at", {
+        ascending: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    justifications =
+      (data ?? []) as DbAttendanceJustification[];
+  }
+
+  /**
+   * Si plusieurs justificatifs existent exceptionnellement
+   * pour la même ligne d'appel, on conserve le plus récent.
+   *
+   * La requête précédente étant triée DESC, le premier gagne.
+   */
+  const justificationByRecordId = new Map<
+    string,
+    StudentAttendanceJustification
+  >();
+
+  for (const justification of justifications) {
+    if (
+      justificationByRecordId.has(
+        justification.attendance_record_id
+      )
+    ) {
+      continue;
+    }
+
+    justificationByRecordId.set(
+      justification.attendance_record_id,
+      mapAttendanceJustification(justification)
+    );
+  }
+
+  // ----------------------------------------------------------
+  // 6. Construction de l'historique final
+  // ----------------------------------------------------------
+
+  return records
+    .map((record) => {
+      const session =
+        sessionById.get(record.session_id);
+
+      if (!session) {
+        return null;
+      }
+
+      const classRow =
+        classById.get(session.class_id);
+
+      const courseRow = session.course_id
+        ? courseById.get(session.course_id)
+        : null;
+
+      return {
+        recordId: record.id,
+        sessionId: session.id,
+
+        classId: session.class_id,
+        className:
+          classRow?.name ?? "Classe",
+
+        courseId: session.course_id,
+        courseTitle:
+          courseRow?.title ?? null,
+
+        sessionDate: session.session_date,
+        startsAt: session.starts_at,
+        endsAt: session.ends_at,
+
+        status: record.status,
+        arrivalTime: record.arrival_time,
+        minutesLate: record.minutes_late,
+        comment: record.comment,
+        markedAt: record.marked_at,
+
+        justification:
+          justificationByRecordId.get(record.id) ??
+          null,
+      } satisfies StudentAttendanceHistoryItem;
+    })
+    .filter(
+      (
+        item
+      ): item is StudentAttendanceHistoryItem =>
+        item !== null
+    )
+    .sort((a, b) => {
+      const dateComparison =
+        b.sessionDate.localeCompare(
+          a.sessionDate
+        );
+
+      if (dateComparison !== 0) {
+        return dateComparison;
+      }
+
+      return (b.startsAt ?? "").localeCompare(
+        a.startsAt ?? ""
+      );
+    });
+}

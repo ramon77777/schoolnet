@@ -14,16 +14,20 @@ import {
     getAttendanceRecordsForSessions,
     getClosedAttendanceSessionsForClass,
     getLatestOpenAttendanceSessionForClass,
+    getTeacherAttendanceJustificationsForClass,
+    reviewAttendanceJustification,
 } from "@/features/attendance/lib/attendanceApi";
 
 import type {
   AttendanceCourse,
+  AttendanceJustificationDecision,
   AttendanceRecord,
   AttendanceRecordDraft,
   AttendanceSession,
   AttendanceStatus,
   AttendanceStudent,
   TeacherAttendanceClass,
+  TeacherAttendanceJustificationItem,
 } from "@/features/attendance/types/attendance.types";
 
 type AttendanceDraftMap = Record<string, AttendanceRecordDraft>;
@@ -246,6 +250,28 @@ export default function TeacherAttendance() {
     useState<string | null>(null);
 
   // ==========================================================
+  // Justificatifs
+  // ==========================================================
+
+  const [justifications, setJustifications] =
+    useState<TeacherAttendanceJustificationItem[]>([]);
+
+  const [loadingJustifications, setLoadingJustifications] =
+    useState(false);
+
+  const [justificationsError, setJustificationsError] =
+    useState<string | null>(null);
+
+  const [justificationMessage, setJustificationMessage] =
+    useState<string | null>(null);
+
+  const [reviewingJustificationId, setReviewingJustificationId] =
+    useState<string | null>(null);
+
+  const [reviewNotes, setReviewNotes] =
+    useState<Record<string, string>>({});
+
+  // ==========================================================
   // Appel
   // ==========================================================
 
@@ -323,6 +349,14 @@ export default function TeacherAttendance() {
   const studentById = useMemo(() => {
     return new Map(students.map((student) => [student.id, student]));
   }, [students]);
+
+  const pendingJustificationCount = useMemo(
+    () =>
+      justifications.filter(
+        (item) => item.justification.status === "pending"
+      ).length,
+    [justifications]
+  );
 
   const attendanceStats = useMemo(() => {
     const values = Object.values(attendanceDrafts);
@@ -568,6 +602,51 @@ export default function TeacherAttendance() {
     }
   }, [selectedClassId, user]);
 
+  // ==========================================================
+  // Chargement des justificatifs
+  // ==========================================================
+
+  const loadJustifications = useCallback(async () => {
+    if (
+      !user ||
+      user.isDemo ||
+      !selectedClassId
+    ) {
+      setJustifications([]);
+      setJustificationsError(null);
+      setLoadingJustifications(false);
+      return;
+    }
+
+    try {
+      setLoadingJustifications(true);
+      setJustificationsError(null);
+
+      const result =
+        await getTeacherAttendanceJustificationsForClass(
+          user.id,
+          selectedClassId
+        );
+
+      setJustifications(result);
+    } catch (error) {
+      console.error(
+        "[TeacherAttendance] loadJustifications error:",
+        error
+      );
+
+      setJustifications([]);
+      setJustificationsError(
+        getAttendanceErrorMessage(
+          error,
+          "Impossible de charger les justificatifs."
+        )
+      );
+    } finally {
+      setLoadingJustifications(false);
+    }
+  }, [selectedClassId, user]);
+
   useEffect(() => {
     if (authLoading) return;
 
@@ -584,11 +663,13 @@ export default function TeacherAttendance() {
 
     void loadClassDetails();
     void loadHistory();
+    void loadJustifications();
   }, [
     authLoading,
     loadingClasses,
     loadClassDetails,
     loadHistory,
+    loadJustifications,
   ]);
 
   // Si on change de classe, on quitte toute séance locale
@@ -604,6 +685,11 @@ export default function TeacherAttendance() {
     setHistoryFilter("all");
     setExpandedHistorySessionId(null);
     setHistoryError(null);
+    setJustifications([]);
+    setJustificationsError(null);
+    setJustificationMessage(null);
+    setReviewingJustificationId(null);
+    setReviewNotes({});
   }, [selectedClassId]);
 
   // ==========================================================
@@ -972,6 +1058,70 @@ export default function TeacherAttendance() {
     }
   }
 
+  // ==========================================================
+  // Validation d'un justificatif
+  // ==========================================================
+
+  async function handleReviewJustification(
+    justificationId: string,
+    decision: AttendanceJustificationDecision
+  ) {
+    if (reviewingJustificationId) {
+      return;
+    }
+
+    const actionLabel =
+      decision === "approved" ? "accepter" : "rejeter";
+
+    const confirmed = window.confirm(
+      `Voulez-vous vraiment ${actionLabel} ce justificatif ?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setReviewingJustificationId(justificationId);
+      setJustificationsError(null);
+      setJustificationMessage(null);
+
+      await reviewAttendanceJustification(
+        justificationId,
+        decision,
+        reviewNotes[justificationId] ?? ""
+      );
+
+      await loadJustifications();
+
+      setReviewNotes((current) => {
+        const next = { ...current };
+        delete next[justificationId];
+        return next;
+      });
+
+      setJustificationMessage(
+        decision === "approved"
+          ? "Justificatif accepté avec succès."
+          : "Justificatif rejeté avec succès."
+      );
+    } catch (error) {
+      console.error(
+        "[TeacherAttendance] reviewJustification error:",
+        error
+      );
+
+      setJustificationsError(
+        getAttendanceErrorMessage(
+          error,
+          "Impossible de traiter ce justificatif."
+        )
+      );
+    } finally {
+      setReviewingJustificationId(null);
+    }
+  }
+
   const isLoading =
     authLoading || loadingClasses;
 
@@ -1239,6 +1389,7 @@ export default function TeacherAttendance() {
                         onClick={() => {
                           void loadClassDetails();
                           void loadHistory();
+                          void loadJustifications();
                         }}
                         disabled={
                           loadingDetails || loadingHistory
@@ -1960,6 +2111,37 @@ export default function TeacherAttendance() {
                         </div>
                       )}
 
+                      <TeacherJustificationsSection
+                        items={justifications}
+                        pendingCount={pendingJustificationCount}
+                        loading={loadingJustifications}
+                        error={justificationsError}
+                        message={justificationMessage}
+                        reviewingId={reviewingJustificationId}
+                        reviewNotes={reviewNotes}
+                        studentById={studentById}
+                        courses={courses}
+                        onReviewNoteChange={(justificationId, value) =>
+                          setReviewNotes((current) => ({
+                            ...current,
+                            [justificationId]: value,
+                          }))
+                        }
+                        onApprove={(justificationId) =>
+                          void handleReviewJustification(
+                            justificationId,
+                            "approved"
+                          )
+                        }
+                        onReject={(justificationId) =>
+                          void handleReviewJustification(
+                            justificationId,
+                            "rejected"
+                          )
+                        }
+                        onRetry={() => void loadJustifications()}
+                      />
+
                       <AttendanceHistorySection
                         items={historyItems}
                         totalCount={historySessions.length}
@@ -1989,6 +2171,272 @@ export default function TeacherAttendance() {
 // ============================================================
 // Sous-composants
 // ============================================================
+
+function TeacherJustificationsSection({
+  items,
+  pendingCount,
+  loading,
+  error,
+  message,
+  reviewingId,
+  reviewNotes,
+  studentById,
+  courses,
+  onReviewNoteChange,
+  onApprove,
+  onReject,
+  onRetry,
+}: {
+  items: TeacherAttendanceJustificationItem[];
+  pendingCount: number;
+  loading: boolean;
+  error: string | null;
+  message: string | null;
+  reviewingId: string | null;
+  reviewNotes: Record<string, string>;
+  studentById: Map<string, AttendanceStudent>;
+  courses: AttendanceCourse[];
+  onReviewNoteChange: (justificationId: string, value: string) => void;
+  onApprove: (justificationId: string) => void;
+  onReject: (justificationId: string) => void;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="sn-card overflow-hidden">
+      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-lg font-black text-slate-950">
+            Justificatifs
+          </div>
+
+          <div className="mt-1 text-sm text-slate-500">
+            Consultez et traitez les justificatifs envoyés par les parents
+            pour vos appels clôturés.
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={
+              pendingCount > 0
+                ? "sn-badge sn-badge-blue"
+                : "sn-badge sn-badge-gray"
+            }
+          >
+            {pendingCount} en attente
+          </span>
+
+          <button
+            type="button"
+            className="sn-btn-ghost sn-press"
+            onClick={onRetry}
+            disabled={loading}
+          >
+            ↻ Actualiser
+          </button>
+        </div>
+      </div>
+
+      <div className="p-5">
+        {message && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+            ✅ {message}
+          </div>
+        )}
+
+        {loading && (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <LoadingCard />
+            <LoadingCard />
+          </div>
+        )}
+
+        {!loading && error && (
+          <ErrorBox
+            title="Justificatifs indisponibles"
+            message={error}
+            onRetry={onRetry}
+          />
+        )}
+
+        {!loading && !error && items.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+            <div className="font-black text-slate-900">
+              Aucun justificatif
+            </div>
+
+            <div className="mt-2 text-sm text-slate-500">
+              Les justificatifs envoyés pour les absences ou retards de
+              cette classe apparaîtront ici.
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && items.length > 0 && (
+          <div className="space-y-4">
+            {items.map((item) => {
+              const justification = item.justification;
+              const record = item.record;
+              const session = item.session;
+              const student = studentById.get(record.studentId);
+              const studentName =
+                student?.fullName ??
+                `Apprenant ${record.studentId.slice(0, 8)}`;
+              const courseTitle =
+                courses.find((course) => course.id === session.courseId)
+                  ?.title ?? "Appel général";
+              const isPending = justification.status === "pending";
+              const isReviewing = reviewingId === justification.id;
+
+              return (
+                <div
+                  key={justification.id}
+                  className="rounded-2xl border border-slate-200 bg-white p-5"
+                >
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="text-base font-black text-slate-950">
+                          {studentName}
+                        </div>
+
+                        <span
+                          className={getJustificationStatusBadgeClass(
+                            justification.status
+                          )}
+                        >
+                          {getJustificationStatusLabel(
+                            justification.status
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                        <span>📚 {courseTitle}</span>
+                        <span>📅 {formatAttendanceDate(session.sessionDate)}</span>
+                        {session.startsAt && (
+                          <span>🕐 {session.startsAt}</span>
+                        )}
+                        {session.endsAt && (
+                          <span>→ {session.endsAt}</span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 text-xs text-slate-400">
+                        Envoyé le {formatAttendanceDateTime(justification.createdAt)}
+                      </div>
+                    </div>
+
+                    <span
+                      className={getAttendanceStatusBadgeClass(record.status)}
+                    >
+                      {getAttendanceStatusLabel(record.status)}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <div className="text-xs font-black uppercase tracking-wide text-slate-500">
+                        Situation
+                      </div>
+
+                      <div className="mt-2 text-sm text-slate-700">
+                        {record.status === "late"
+                          ? `${record.minutesLate} minute(s) de retard${
+                              record.arrivalTime
+                                ? ` • arrivée à ${record.arrivalTime}`
+                                : ""
+                            }`
+                          : record.status === "absent"
+                            ? "Absence enregistrée"
+                            : "Présence enregistrée"}
+                      </div>
+
+                      {record.comment?.trim() && (
+                        <div className="mt-2 text-sm text-slate-500">
+                          Commentaire enseignant : {record.comment}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
+                      <div className="text-xs font-black uppercase tracking-wide text-blue-600">
+                        Motif transmis
+                      </div>
+
+                      <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                        {justification.reason}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isPending ? (
+                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                      <Field label="Note de décision (facultative)">
+                        <textarea
+                          className="sn-input min-h-[88px] w-full"
+                          placeholder="Exemple : justificatif conforme, document à fournir, motif insuffisant..."
+                          value={reviewNotes[justification.id] ?? ""}
+                          onChange={(event) =>
+                            onReviewNoteChange(
+                              justification.id,
+                              event.target.value
+                            )
+                          }
+                          disabled={Boolean(reviewingId)}
+                        />
+                      </Field>
+
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          className="sn-btn-ghost sn-press"
+                          onClick={() => onReject(justification.id)}
+                          disabled={Boolean(reviewingId)}
+                        >
+                          {isReviewing ? "Traitement..." : "❌ Rejeter"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="sn-btn-primary sn-press"
+                          onClick={() => onApprove(justification.id)}
+                          disabled={Boolean(reviewingId)}
+                        >
+                          {isReviewing ? "Traitement..." : "✅ Accepter"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <div className="text-sm font-semibold text-slate-700">
+                        Décision enregistrée
+                      </div>
+
+                      <div className="mt-1 text-sm text-slate-500">
+                        {justification.reviewedAt
+                          ? `Traitée le ${formatAttendanceDateTime(
+                              justification.reviewedAt
+                            )}`
+                          : "Date de traitement non renseignée"}
+                      </div>
+
+                      {justification.reviewNote?.trim() && (
+                        <div className="mt-2 text-sm text-slate-600">
+                          Note : {justification.reviewNote}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function AttendanceHistorySection({
   items,
@@ -2278,6 +2726,28 @@ function getAttendanceStatusBadgeClass(status: AttendanceStatus) {
   }
 
   if (status === "absent") {
+    return "sn-badge sn-badge-gray";
+  }
+
+  return "sn-badge sn-badge-blue";
+}
+
+function getJustificationStatusLabel(
+  status: TeacherAttendanceJustificationItem["justification"]["status"]
+) {
+  if (status === "pending") return "En attente";
+  if (status === "approved") return "Accepté";
+  return "Rejeté";
+}
+
+function getJustificationStatusBadgeClass(
+  status: TeacherAttendanceJustificationItem["justification"]["status"]
+) {
+  if (status === "approved") {
+    return "sn-badge sn-badge-green";
+  }
+
+  if (status === "rejected") {
     return "sn-badge sn-badge-gray";
   }
 

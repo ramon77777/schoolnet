@@ -16,6 +16,9 @@ export type AttendanceJustificationStatus =
     | "approved"
     | "rejected";
 
+export type AttendanceJustificationDecision =
+    Exclude<AttendanceJustificationStatus, "pending">;
+
 export type TeacherAttendanceClass = {
     id: string;
     name: string;
@@ -80,4 +83,45 @@ export type AttendanceRecordDraft = {
     arrivalTime?: string | null;
     minutesLate?: number;
     comment?: string | null;
+};
+
+export type StudentAttendanceJustification = {
+  id: string;
+  attendanceRecordId: string;
+  submittedBy: string;
+  reason: string;
+  status: AttendanceJustificationStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+};
+
+export type StudentAttendanceHistoryItem = {
+  recordId: string;
+  sessionId: string;
+
+  classId: string;
+  className: string;
+
+  courseId: string | null;
+  courseTitle: string | null;
+
+  sessionDate: string;
+  startsAt: string | null;
+  endsAt: string | null;
+
+  status: AttendanceStatus;
+  arrivalTime: string | null;
+  minutesLate: number;
+  comment: string | null;
+  markedAt: string;
+
+  justification: StudentAttendanceJustification | null;
+};
+
+export type TeacherAttendanceJustificationItem = {
+  justification: StudentAttendanceJustification;
+  session: AttendanceSession;
+  record: AttendanceRecord;
 };
