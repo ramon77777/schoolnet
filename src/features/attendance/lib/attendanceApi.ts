@@ -333,6 +333,8 @@ function mapAttendanceSession(
     status: row.status,
     notes: row.notes,
     createdBy: row.created_by,
+    closedBy: row.closed_by,
+    closedAt: row.closed_at,
   };
 }
 
@@ -664,3 +666,126 @@ export async function closeAttendanceSession(
     data as DbAttendanceSession
   );
 }
+
+export async function getLatestOpenAttendanceSessionForClass(
+  teacherId: string,
+  classId: string
+): Promise<AttendanceSession | null> {
+  const { data, error } = await supabase
+    .from("attendance_sessions")
+    .select(
+      `
+      id,
+      class_id,
+      course_id,
+      teacher_id,
+      session_date,
+      starts_at,
+      ends_at,
+      status,
+      notes,
+      created_by,
+      closed_by,
+      closed_at
+      `
+    )
+    .eq("teacher_id", teacherId)
+    .eq("class_id", classId)
+    .in("status", ["draft", "open"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapAttendanceSession(
+    data as DbAttendanceSession
+  );
+}
+
+/**
+ * Retourne les séances clôturées de l'enseignant pour une classe.
+ *
+ * Elles sont triées de la plus récente à la plus ancienne.
+ */
+export async function getClosedAttendanceSessionsForClass(
+  teacherId: string,
+  classId: string
+): Promise<AttendanceSession[]> {
+  const { data, error } = await supabase
+    .from("attendance_sessions")
+    .select(
+      `
+      id,
+      class_id,
+      course_id,
+      teacher_id,
+      session_date,
+      starts_at,
+      ends_at,
+      status,
+      notes,
+      created_by,
+      closed_by,
+      closed_at
+      `
+    )
+    .eq("teacher_id", teacherId)
+    .eq("class_id", classId)
+    .eq("status", "closed")
+    .order("session_date", { ascending: false })
+    .order("starts_at", { ascending: false, nullsFirst: false })
+    .order("closed_at", { ascending: false, nullsFirst: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as DbAttendanceSession[]).map(
+    mapAttendanceSession
+  );
+}
+
+/**
+ * Charge les lignes d'appel de plusieurs séances en une seule requête.
+ */
+export async function getAttendanceRecordsForSessions(
+  sessionIds: string[]
+): Promise<AttendanceRecord[]> {
+  if (sessionIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("attendance_records")
+    .select(
+      `
+      id,
+      session_id,
+      student_id,
+      status,
+      arrival_time,
+      minutes_late,
+      comment,
+      marked_by,
+      marked_at
+      `
+    )
+    .in("session_id", sessionIds)
+    .order("marked_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as DbAttendanceRecord[]).map(
+    mapAttendanceRecord
+  );
+}
+

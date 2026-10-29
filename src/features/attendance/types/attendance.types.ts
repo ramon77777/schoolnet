@@ -48,6 +48,8 @@ export type AttendanceSession = {
     status: AttendanceSessionStatus;
     notes: string | null;
     createdBy: string;
+    closedBy?: string | null;
+    closedAt?: string | null;
 };
 
 export type AttendanceRecord = {
