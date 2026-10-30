@@ -392,6 +392,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/teacher/timetable"
+            >
+              📅 Emploi du temps
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/teacher/assessments"
             >
               🧪 Évaluations

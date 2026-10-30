@@ -33,6 +33,7 @@ import TeacherCourseDetail from "../features/teacher/pages/TeacherCourseDetail";
 import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 import TeacherAverages from "@/features/teacher/pages/TeacherAverages";
 import TeacherAttendance from "@/features/teacher/pages/TeacherAttendance";
+import TeacherTimetable from "@/features/teacher/pages/TeacherTimetable";
 
 // Student
 import StudentCourses from "../features/student/pages/StudentCourses";
@@ -260,6 +261,11 @@ export const router = createBrowserRouter([
               {
                 path: "teacher/attendance",
                 element: <TeacherAttendance />,
+              },
+
+              {
+                path: "teacher/timetable",
+                element: <TeacherTimetable />,
               },
 
               {
