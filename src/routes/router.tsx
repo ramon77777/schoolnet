@@ -58,6 +58,7 @@ import ParentResults from "../features/parent/pages/ParentResults";
 import ParentResultsDetail from "../features/parent/pages/ParentResultsDetail";
 import ParentAverages from "../features/parent/pages/ParentAverages";
 import ParentAttendance from "@/features/parent/pages/ParentAttendance";
+import ParentTimetable from "@/features/parent/pages/ParentTimetable";
 
 import AppIndexRedirect from "./AppIndexRedirect";
 
@@ -238,7 +239,16 @@ export const router = createBrowserRouter([
               { path: "parent/results", element: <ParentResults /> },
               { path: "parent/results/:id", element: <ParentResultsDetail /> },
               { path: "parent/averages", element: <ParentAverages /> },
-              { path: "parent/attendance", element: <ParentAttendance />,},
+              {
+                path: "parent/attendance",
+                element: <ParentAttendance />,
+              },
+
+              {
+                path: "parent/timetable",
+                element: <ParentTimetable />,
+              },
+
               { path: "parent/messages", element: <MessagingPage />, },
               { path: "parent/class-feed", element: <ClassFeedPage />, },
             ],

@@ -329,6 +329,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/parent/timetable"
+            >
+              📅 Emploi du temps
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/parent/messages"
             >
               <span className="flex min-w-0 flex-1 items-center gap-2">
