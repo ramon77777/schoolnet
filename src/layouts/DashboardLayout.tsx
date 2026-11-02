@@ -478,6 +478,7 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
+            <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
             <NavLink className={navItem} to="/app/admin/averages"> 🧮 Moyennes</NavLink>
             <NavLink

@@ -19,6 +19,7 @@ import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
+import AdminTimetable from "@/features/admin/pages/AdminTimetable";
 
 // Teacher
 import TeacherCourses from "../features/teacher/pages/TeacherCourses";
@@ -326,10 +327,10 @@ export const router = createBrowserRouter([
             children: [
               { path: "admin", element: <Navigate to="/app/admin/dashboard" replace /> },
               { path: "admin/dashboard", element: <AdminDashboard /> },
-              { path: "admin/users", element: <AdminUsers /> },
-              { path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/users", element: <AdminUsers /> },{ path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
-              { path: "admin/school-years", element: <AdminSchoolYears /> },
+              { path: "admin/timetable",  element: <AdminTimetable />, },
+              { path: "admin/school-years", element: <AdminSchoolYears />, },
               { path: "admin/averages", element: <AdminAverages /> },
               { path: "admin/messages", element: <MessagingPage />,},
               { path: "admin/class-feed", element: <ClassFeedPage />, },
