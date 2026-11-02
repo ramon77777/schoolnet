@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import TimetableWeeklyView from "@/features/timetable/components/TimetableWeeklyView";
+import AdminTimetableSlotCreateForm from "@/features/timetable/components/AdminTimetableSlotCreateForm";
 
 import {
   getAdminTimetableCatalog,
@@ -51,6 +52,17 @@ export default function AdminTimetable() {
     errorMessage,
     setErrorMessage,
   ] = useState<string | null>(null);
+
+
+    const [
+        createOpen,
+        setCreateOpen,
+        ] = useState(false);
+
+        const [
+        successMessage,
+        setSuccessMessage,
+    ] = useState<string | null>(null);
 
   /*
    * ========================================================
@@ -147,6 +159,20 @@ export default function AdminTimetable() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+    async function handleSlotCreated() {
+        setCreateOpen(
+            false
+        );
+
+        setSuccessMessage(
+            "Le créneau a été créé avec succès."
+        );
+
+        await loadData(
+            true
+        );
+    }
 
   /*
    * ========================================================
@@ -434,25 +460,84 @@ export default function AdminTimetable() {
 
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              void loadData(
-                true
-              )
-            }
-            disabled={
-              refreshing
-            }
-            className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {refreshing
-              ? "Actualisation..."
-              : "↻ Rafraîchir"}
-          </button>
+            <div className="flex flex-wrap gap-2">
+
+                <button
+                    type="button"
+                    onClick={() => {
+                    setSuccessMessage(
+                        null
+                    );
+
+                    setCreateOpen(
+                        true
+                    );
+                    }}
+                    disabled={
+                    createOpen
+                    }
+                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    + Nouveau créneau
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() =>
+                    void loadData(
+                        true
+                    )
+                    }
+                    disabled={
+                    refreshing
+                    }
+                    className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {refreshing
+                    ? "Actualisation..."
+                    : "↻ Rafraîchir"}
+                </button>
+
+            </div>
 
         </div>
       </section>
+
+        {createOpen ? (
+            <AdminTimetableSlotCreateForm
+                catalog={
+                catalog
+                }
+                onCreated={
+                handleSlotCreated
+                }
+                onCancel={() =>
+                setCreateOpen(
+                    false
+                )
+                }
+            />
+            ) : null}
+
+            {successMessage ? (
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
+
+                <div className="flex items-center gap-3">
+
+                <span>
+                    ✅
+                </span>
+
+                <p className="font-semibold">
+                    {
+                    successMessage
+                    }
+                </p>
+
+                </div>
+
+            </section>
+        ) : null}
 
       {/* =====================================================
           ERREUR
