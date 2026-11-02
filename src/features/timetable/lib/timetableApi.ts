@@ -157,10 +157,12 @@ async function loadTeachers(
     return new Map();
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name")
-    .in("id", ids);
+  const { data, error } = await supabase.rpc(
+    "get_timetable_teacher_directory",
+    {
+      p_teacher_ids: ids,
+    }
+  );
 
   if (error) {
     throw error;

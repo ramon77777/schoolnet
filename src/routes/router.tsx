@@ -48,6 +48,7 @@ import StudentAssessmentDetails from "../features/student/pages/StudentAssessmen
 import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
 import StudentAttendance from "@/features/student/pages/StudentAttendance";
+import StudentTimetable from "@/features/student/pages/StudentTimetable";
 
 // Parent
 import ParentHome from "../features/parent/pages/ParentHome";
@@ -158,6 +159,11 @@ export const router = createBrowserRouter([
               {
                 path: "student/attendance",
                 element: <StudentAttendance />,
+              },
+
+              {
+                path: "student/timetable",
+                element: <StudentTimetable />,
               },
 
               {
