@@ -9,9 +9,11 @@ import TimetableWeeklyView from "@/features/timetable/components/TimetableWeekly
 import AdminTimetableSlotCreateForm from "@/features/timetable/components/AdminTimetableSlotCreateForm";
 
 import {
+  deleteAdminTimetableSlot,
   getAdminTimetableCatalog,
   getAdminTimetableErrorMessage,
   getAdminTimetableSlots,
+  setAdminTimetableSlotActive,
   type AdminTimetableCatalog,
 } from "@/features/timetable/lib/adminTimetableApi";
 
@@ -59,9 +61,14 @@ export default function AdminTimetable() {
         setCreateOpen,
         ] = useState(false);
 
-        const [
+    const [
         successMessage,
         setSuccessMessage,
+    ] = useState<string | null>(null);
+
+    const [
+      actionSlotId,
+      setActionSlotId,
     ] = useState<string | null>(null);
 
   /*
@@ -172,6 +179,126 @@ export default function AdminTimetable() {
         await loadData(
             true
         );
+    }
+
+    async function handleToggleSlotActive(
+      slot: TimetableSlot
+    ) {
+      const nextActive =
+        !slot.isActive;
+
+      const confirmed =
+        window.confirm(
+          nextActive
+            ? `Réactiver le créneau « ${slot.courseTitle} » pour la classe ${slot.className} ?`
+            : `Désactiver le créneau « ${slot.courseTitle} » pour la classe ${slot.className} ?`
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        setActionSlotId(
+          slot.id
+        );
+
+        setErrorMessage(
+          null
+        );
+
+        setSuccessMessage(
+          null
+        );
+
+        await setAdminTimetableSlotActive(
+          slot.id,
+          nextActive
+        );
+
+        setSuccessMessage(
+          nextActive
+            ? "Le créneau a été réactivé avec succès."
+            : "Le créneau a été désactivé avec succès."
+        );
+
+        await loadData(
+          true
+        );
+      } catch (error) {
+        console.error(
+          "[AdminTimetable] toggle slot error:",
+          error
+        );
+
+        setErrorMessage(
+          getAdminTimetableErrorMessage(
+            error,
+            nextActive
+              ? "Impossible de réactiver ce créneau."
+              : "Impossible de désactiver ce créneau."
+          )
+        );
+      } finally {
+        setActionSlotId(
+          null
+        );
+      }
+    }
+
+    async function handleDeleteSlot(
+      slot: TimetableSlot
+    ) {
+      const confirmed =
+        window.confirm(
+          `Supprimer définitivement le créneau « ${slot.courseTitle} » de la classe ${slot.className} ?\n\nCette action est irréversible.`
+        );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        setActionSlotId(
+          slot.id
+        );
+
+        setErrorMessage(
+          null
+        );
+
+        setSuccessMessage(
+          null
+        );
+
+        await deleteAdminTimetableSlot(
+          slot.id
+        );
+
+        setSuccessMessage(
+          "Le créneau a été supprimé avec succès."
+        );
+
+        await loadData(
+          true
+        );
+      } catch (error) {
+        console.error(
+          "[AdminTimetable] delete slot error:",
+          error
+        );
+
+        setErrorMessage(
+          getAdminTimetableErrorMessage(
+            error,
+            "Impossible de supprimer ce créneau."
+          )
+        );
+      } finally {
+        setActionSlotId(
+          null
+        );
+      }
     }
 
   /*
@@ -553,8 +680,7 @@ export default function AdminTimetable() {
 
             <div>
               <p className="font-bold">
-                Impossible de charger
-                le planning
+                Une erreur est survenue
               </p>
 
               <p className="mt-1">
@@ -910,6 +1036,62 @@ export default function AdminTimetable() {
           }
           emptyTitle="Aucun créneau correspondant"
           emptyDescription="Aucun créneau d'emploi du temps ne correspond actuellement aux filtres sélectionnés."
+          renderSlotActions={(
+            slot
+          ) => {
+            const busy =
+              actionSlotId !== null;
+
+            const currentBusy =
+              actionSlotId ===
+              slot.id;
+
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleToggleSlotActive(
+                      slot
+                    )
+                  }
+                  disabled={
+                    busy
+                  }
+                  className={[
+                    "rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+
+                    slot.isActive
+                      ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                  ].join(" ")}
+                >
+                  {currentBusy
+                    ? "Traitement..."
+                    : slot.isActive
+                      ? "⏸ Désactiver"
+                      : "▶ Réactiver"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleDeleteSlot(
+                      slot
+                    )
+                  }
+                  disabled={
+                    busy
+                  }
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {currentBusy
+                    ? "Traitement..."
+                    : "🗑 Supprimer"}
+                </button>
+              </>
+            );
+          }}
         />
       </section>
 

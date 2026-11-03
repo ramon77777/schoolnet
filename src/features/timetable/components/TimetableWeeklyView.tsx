@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 import {
   TIMETABLE_WEEK_DAYS,
@@ -10,6 +11,7 @@ type TimetableWeeklyViewProps = {
   slots: TimetableSlot[];
   emptyTitle?: string;
   emptyDescription?: string;
+  renderSlotActions?: (slot: TimetableSlot) => ReactNode;
 };
 
 function formatTime(value: string) {
@@ -44,6 +46,7 @@ export default function TimetableWeeklyView({
   slots,
   emptyTitle = "Aucun créneau pour l'instant",
   emptyDescription = "Aucun cours n'est planifié dans votre emploi du temps.",
+  renderSlotActions,
 }: TimetableWeeklyViewProps) {
   const [selectedDay, setSelectedDay] =
     useState<TimetableDayOfWeek | "all">("all");
@@ -244,10 +247,20 @@ export default function TimetableWeeklyView({
                           ) : null}
                         </div>
 
-                        {slot.schoolYearName ? (
-                          <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                            {slot.schoolYearName}
-                          </span>
+                        {slot.schoolYearName || renderSlotActions ? (
+                          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+                            {slot.schoolYearName ? (
+                              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                {slot.schoolYearName}
+                              </span>
+                            ) : null}
+
+                            {renderSlotActions ? (
+                              <div className="flex flex-wrap gap-2 sm:justify-end">
+                                {renderSlotActions(slot)}
+                              </div>
+                            ) : null}
+                          </div>
                         ) : null}
                       </div>
                     </article>
