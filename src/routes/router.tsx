@@ -19,6 +19,7 @@ import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
+import AdminTimetable from "@/features/admin/pages/AdminTimetable";
 
 // Teacher
 import TeacherCourses from "../features/teacher/pages/TeacherCourses";
@@ -33,6 +34,7 @@ import TeacherCourseDetail from "../features/teacher/pages/TeacherCourseDetail";
 import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 import TeacherAverages from "@/features/teacher/pages/TeacherAverages";
 import TeacherAttendance from "@/features/teacher/pages/TeacherAttendance";
+import TeacherTimetable from "@/features/teacher/pages/TeacherTimetable";
 
 // Student
 import StudentCourses from "../features/student/pages/StudentCourses";
@@ -47,6 +49,7 @@ import StudentAssessmentDetails from "../features/student/pages/StudentAssessmen
 import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
 import StudentAttendance from "@/features/student/pages/StudentAttendance";
+import StudentTimetable from "@/features/student/pages/StudentTimetable";
 
 // Parent
 import ParentHome from "../features/parent/pages/ParentHome";
@@ -56,6 +59,7 @@ import ParentResults from "../features/parent/pages/ParentResults";
 import ParentResultsDetail from "../features/parent/pages/ParentResultsDetail";
 import ParentAverages from "../features/parent/pages/ParentAverages";
 import ParentAttendance from "@/features/parent/pages/ParentAttendance";
+import ParentTimetable from "@/features/parent/pages/ParentTimetable";
 
 import AppIndexRedirect from "./AppIndexRedirect";
 
@@ -160,6 +164,11 @@ export const router = createBrowserRouter([
               },
 
               {
+                path: "student/timetable",
+                element: <StudentTimetable />,
+              },
+
+              {
                 path: "student/averages",
                 element: <StudentAverages />,
               },
@@ -231,7 +240,16 @@ export const router = createBrowserRouter([
               { path: "parent/results", element: <ParentResults /> },
               { path: "parent/results/:id", element: <ParentResultsDetail /> },
               { path: "parent/averages", element: <ParentAverages /> },
-              { path: "parent/attendance", element: <ParentAttendance />,},
+              {
+                path: "parent/attendance",
+                element: <ParentAttendance />,
+              },
+
+              {
+                path: "parent/timetable",
+                element: <ParentTimetable />,
+              },
+
               { path: "parent/messages", element: <MessagingPage />, },
               { path: "parent/class-feed", element: <ClassFeedPage />, },
             ],
@@ -260,6 +278,11 @@ export const router = createBrowserRouter([
               {
                 path: "teacher/attendance",
                 element: <TeacherAttendance />,
+              },
+
+              {
+                path: "teacher/timetable",
+                element: <TeacherTimetable />,
               },
 
               {
@@ -304,10 +327,10 @@ export const router = createBrowserRouter([
             children: [
               { path: "admin", element: <Navigate to="/app/admin/dashboard" replace /> },
               { path: "admin/dashboard", element: <AdminDashboard /> },
-              { path: "admin/users", element: <AdminUsers /> },
-              { path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/users", element: <AdminUsers /> },{ path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
-              { path: "admin/school-years", element: <AdminSchoolYears /> },
+              { path: "admin/timetable",  element: <AdminTimetable />, },
+              { path: "admin/school-years", element: <AdminSchoolYears />, },
               { path: "admin/averages", element: <AdminAverages /> },
               { path: "admin/messages", element: <MessagingPage />,},
               { path: "admin/class-feed", element: <ClassFeedPage />, },

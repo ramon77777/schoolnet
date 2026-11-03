@@ -255,6 +255,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/student/timetable"
+            >
+              📅 Emploi du temps
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/student/messages"
             >
               <span className="flex w-full items-center justify-between gap-3">
@@ -318,6 +325,13 @@ export default function DashboardLayout() {
               to="/app/parent/attendance"
             >
               🕒 Présences & absences
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/parent/timetable"
+            >
+              📅 Emploi du temps
             </NavLink>
 
             <NavLink
@@ -392,6 +406,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/teacher/timetable"
+            >
+              📅 Emploi du temps
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/teacher/assessments"
             >
               🧪 Évaluations
@@ -457,6 +478,7 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
+            <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
             <NavLink className={navItem} to="/app/admin/averages"> 🧮 Moyennes</NavLink>
             <NavLink
