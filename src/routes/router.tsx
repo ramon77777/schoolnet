@@ -20,6 +20,7 @@ import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
 import AdminTimetable from "@/features/admin/pages/AdminTimetable";
+import AdminReportCards from "@/features/admin/pages/AdminReportCards";
 
 // Teacher
 import TeacherCourses from "../features/teacher/pages/TeacherCourses";
@@ -33,6 +34,7 @@ import TeacherGradingDetail from "../features/teacher/pages/TeacherGradingDetail
 import TeacherCourseDetail from "../features/teacher/pages/TeacherCourseDetail";
 import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 import TeacherAverages from "@/features/teacher/pages/TeacherAverages";
+import TeacherReportCards from "@/features/teacher/pages/TeacherReportCards";
 import TeacherAttendance from "@/features/teacher/pages/TeacherAttendance";
 import TeacherTimetable from "@/features/teacher/pages/TeacherTimetable";
 
@@ -41,6 +43,7 @@ import StudentCourses from "../features/student/pages/StudentCourses";
 import StudentHomework from "../features/student/pages/StudentHomework";
 import StudentProgress from "../features/student/pages/StudentProgress";
 import StudentAverages from "../features/student/pages/StudentAverages";
+import StudentReportCards from "@/features/student/pages/StudentReportCards";
 import StudentAssessments from "../features/student/pages/StudentAssessments";
 import StudentAssessmentTake from "../features/student/pages/StudentAssessmentTake";
 import StudentAssessmentResult from "../features/student/pages/StudentAssessmentResult";
@@ -58,6 +61,7 @@ import ParentDeadlines from "../features/parent/pages/ParentDeadlines";
 import ParentResults from "../features/parent/pages/ParentResults";
 import ParentResultsDetail from "../features/parent/pages/ParentResultsDetail";
 import ParentAverages from "../features/parent/pages/ParentAverages";
+import ParentReportCards from "@/features/parent/pages/ParentReportCards";
 import ParentAttendance from "@/features/parent/pages/ParentAttendance";
 import ParentTimetable from "@/features/parent/pages/ParentTimetable";
 
@@ -174,6 +178,11 @@ export const router = createBrowserRouter([
               },
 
               {
+                path: "student/report-cards",
+                element: <StudentReportCards />,
+              },
+
+              {
                 path: "student/messages",
                 element: <MessagingPage />,
               },
@@ -240,6 +249,10 @@ export const router = createBrowserRouter([
               { path: "parent/results", element: <ParentResults /> },
               { path: "parent/results/:id", element: <ParentResultsDetail /> },
               { path: "parent/averages", element: <ParentAverages /> },
+              {
+                path: "parent/report-cards",
+                element: <ParentReportCards />,
+              },
               {
                 path: "parent/attendance",
                 element: <ParentAttendance />,
@@ -312,6 +325,10 @@ export const router = createBrowserRouter([
                 element: <TeacherAverages />,
               },
               {
+                path: "teacher/report-cards",
+                element: <TeacherReportCards />,
+              },
+              {
                 path: "teacher/messages",
                 element: <MessagingPage />,
               },
@@ -327,11 +344,13 @@ export const router = createBrowserRouter([
             children: [
               { path: "admin", element: <Navigate to="/app/admin/dashboard" replace /> },
               { path: "admin/dashboard", element: <AdminDashboard /> },
-              { path: "admin/users", element: <AdminUsers /> },{ path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/users", element: <AdminUsers /> },
+              { path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
               { path: "admin/timetable",  element: <AdminTimetable />, },
               { path: "admin/school-years", element: <AdminSchoolYears />, },
               { path: "admin/averages", element: <AdminAverages /> },
+              { path: "/app/admin/report-cards", element: <AdminReportCards />, },
               { path: "admin/messages", element: <MessagingPage />,},
               { path: "admin/class-feed", element: <ClassFeedPage />, },
               { path: "admin/content", element: <AdminContent /> },

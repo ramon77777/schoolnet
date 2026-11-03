@@ -241,6 +241,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/student/report-cards"
+            >
+              📄 Mes bulletins
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/student/progress"
             >
               📈 Progression
@@ -318,6 +325,13 @@ export default function DashboardLayout() {
               to="/app/parent/averages"
             >
               📊 Moyennes
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/parent/report-cards"
+            >
+              📄 Bulletins
             </NavLink>
 
             <NavLink
@@ -434,6 +448,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/teacher/report-cards"
+            >
+              📝 Appréciations
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/teacher/messages"
             >
               <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -481,6 +502,7 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
             <NavLink className={navItem} to="/app/admin/averages"> 🧮 Moyennes</NavLink>
+            <NavLink className={navItem} to="/app/admin/report-cards" >📄 Bulletins </NavLink>
             <NavLink
               className={navItem}
               to="/app/admin/messages"
