@@ -3,10 +3,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 
-import TimetableWeeklyView from "@/features/timetable/components/TimetableWeeklyView";
 import AdminTimetableSlotCreateForm from "@/features/timetable/components/AdminTimetableSlotCreateForm";
+import TimetableWeeklyView from "@/features/timetable/components/TimetableWeeklyView";
 
 import {
   deleteAdminTimetableSlot,
@@ -36,40 +37,80 @@ const EMPTY_CATALOG: AdminTimetableCatalog = {
 };
 
 export default function AdminTimetable() {
-  const [slots, setSlots] =
-    useState<TimetableSlot[]>([]);
+  /*
+   * ========================================================
+   * DONNEES
+   * ========================================================
+   */
 
-  const [catalog, setCatalog] =
-    useState<AdminTimetableCatalog>(
-      EMPTY_CATALOG
-    );
+  const [
+    slots,
+    setSlots,
+  ] = useState<
+    TimetableSlot[]
+  >([]);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    catalog,
+    setCatalog,
+  ] = useState<AdminTimetableCatalog>(
+    EMPTY_CATALOG
+  );
 
-  const [refreshing, setRefreshing] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    refreshing,
+    setRefreshing,
+  ] = useState(false);
 
   const [
     errorMessage,
     setErrorMessage,
-  ] = useState<string | null>(null);
+  ] = useState<
+    string | null
+  >(null);
 
+  /*
+   * ========================================================
+   * CREATION / MODIFICATION
+   * ========================================================
+   */
 
-    const [
-        createOpen,
-        setCreateOpen,
-        ] = useState(false);
+  const [
+    createOpen,
+    setCreateOpen,
+  ] = useState(false);
 
-    const [
-        successMessage,
-        setSuccessMessage,
-    ] = useState<string | null>(null);
+  const [
+    editingSlot,
+    setEditingSlot,
+  ] = useState<
+    TimetableSlot | null
+  >(null);
 
-    const [
-      actionSlotId,
-      setActionSlotId,
-    ] = useState<string | null>(null);
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] = useState<
+    string | null
+  >(null);
+
+  /*
+   * ========================================================
+   * ACTIONS ADMIN
+   * ========================================================
+   */
+
+  const [
+    actionSlotId,
+    setActionSlotId,
+  ] = useState<
+    string | null
+  >(null);
 
   /*
    * ========================================================
@@ -115,191 +156,322 @@ export default function AdminTimetable() {
    * ========================================================
    */
 
-  const loadData = useCallback(
-    async (
-      silent = false
-    ) => {
-      try {
-        if (silent) {
-          setRefreshing(true);
-        } else {
-          setLoading(true);
+  const loadData =
+    useCallback(
+      async (
+        silent = false
+      ) => {
+        try {
+          if (silent) {
+            setRefreshing(
+              true
+            );
+          } else {
+            setLoading(
+              true
+            );
+          }
+
+          setErrorMessage(
+            null
+          );
+
+          const [
+            slotResult,
+            catalogResult,
+          ] = await Promise.all([
+            getAdminTimetableSlots(),
+            getAdminTimetableCatalog(),
+          ]);
+
+          setSlots(
+            slotResult
+          );
+
+          setCatalog(
+            catalogResult
+          );
+        } catch (error) {
+          console.error(
+            "[AdminTimetable] loadData error:",
+            error
+          );
+
+          setErrorMessage(
+            getAdminTimetableErrorMessage(
+              error,
+              "Impossible de charger l'emploi du temps de l'établissement."
+            )
+          );
+
+          setSlots([]);
+
+          setCatalog(
+            EMPTY_CATALOG
+          );
+        } finally {
+          setLoading(
+            false
+          );
+
+          setRefreshing(
+            false
+          );
         }
-
-        setErrorMessage(null);
-
-        const [
-          slotResult,
-          catalogResult,
-        ] = await Promise.all([
-          getAdminTimetableSlots(),
-          getAdminTimetableCatalog(),
-        ]);
-
-        setSlots(slotResult);
-        setCatalog(catalogResult);
-      } catch (error) {
-        console.error(
-          "[AdminTimetable] loadData error:",
-          error
-        );
-
-        setErrorMessage(
-          getAdminTimetableErrorMessage(
-            error,
-            "Impossible de charger l'emploi du temps de l'établissement."
-          )
-        );
-
-        setSlots([]);
-        setCatalog(
-          EMPTY_CATALOG
-        );
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    []
-  );
+      },
+      []
+    );
 
   useEffect(() => {
     void loadData();
-  }, [loadData]);
+  }, [
+    loadData,
+  ]);
 
-    async function handleSlotCreated() {
-        setCreateOpen(
-            false
-        );
+  /*
+   * ========================================================
+   * CREATION / MODIFICATION REUSSIE
+   * ========================================================
+   */
 
-        setSuccessMessage(
-            "Le créneau a été créé avec succès."
-        );
+  async function handleSlotSaved() {
+    const wasEditing =
+      editingSlot !== null;
 
-        await loadData(
-            true
-        );
+    setCreateOpen(
+      false
+    );
+
+    setEditingSlot(
+      null
+    );
+
+    setSuccessMessage(
+      wasEditing
+        ? "Le créneau a été modifié avec succès."
+        : "Le créneau a été créé avec succès."
+    );
+
+    await loadData(
+      true
+    );
+  }
+
+  /*
+   * ========================================================
+   * OUVERTURE CREATION
+   * ========================================================
+   */
+
+  function handleCreateOpen() {
+    setSuccessMessage(
+      null
+    );
+
+    setErrorMessage(
+      null
+    );
+
+    setEditingSlot(
+      null
+    );
+
+    setCreateOpen(
+      true
+    );
+  }
+
+  /*
+   * ========================================================
+   * OUVERTURE MODIFICATION
+   * ========================================================
+   */
+
+  function handleEditSlot(
+    slot: TimetableSlot
+  ) {
+    setSuccessMessage(
+      null
+    );
+
+    setErrorMessage(
+      null
+    );
+
+    setCreateOpen(
+      false
+    );
+
+    setEditingSlot(
+      slot
+    );
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  /*
+   * ========================================================
+   * FERMETURE FORMULAIRE
+   * ========================================================
+   */
+
+  function handleFormCancel() {
+    setCreateOpen(
+      false
+    );
+
+    setEditingSlot(
+      null
+    );
+  }
+
+  /*
+   * ========================================================
+   * ACTIVATION / DESACTIVATION
+   * ========================================================
+   */
+
+  async function handleToggleSlotActive(
+    slot: TimetableSlot
+  ) {
+    const nextActive =
+      !slot.isActive;
+
+    const confirmed =
+      window.confirm(
+        nextActive
+          ? `Réactiver le créneau « ${slot.courseTitle} » pour la classe ${slot.className} ?`
+          : `Désactiver le créneau « ${slot.courseTitle} » pour la classe ${slot.className} ?`
+      );
+
+    if (!confirmed) {
+      return;
     }
 
-    async function handleToggleSlotActive(
-      slot: TimetableSlot
-    ) {
-      const nextActive =
-        !slot.isActive;
+    try {
+      setActionSlotId(
+        slot.id
+      );
 
-      const confirmed =
-        window.confirm(
+      setErrorMessage(
+        null
+      );
+
+      setSuccessMessage(
+        null
+      );
+
+      await setAdminTimetableSlotActive(
+        slot.id,
+        nextActive
+      );
+
+      setSuccessMessage(
+        nextActive
+          ? "Le créneau a été réactivé avec succès."
+          : "Le créneau a été désactivé avec succès."
+      );
+
+      await loadData(
+        true
+      );
+    } catch (error) {
+      console.error(
+        "[AdminTimetable] toggle slot error:",
+        error
+      );
+
+      setErrorMessage(
+        getAdminTimetableErrorMessage(
+          error,
           nextActive
-            ? `Réactiver le créneau « ${slot.courseTitle} » pour la classe ${slot.className} ?`
-            : `Désactiver le créneau « ${slot.courseTitle} » pour la classe ${slot.className} ?`
-        );
+            ? "Impossible de réactiver ce créneau."
+            : "Impossible de désactiver ce créneau."
+        )
+      );
+    } finally {
+      setActionSlotId(
+        null
+      );
+    }
+  }
 
-      if (!confirmed) {
-        return;
-      }
+  /*
+   * ========================================================
+   * SUPPRESSION
+   * ========================================================
+   */
 
-      try {
-        setActionSlotId(
-          slot.id
-        );
+  async function handleDeleteSlot(
+    slot: TimetableSlot
+  ) {
+    const confirmed =
+      window.confirm(
+        `Supprimer définitivement le créneau « ${slot.courseTitle} » de la classe ${slot.className} ?\n\nCette action est irréversible.`
+      );
 
-        setErrorMessage(
-          null
-        );
-
-        setSuccessMessage(
-          null
-        );
-
-        await setAdminTimetableSlotActive(
-          slot.id,
-          nextActive
-        );
-
-        setSuccessMessage(
-          nextActive
-            ? "Le créneau a été réactivé avec succès."
-            : "Le créneau a été désactivé avec succès."
-        );
-
-        await loadData(
-          true
-        );
-      } catch (error) {
-        console.error(
-          "[AdminTimetable] toggle slot error:",
-          error
-        );
-
-        setErrorMessage(
-          getAdminTimetableErrorMessage(
-            error,
-            nextActive
-              ? "Impossible de réactiver ce créneau."
-              : "Impossible de désactiver ce créneau."
-          )
-        );
-      } finally {
-        setActionSlotId(
-          null
-        );
-      }
+    if (!confirmed) {
+      return;
     }
 
-    async function handleDeleteSlot(
-      slot: TimetableSlot
-    ) {
-      const confirmed =
-        window.confirm(
-          `Supprimer définitivement le créneau « ${slot.courseTitle} » de la classe ${slot.className} ?\n\nCette action est irréversible.`
-        );
+    try {
+      setActionSlotId(
+        slot.id
+      );
 
-      if (!confirmed) {
-        return;
-      }
+      setErrorMessage(
+        null
+      );
 
-      try {
-        setActionSlotId(
-          slot.id
-        );
+      setSuccessMessage(
+        null
+      );
 
-        setErrorMessage(
-          null
-        );
+      await deleteAdminTimetableSlot(
+        slot.id
+      );
 
-        setSuccessMessage(
-          null
-        );
-
-        await deleteAdminTimetableSlot(
-          slot.id
-        );
-
-        setSuccessMessage(
-          "Le créneau a été supprimé avec succès."
-        );
-
-        await loadData(
-          true
-        );
-      } catch (error) {
-        console.error(
-          "[AdminTimetable] delete slot error:",
-          error
-        );
-
-        setErrorMessage(
-          getAdminTimetableErrorMessage(
-            error,
-            "Impossible de supprimer ce créneau."
-          )
-        );
-      } finally {
-        setActionSlotId(
+      /*
+       * Si jamais le créneau supprimé était en cours
+       * de modification, on ferme le formulaire.
+       */
+      if (
+        editingSlot?.id ===
+        slot.id
+      ) {
+        setEditingSlot(
           null
         );
       }
+
+      setSuccessMessage(
+        "Le créneau a été supprimé avec succès."
+      );
+
+      await loadData(
+        true
+      );
+    } catch (error) {
+      console.error(
+        "[AdminTimetable] delete slot error:",
+        error
+      );
+
+      setErrorMessage(
+        getAdminTimetableErrorMessage(
+          error,
+          "Impossible de supprimer ce créneau."
+        )
+      );
+    } finally {
+      setActionSlotId(
+        null
+      );
     }
+  }
 
   /*
    * ========================================================
@@ -307,35 +479,38 @@ export default function AdminTimetable() {
    * ========================================================
    */
 
-  const classOptions = useMemo(
-    () => {
-      if (
-        schoolYearFilter ===
-        "all"
-      ) {
-        return catalog.classes;
-      }
+  const classOptions =
+    useMemo(
+      () => {
+        if (
+          schoolYearFilter ===
+          "all"
+        ) {
+          return catalog.classes;
+        }
 
-      return catalog.classes.filter(
-        (item) =>
-          item.schoolYearId ===
-          schoolYearFilter
-      );
-    },
-    [
-      catalog.classes,
-      schoolYearFilter,
-    ]
-  );
+        return catalog.classes.filter(
+          (item) =>
+            item.schoolYearId ===
+            schoolYearFilter
+        );
+      },
+      [
+        catalog.classes,
+        schoolYearFilter,
+      ]
+    );
 
   /*
    * Si on change d'année scolaire et que
    * la classe sélectionnée ne lui appartient plus,
    * on réinitialise la classe.
    */
+
   useEffect(() => {
     if (
-      classFilter === "all"
+      classFilter ===
+      "all"
     ) {
       return;
     }
@@ -343,11 +518,14 @@ export default function AdminTimetable() {
     const stillAvailable =
       classOptions.some(
         (item) =>
-          item.id === classFilter
+          item.id ===
+          classFilter
       );
 
     if (!stillAvailable) {
-      setClassFilter("all");
+      setClassFilter(
+        "all"
+      );
     }
   }, [
     classFilter,
@@ -360,65 +538,70 @@ export default function AdminTimetable() {
    * ========================================================
    */
 
-  const filteredSlots = useMemo(
-    () => {
-      return slots.filter(
-        (slot) => {
-          const matchesSchoolYear =
-            schoolYearFilter ===
-              "all" ||
-            slot.schoolYearId ===
-              schoolYearFilter;
+  const filteredSlots =
+    useMemo(
+      () => {
+        return slots.filter(
+          (slot) => {
+            const matchesSchoolYear =
+              schoolYearFilter ===
+                "all" ||
+              slot.schoolYearId ===
+                schoolYearFilter;
 
-          const matchesClass =
-            classFilter === "all" ||
-            slot.classId ===
-              classFilter;
+            const matchesClass =
+              classFilter ===
+                "all" ||
+              slot.classId ===
+                classFilter;
 
-          const matchesTeacher =
-            teacherFilter ===
-              "all" ||
-            slot.teacherId ===
-              teacherFilter;
+            const matchesTeacher =
+              teacherFilter ===
+                "all" ||
+              slot.teacherId ===
+                teacherFilter;
 
-          const matchesRoom =
-            roomFilter === "all" ||
-            slot.roomId ===
-              roomFilter;
+            const matchesRoom =
+              roomFilter ===
+                "all" ||
+              slot.roomId ===
+                roomFilter;
 
-          const matchesDay =
-            dayFilter === "all" ||
-            String(
-              slot.dayOfWeek
-            ) === dayFilter;
+            const matchesDay =
+              dayFilter ===
+                "all" ||
+              String(
+                slot.dayOfWeek
+              ) ===
+                dayFilter;
 
-          const matchesStatus =
-            statusFilter ===
-            "active"
-              ? slot.isActive
-              : !slot.isActive;
+            const matchesStatus =
+              statusFilter ===
+              "active"
+                ? slot.isActive
+                : !slot.isActive;
 
-          return (
-            matchesSchoolYear &&
-            matchesClass &&
-            matchesTeacher &&
-            matchesRoom &&
-            matchesDay &&
-            matchesStatus
-          );
-        }
-      );
-    },
-    [
-      slots,
-      schoolYearFilter,
-      classFilter,
-      teacherFilter,
-      roomFilter,
-      dayFilter,
-      statusFilter,
-    ]
-  );
+            return (
+              matchesSchoolYear &&
+              matchesClass &&
+              matchesTeacher &&
+              matchesRoom &&
+              matchesDay &&
+              matchesStatus
+            );
+          }
+        );
+      },
+      [
+        slots,
+        schoolYearFilter,
+        classFilter,
+        teacherFilter,
+        roomFilter,
+        dayFilter,
+        statusFilter,
+      ]
+    );
 
   /*
    * ========================================================
@@ -435,7 +618,9 @@ export default function AdminTimetable() {
               slot.classId
           )
         ).size,
-      [filteredSlots]
+      [
+        filteredSlots,
+      ]
     );
 
   const teacherCount =
@@ -447,7 +632,9 @@ export default function AdminTimetable() {
               slot.teacherId
           )
         ).size,
-      [filteredSlots]
+      [
+        filteredSlots,
+      ]
     );
 
   const activeDayCount =
@@ -459,7 +646,9 @@ export default function AdminTimetable() {
               slot.dayOfWeek
           )
         ).size,
-      [filteredSlots]
+      [
+        filteredSlots,
+      ]
     );
 
   const activeRoomCount =
@@ -469,12 +658,14 @@ export default function AdminTimetable() {
           (room) =>
             room.isActive
         ).length,
-      [catalog.rooms]
+      [
+        catalog.rooms,
+      ]
     );
 
   /*
    * ========================================================
-   * RESET
+   * RESET FILTRES
    * ========================================================
    */
 
@@ -513,15 +704,19 @@ export default function AdminTimetable() {
   if (loading) {
     return (
       <div className="space-y-5">
+
         <section className="animate-pulse rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+
           <div className="h-4 w-44 rounded bg-slate-200" />
 
           <div className="mt-3 h-8 w-80 rounded bg-slate-200" />
 
           <div className="mt-3 h-4 w-96 max-w-full rounded bg-slate-100" />
+
         </section>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+
           {Array.from({
             length: 5,
           }).map(
@@ -537,11 +732,13 @@ export default function AdminTimetable() {
               />
             )
           )}
+
         </div>
 
         <div className="h-36 animate-pulse rounded-2xl border border-slate-200 bg-white shadow-sm" />
 
         <div className="h-80 animate-pulse rounded-2xl border border-slate-200 bg-white shadow-sm" />
+
       </div>
     );
   }
@@ -560,6 +757,7 @@ export default function AdminTimetable() {
          ===================================================== */}
 
       <section className="rounded-2xl border border-slate-200 bg-gradient-to-r from-white to-blue-50/50 p-6 shadow-sm">
+
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
 
           <div className="flex items-start gap-4">
@@ -569,6 +767,7 @@ export default function AdminTimetable() {
             </div>
 
             <div>
+
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">
                 Emploi du temps
               </p>
@@ -583,88 +782,100 @@ export default function AdminTimetable() {
                 et les salles à l'échelle
                 de l'établissement.
               </p>
+
             </div>
 
           </div>
 
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
 
-                <button
-                    type="button"
-                    onClick={() => {
-                    setSuccessMessage(
-                        null
-                    );
+            <button
+              type="button"
+              onClick={
+                handleCreateOpen
+              }
+              disabled={
+                createOpen ||
+                editingSlot !==
+                  null
+              }
+              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              + Nouveau créneau
+            </button>
 
-                    setCreateOpen(
-                        true
-                    );
-                    }}
-                    disabled={
-                    createOpen
-                    }
-                    className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    + Nouveau créneau
-                </button>
+            <button
+              type="button"
+              onClick={() =>
+                void loadData(
+                  true
+                )
+              }
+              disabled={
+                refreshing
+              }
+              className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {refreshing
+                ? "Actualisation..."
+                : "↻ Rafraîchir"}
+            </button>
 
-                <button
-                    type="button"
-                    onClick={() =>
-                    void loadData(
-                        true
-                    )
-                    }
-                    disabled={
-                    refreshing
-                    }
-                    className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    {refreshing
-                    ? "Actualisation..."
-                    : "↻ Rafraîchir"}
-                </button>
-
-            </div>
+          </div>
 
         </div>
+
       </section>
 
-        {createOpen ? (
-            <AdminTimetableSlotCreateForm
-                catalog={
-                catalog
-                }
-                onCreated={
-                handleSlotCreated
-                }
-                onCancel={() =>
-                setCreateOpen(
-                    false
-                )
-                }
-            />
-            ) : null}
+      {/* =====================================================
+          FORMULAIRE CREATION / MODIFICATION
+         ===================================================== */}
 
-            {successMessage ? (
-            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
+      {createOpen ||
+      editingSlot !== null ? (
+        <AdminTimetableSlotCreateForm
+          key={
+            editingSlot?.id ??
+            "create"
+          }
+          catalog={
+            catalog
+          }
+          slot={
+            editingSlot
+          }
+          onSaved={
+            handleSlotSaved
+          }
+          onCancel={
+            handleFormCancel
+          }
+        />
+      ) : null}
 
-                <div className="flex items-center gap-3">
+      {/* =====================================================
+          SUCCES
+         ===================================================== */}
 
-                <span>
-                    ✅
-                </span>
+      {successMessage ? (
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700">
 
-                <p className="font-semibold">
-                    {
-                    successMessage
-                    }
-                </p>
+          <div className="flex items-center gap-3">
 
-                </div>
+            <span>
+              ✅
+            </span>
 
-            </section>
-        ) : null}
+            <p className="font-semibold">
+              {
+                successMessage
+              }
+            </p>
+
+          </div>
+
+        </section>
+      ) : null}
 
       {/* =====================================================
           ERREUR
@@ -672,6 +883,7 @@ export default function AdminTimetable() {
 
       {errorMessage ? (
         <section className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+
           <div className="flex items-start gap-3">
 
             <span>
@@ -679,6 +891,7 @@ export default function AdminTimetable() {
             </span>
 
             <div>
+
               <p className="font-bold">
                 Une erreur est survenue
               </p>
@@ -688,9 +901,11 @@ export default function AdminTimetable() {
                   errorMessage
                 }
               </p>
+
             </div>
 
           </div>
+
         </section>
       ) : null}
 
@@ -762,6 +977,7 @@ export default function AdminTimetable() {
           />
 
         </div>
+
       </section>
 
       {/* =====================================================
@@ -773,6 +989,7 @@ export default function AdminTimetable() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 
           <div>
+
             <h2 className="text-base font-bold text-slate-950">
               Filtres
             </h2>
@@ -783,6 +1000,7 @@ export default function AdminTimetable() {
               enseignant, salle, statut
               ou jour.
             </p>
+
           </div>
 
           <button
@@ -1009,6 +1227,7 @@ export default function AdminTimetable() {
           </FilterSelect>
 
         </div>
+
       </section>
 
       {/* =====================================================
@@ -1016,6 +1235,7 @@ export default function AdminTimetable() {
          ===================================================== */}
 
       <section>
+
         <div className="mb-3">
 
           <h2 className="text-base font-bold text-slate-950">
@@ -1040,7 +1260,8 @@ export default function AdminTimetable() {
             slot
           ) => {
             const busy =
-              actionSlotId !== null;
+              actionSlotId !==
+              null;
 
             const currentBusy =
               actionSlotId ===
@@ -1048,6 +1269,26 @@ export default function AdminTimetable() {
 
             return (
               <>
+
+                {/* MODIFIER */}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleEditSlot(
+                      slot
+                    )
+                  }
+                  disabled={
+                    busy
+                  }
+                  className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ✏️ Modifier
+                </button>
+
+                {/* ACTIVER / DESACTIVER */}
+
                 <button
                   type="button"
                   onClick={() =>
@@ -1064,7 +1305,9 @@ export default function AdminTimetable() {
                     slot.isActive
                       ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
                       : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
-                  ].join(" ")}
+                  ].join(
+                    " "
+                  )}
                 >
                   {currentBusy
                     ? "Traitement..."
@@ -1072,6 +1315,8 @@ export default function AdminTimetable() {
                       ? "⏸ Désactiver"
                       : "▶ Réactiver"}
                 </button>
+
+                {/* SUPPRIMER */}
 
                 <button
                   type="button"
@@ -1089,10 +1334,12 @@ export default function AdminTimetable() {
                     ? "Traitement..."
                     : "🗑 Supprimer"}
                 </button>
+
               </>
             );
           }}
         />
+
       </section>
 
     </div>
@@ -1120,6 +1367,7 @@ function MetricCard({
       <div className="flex items-center justify-between gap-3">
 
         <div>
+
           <p className="text-xs font-medium text-slate-500">
             {label}
           </p>
@@ -1127,18 +1375,22 @@ function MetricCard({
           <p className="mt-1 text-2xl font-bold text-slate-950">
             {value}
           </p>
+
         </div>
 
         <div
           className={[
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl",
             iconClass,
-          ].join(" ")}
+          ].join(
+            " "
+          )}
         >
           {icon}
         </div>
 
       </div>
+
     </article>
   );
 }
@@ -1151,10 +1403,12 @@ function FilterSelect({
 }: {
   label: string;
   value: string;
+
   onChange: (
     value: string
   ) => void;
-  children: React.ReactNode;
+
+  children: ReactNode;
 }) {
   return (
     <label className="block">

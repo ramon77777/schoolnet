@@ -2,23 +2,28 @@ import {
   useMemo,
   useState,
   type FormEvent,
+  type ReactNode,
 } from "react";
 
 import {
   createAdminTimetableSlot,
   getAdminTimetableErrorMessage,
+  updateAdminTimetableSlot,
   type AdminTimetableCatalog,
+  type AdminTimetableSlotWriteInput,
 } from "../lib/adminTimetableApi";
 
 import type {
   TimetableDayOfWeek,
+  TimetableSlot,
 } from "../types/timetable.types";
 
 type AdminTimetableSlotCreateFormProps = {
   catalog: AdminTimetableCatalog;
 
-  onCreated: () =>
-    void | Promise<void>;
+  slot?: TimetableSlot | null;
+
+  onSaved: () => void | Promise<void>;
 
   onCancel: () => void;
 };
@@ -59,9 +64,19 @@ const WEEK_DAYS: Array<{
 
 export default function AdminTimetableSlotCreateForm({
   catalog,
-  onCreated,
+  slot = null,
+  onSaved,
   onCancel,
 }: AdminTimetableSlotCreateFormProps) {
+  /*
+   * ========================================================
+   * MODE CREATION / MODIFICATION
+   * ========================================================
+   */
+
+  const editing =
+    slot !== null;
+
   /*
    * ========================================================
    * ETAT DU FORMULAIRE
@@ -69,6 +84,7 @@ export default function AdminTimetableSlotCreateForm({
    */
 
   const defaultSchoolYearId =
+    slot?.schoolYearId ??
     catalog.schoolYears.find(
       (item) =>
         item.isCurrent
@@ -86,48 +102,68 @@ export default function AdminTimetableSlotCreateForm({
   const [
     classId,
     setClassId,
-  ] = useState("");
+  ] = useState(
+    slot?.classId ?? ""
+  );
 
   const [
     courseId,
     setCourseId,
-  ] = useState("");
+  ] = useState(
+    slot?.courseId ?? ""
+  );
 
   const [
     teacherId,
     setTeacherId,
-  ] = useState("");
+  ] = useState(
+    slot?.teacherId ?? ""
+  );
 
   const [
     roomId,
     setRoomId,
-  ] = useState("");
+  ] = useState(
+    slot?.roomId ?? ""
+  );
 
   const [
     dayOfWeek,
     setDayOfWeek,
-  ] = useState<
-    TimetableDayOfWeek
-  >(1);
+  ] = useState<TimetableDayOfWeek>(
+    slot?.dayOfWeek ?? 1
+  );
 
   const [
     startsAt,
     setStartsAt,
   ] = useState(
-    "08:00"
+    slot?.startsAt
+      ? slot.startsAt.slice(
+          0,
+          5
+        )
+      : "08:00"
   );
 
   const [
     endsAt,
     setEndsAt,
   ] = useState(
-    "09:00"
+    slot?.endsAt
+      ? slot.endsAt.slice(
+          0,
+          5
+        )
+      : "09:00"
   );
 
   const [
     notes,
     setNotes,
-  ] = useState("");
+  ] = useState(
+    slot?.notes ?? ""
+  );
 
   const [
     saving,
@@ -246,7 +282,16 @@ export default function AdminTimetableSlotCreateForm({
 
   /*
    * ========================================================
-   * SALLES ACTIVES
+   * SALLES
+   * ========================================================
+   *
+   * En création :
+   * seules les salles actives sont proposées.
+   *
+   * En modification :
+   * si le créneau utilise déjà une salle devenue inactive,
+   * cette salle reste visible afin de ne pas perdre
+   * l'information existante.
    * ========================================================
    */
 
@@ -255,10 +300,13 @@ export default function AdminTimetableSlotCreateForm({
       () =>
         catalog.rooms.filter(
           (room) =>
-            room.isActive
+            room.isActive ||
+            room.id ===
+              slot?.roomId
         ),
       [
         catalog.rooms,
+        slot?.roomId,
       ]
     );
 
@@ -395,42 +443,58 @@ export default function AdminTimetableSlotCreateForm({
         null
       );
 
-      await createAdminTimetableSlot(
-        {
-          schoolYearId,
-          classId,
-          courseId,
-          teacherId,
+      const input: AdminTimetableSlotWriteInput = {
+        schoolYearId,
+        classId,
+        courseId,
+        teacherId,
 
-          roomId:
-            roomId ||
-            null,
+        roomId:
+          roomId ||
+          null,
 
-          dayOfWeek,
+        dayOfWeek,
 
-          startsAt,
-          endsAt,
+        startsAt,
+        endsAt,
 
-          notes:
-            notes.trim() ||
-            null,
+        notes:
+          notes.trim() ||
+          null,
 
-          isActive:
-            true,
-        }
-      );
+        /*
+         * En modification, le statut actuel est conservé.
+         * En création, le créneau est actif par défaut.
+         */
+        isActive:
+          slot?.isActive ??
+          true,
+      };
 
-      await onCreated();
+      if (slot) {
+        await updateAdminTimetableSlot(
+          slot.id,
+          input
+        );
+      } else {
+        await createAdminTimetableSlot(
+          input
+        );
+      }
+
+      await onSaved();
     } catch (error) {
       console.error(
-        "[AdminTimetableSlotCreateForm] create error:",
+        "[AdminTimetableSlotCreateForm] save error:",
         error
       );
 
       setErrorMessage(
         getAdminTimetableErrorMessage(
           error,
-          "Impossible de créer ce créneau."
+          editing
+            ? "Impossible de modifier ce créneau."
+            : "Impossible de créer ce créneau."
         )
       );
     } finally {
@@ -459,13 +523,15 @@ export default function AdminTimetableSlotCreateForm({
             </p>
 
             <h2 className="mt-1 text-lg font-bold text-slate-950">
-              Nouveau créneau
+              {editing
+                ? "Modifier le créneau"
+                : "Nouveau créneau"}
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Affectez un cours à une classe,
-              un enseignant, un horaire
-              et éventuellement une salle.
+              {editing
+                ? "Modifiez la classe, le cours, l'enseignant, l'horaire, la salle ou la note de ce créneau."
+                : "Affectez un cours à une classe, un enseignant, un horaire et éventuellement une salle."}
             </p>
           </div>
 
@@ -716,6 +782,9 @@ export default function AdminTimetableSlotCreateForm({
                   {room.code
                     ? ` (${room.code})`
                     : ""}
+                  {!room.isActive
+                    ? " — inactive"
+                    : ""}
                 </option>
               )
             )}
@@ -793,6 +862,7 @@ export default function AdminTimetableSlotCreateForm({
 
           <span className="mb-1.5 block text-xs font-semibold text-slate-600">
             Note
+
             <span className="ml-1 font-normal text-slate-400">
               facultative
             </span>
@@ -864,7 +934,9 @@ export default function AdminTimetableSlotCreateForm({
             >
               {saving
                 ? "Enregistrement..."
-                : "✓ Créer le créneau"}
+                : editing
+                  ? "✓ Enregistrer les modifications"
+                  : "✓ Créer le créneau"}
             </button>
 
           </div>
@@ -896,8 +968,7 @@ function FieldSelect({
     value: string
   ) => void;
 
-  children:
-    React.ReactNode;
+  children: ReactNode;
 
   required?: boolean;
   disabled?: boolean;
