@@ -445,6 +445,14 @@ export default function PublicHome() {
                   <span className="text-base">👤</span>
                   {heroSecondaryLabel}
                 </ActionLink>
+
+                <ActionLink
+                  to="/inscription"
+                  className="inline-flex items-center gap-3 rounded-2xl border border-cyan-300/50 bg-cyan-500/10 px-6 py-4 text-sm font-black text-cyan-50 transition hover:-translate-y-1 hover:bg-cyan-500/20"
+                >
+                  <span aria-hidden="true">+</span>
+                  Demander une inscription
+                </ActionLink>
               </div>
 
               {/* Fonctions principales */}

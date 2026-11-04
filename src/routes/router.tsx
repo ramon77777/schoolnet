@@ -82,6 +82,8 @@ import PublicEnrollmentRequest from "@/features/public/pages/PublicEnrollmentReq
 import MessagingPage from "../features/messages/pages/MessagingPage";
 import ClassFeedPage from "@/features/class-posts/pages/ClassFeedPage";
 import MyProfile from "@/features/profile/pages/MyProfile";
+import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -101,7 +103,11 @@ export const router = createBrowserRouter([
   {
     path: "/auth",
     element: <AuthLayout />,
-    children: [{ path: "login", element: <LoginPage /> }],
+    children: [
+      { path: "login", element: <LoginPage /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ResetPasswordPage /> },
+    ],
   },
 
   {
