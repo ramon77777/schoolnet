@@ -21,6 +21,9 @@ import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
 import AdminTimetable from "@/features/admin/pages/AdminTimetable";
 import AdminReportCards from "@/features/admin/pages/AdminReportCards";
+import AdminEnrollments from "@/features/admin/pages/AdminEnrollments";
+import AdminEnrollmentRequests from "@/features/admin/pages/AdminEnrollmentRequests";
+
 
 // Teacher
 import TeacherCourses from "../features/teacher/pages/TeacherCourses";
@@ -75,8 +78,10 @@ import PublicLevels from "../features/public/pages/PublicLevels";
 import PublicPricing from "../features/public/pages/PublicPricing";
 import PublicAbout from "../features/public/pages/PublicAbout";
 import PublicContact from "../features/public/pages/PublicContact";
+import PublicEnrollmentRequest from "@/features/public/pages/PublicEnrollmentRequest";
 import MessagingPage from "../features/messages/pages/MessagingPage";
 import ClassFeedPage from "@/features/class-posts/pages/ClassFeedPage";
+import MyProfile from "@/features/profile/pages/MyProfile";
 
 export const router = createBrowserRouter([
   {
@@ -89,6 +94,7 @@ export const router = createBrowserRouter([
       { path: "tarifs", element: <PublicPricing /> },
       { path: "a-propos", element: <PublicAbout /> },
       { path: "contact", element: <PublicContact /> },
+      { path: "inscription", element: <PublicEnrollmentRequest /> },
     ],
   },
 
@@ -108,6 +114,8 @@ export const router = createBrowserRouter([
           { index: true, element: <AppIndexRedirect /> },
 
           { path: "forbidden", element: <div className="sn-card p-6">⛔ Accès interdit</div> },
+
+          { path: "profile", element: <MyProfile /> },
 
           {
             element: <RoleGate allowed={["student"]} />,
@@ -346,6 +354,8 @@ export const router = createBrowserRouter([
               { path: "admin/dashboard", element: <AdminDashboard /> },
               { path: "admin/users", element: <AdminUsers /> },
               { path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/enrollments", element: <AdminEnrollments />,},
+              { path: "admin/enrollment-requests", element: <AdminEnrollmentRequests /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
               { path: "admin/timetable",  element: <AdminTimetable />, },
               { path: "admin/school-years", element: <AdminSchoolYears />, },

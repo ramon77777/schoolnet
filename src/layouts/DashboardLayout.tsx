@@ -97,6 +97,7 @@ function subtitle(
 }
 
 function isPathAllowedForRole(pathname: string, role: UserRole) {
+  if (pathname === "/app/profile") return true;
   if (role === "admin") return pathname.startsWith("/app/admin");
   if (role === "teacher") return pathname.startsWith("/app/teacher");
   if (role === "parent") return pathname.startsWith("/app/parent");
@@ -498,6 +499,8 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/dashboard">📊 Tableau de bord</NavLink>
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
+            <NavLink className={navItem} to="/app/admin/enrollment-requests">  📩 Demandes publiques </NavLink>
+            <NavLink className={navItem} to="/app/admin/enrollments"> 📝 Inscriptions</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
             <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
@@ -523,6 +526,10 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/settings">⚙️ Paramètres</NavLink>
           </>
         )}
+
+        <NavLink className={navItem} to="/app/profile">
+          👤 Mon profil
+        </NavLink>
 
         <div className="h-px bg-gray-100 my-2" />
 
