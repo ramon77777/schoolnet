@@ -3,13 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   cancelLiveSession,
-  listLiveSessions,
+  listLiveSessionsPage,
+  getLiveSessionById,
+  getLiveSessionSummary,
+  listLiveClassOptions,
+  LIVE_SESSIONS_PAGE_SIZE,
   listTeacherLiveCourses,
   readableError,
   scheduleLiveSession,
   type LiveCourse,
   type LiveSession,
   type LiveStatus,
+  type LiveClassOption,
+  type LiveSessionSummary,
 } from "../lib/liveApi";
 
 // Doit etre identique a la cle utilisee par LiveRoomPage.tsx.
@@ -121,64 +127,115 @@ export default function LiveSessionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const autoResumeStarted = useRef(false);
+  const requestCounter = useRef(0);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<LiveStatus | "all">("all");
+  const [classFilter, setClassFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [classOptions, setClassOptions] = useState<LiveClassOption[]>([]);
+  const [summary, setSummary] = useState<LiveSessionSummary>({ scheduled: 0, live: 0 });
+
+  const userId = user?.id;
+  const userRole = user?.role;
+  const isDemo = Boolean(user?.isDemo);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const refresh = useCallback(async () => {
-    if (!user || user.isDemo || !["teacher", "student", "admin"].includes(user.role)) {
+    if (!userId || isDemo || !userRole ||
+        !["teacher", "student", "admin"].includes(userRole)) {
       setSessions([]);
       setCourses([]);
+      setTotal(0);
+      setSummary({ scheduled: 0, live: 0 });
       setLoading(false);
       return;
     }
+    const requestId = ++requestCounter.current;
     setLoading(true);
     setError(null);
     try {
-      const [sessionRows, eligible] = await Promise.all([
-        listLiveSessions(),
-        user.role === "teacher"
-          ? listTeacherLiveCourses(user.id)
+      const [result, totals, eligible, availableClasses] = await Promise.all([
+        listLiveSessionsPage({
+          page,
+          search: debouncedSearch,
+          status: statusFilter,
+          classId: classFilter,
+          fromDate,
+          toDate,
+        }),
+        getLiveSessionSummary(),
+        userRole === "teacher"
+          ? listTeacherLiveCourses(userId)
           : Promise.resolve([] as LiveCourse[]),
+        // Failure to load class labels must not block the calendar.
+        listLiveClassOptions().catch(() => [] as LiveClassOption[]),
       ]);
-      setSessions(sessionRows);
+      if (requestId !== requestCounter.current) return;
+      if (page > result.pages) {
+        setPage(result.pages);
+        return;
+      }
+      setSessions(result.items);
+      setTotal(result.count);
+      setSummary(totals);
       setCourses(eligible);
+      setClassOptions(availableClasses);
     } catch (cause) {
-      setError(readableError(cause));
+      if (requestId === requestCounter.current) setError(readableError(cause));
     } finally {
-      setLoading(false);
+      if (requestId === requestCounter.current) setLoading(false);
     }
-  }, [user]);
+  }, [
+    userId, userRole, isDemo, page, debouncedSearch,
+    statusFilter, classFilter, fromDate, toDate,
+  ]);
 
   useEffect(() => {
     if (!authLoading) queueMicrotask(() => void refresh());
   }, [authLoading, refresh]);
 
-  // Quand on revient au calendrier sans avoir clique sur « Quitter le cours »,
-  // la bonne salle s'ouvre automatiquement, apres verification de l'horaire
-  // et des droits visibles. Le serveur reverifie ensuite tous les acces.
+  // A resumed call can be absent from the current paginated/filtered page.
+  // Fetch its metadata by ID under RLS and let the Edge Function verify access.
   useEffect(() => {
-    if (authLoading || loading || autoResumeStarted.current || !user) return;
-    if (user.isDemo || (user.role !== "teacher" && user.role !== "student")) return;
+    if (authLoading || autoResumeStarted.current || !userId ||
+        isDemo || (userRole !== "teacher" && userRole !== "student")) return;
     const pending = getSavedSession();
     if (!pending) return;
-    if (pending.userId !== user.id || pending.role !== user.role) {
+    if (pending.userId !== userId || pending.role !== userRole) {
       clearSavedSession();
       return;
     }
-
-    const match = sessions.find((item) => item.id === pending.sessionId);
-    if (!match || !isSessionJoinable(match, user.role, user.id, Date.now())) {
-      clearSavedSession();
-      return;
+    let cancelled = false;
+    async function resumeIfAllowed() {
+      try {
+        const session = await getLiveSessionById(pending!.sessionId);
+        if (cancelled) return;
+        if (!session || !isSessionJoinable(session, userRole as "teacher" | "student", userId as string, Date.now())) {
+          clearSavedSession();
+          return;
+        }
+        autoResumeStarted.current = true;
+        clearSavedSession();
+        navigate(`/app/${userRole}/live/${session.id}`, {
+          replace: true,
+          state: { schoolnetLiveResume: true },
+        });
+      } catch {
+        // No unauthorized or stale session is automatically rejoined.
+        if (!cancelled) clearSavedSession();
+      }
     }
-
-    autoResumeStarted.current = true;
-    // Retire la demande avant navigation pour eviter une boucle si l'appel echoue.
-    // LiveRoomPage recevra l'indicateur via React Router et redemarrera mute.
-    clearSavedSession();
-    navigate(`/app/${user.role}/live/${match.id}`, {
-      replace: true,
-      state: { schoolnetLiveResume: true },
-    });
-  }, [authLoading, loading, navigate, sessions, user]);
+    void resumeIfAllowed();
+    return () => { cancelled = true; };
+  }, [authLoading, isDemo, navigate, userId, userRole]);
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === courseId),
@@ -239,12 +296,20 @@ export default function LiveSessionsPage() {
   }
 
   const now = Date.now();
-  const liveCount = sessions.filter(
-    (item) => item.status === "live" && Date.parse(item.ends_at) > now
-  ).length;
-  const scheduledCount = sessions.filter(
-    (item) => item.status === "scheduled" && Date.parse(item.ends_at) > now
-  ).length;
+  const liveCount = summary.live;
+  const scheduledCount = summary.scheduled;
+  const pages = Math.max(1, Math.ceil(total / LIVE_SESSIONS_PAGE_SIZE));
+  const filtered = Boolean(search || classFilter || fromDate || toDate || statusFilter !== "all");
+
+  function clearFilters() {
+    setSearch("");
+    setDebouncedSearch("");
+    setStatusFilter("all");
+    setClassFilter("");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
+  }
 
   return (
     <div className="space-y-5 pb-8">
@@ -333,18 +398,75 @@ export default function LiveSessionsPage() {
         <h2 className="text-lg font-bold text-gray-900">
           {isAdmin ? "Supervision des séances vidéo" : isTeacher ? "Mes séances vidéo" : "Mes cours vidéo"}
         </h2>
+        <div className="sn-card space-y-3 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-gray-900">Rechercher et filtrer les séances</h3>
+            <button type="button" onClick={clearFilters} disabled={!filtered}
+              className="text-xs font-semibold text-blue-700 disabled:text-gray-400">
+              Effacer les filtres
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-xs font-medium text-gray-600">Recherche par titre</span>
+              <input type="search" placeholder="Ex. Nombres décimaux"
+                value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-600">Statut</span>
+              <select value={statusFilter}
+                onChange={(event) => { setStatusFilter(event.target.value as LiveStatus | "all"); setPage(1); }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
+                <option value="all">Tous les statuts</option>
+                <option value="scheduled">Programmées</option>
+                <option value="live">En direct</option>
+                <option value="completed">Terminées</option>
+                <option value="cancelled">Annulées</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-600">Classe</span>
+              <select value={classFilter}
+                onChange={(event) => { setClassFilter(event.target.value); setPage(1); }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
+                <option value="">Toutes les classes</option>
+                {classOptions.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-600">Du</span>
+              <input type="date" value={fromDate} max={toDate || undefined}
+                onChange={(event) => { setFromDate(event.target.value); setPage(1); }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-600">Au</span>
+              <input type="date" value={toDate} min={fromDate || undefined}
+                onChange={(event) => { setToDate(event.target.value); setPage(1); }}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm" />
+            </label>
+          </div>
+          <p className="text-xs text-gray-500">
+            La recherche et la pagination sont effectuées sur Supabase, selon vos droits d'accès.
+          </p>
+        </div>
         {loading ? (
           <div className="sn-card p-8 text-center text-sm text-gray-500">Chargement du calendrier...</div>
         ) : sessions.length === 0 ? (
           <div className="sn-card p-8 text-center">
             <div className="text-3xl">&#128249;</div>
-            <p className="mt-2 font-semibold">Aucune séance disponible</p>
+            <p className="mt-2 font-semibold">{filtered ? "Aucun résultat pour ces filtres" : "Aucune séance disponible"}</p>
             <p className="mt-1 text-sm text-gray-500">
-              {isAdmin
-                ? "Aucune séance vidéo n'a encore été programmée sur SCHOOLNET."
-                : isTeacher
-                  ? "Programmez votre première séance ci-dessus."
-                  : "Vos enseignants n'ont pas encore programmé de cours."}
+              {filtered
+                ? "Modifiez vos critères de recherche ou effacez les filtres."
+                : isAdmin
+                  ? "Aucune séance vidéo n'a encore été programmée sur SCHOOLNET."
+                  : isTeacher
+                    ? "Programmez votre première séance ci-dessus."
+                    : "Vos enseignants n'ont pas encore programmé de cours."}
             </p>
           </div>
         ) : (
@@ -371,14 +493,20 @@ export default function LiveSessionsPage() {
                   <p className="text-sm text-gray-600">&#128197; {showDate(item.starts_at)} - {showDate(item.ends_at)}</p>
                   <div className="flex flex-wrap gap-2">
                     {!isAdmin && (
-                      <button
-                        type="button"
-                        className="sn-btn-primary"
-                        disabled={!canJoin}
-                        onClick={() => openSession(item.id)}
-                      >
-                        {isTeacher ? "Démarrer / rejoindre" : "Rejoindre le cours"}
-                      </button>
+                      canJoin ? (
+                        <button type="button" className="sn-btn-primary"
+                          onClick={() => openSession(item.id)}>
+                          {isTeacher ? "Démarrer / rejoindre" : "Rejoindre le cours"}
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600">
+                          {displayStatus === "cancelled"
+                            ? "Séance annulée"
+                            : displayStatus === "completed" || isPast
+                              ? "Séance terminée"
+                              : "Pas encore accessible"}
+                        </span>
+                      )
                     )}
                     {(isAdmin || (isTeacher && item.teacher_id === user?.id)) &&
                       item.status === "scheduled" &&
@@ -396,6 +524,30 @@ export default function LiveSessionsPage() {
                 </article>
               );
             })}
+          </div>
+        )}
+        {!loading && total > 0 && (
+          <div className="sn-card flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-xs text-gray-600">
+              {((page - 1) * LIVE_SESSIONS_PAGE_SIZE) + 1}
+              {" à "}
+              {Math.min(page * LIVE_SESSIONS_PAGE_SIZE, total)}
+              {" sur "}
+              {total} séance{total > 1 ? "s" : ""}
+            </p>
+            <nav className="flex items-center gap-2" aria-label="Pagination des séances">
+              <button type="button" className="sn-btn-ghost"
+                disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+                Précédent
+              </button>
+              <span className="whitespace-nowrap text-sm font-medium text-gray-700">
+                Page {page} / {pages}
+              </span>
+              <button type="button" className="sn-btn-ghost"
+                disabled={page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))}>
+                Suivant
+              </button>
+            </nav>
           </div>
         )}
       </section>
