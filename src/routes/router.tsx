@@ -367,6 +367,7 @@ export const router = createBrowserRouter([
               { path: "admin/dashboard", element: <AdminDashboard /> },
               { path: "admin/users", element: <AdminUsers /> },
               { path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/live", element: <LiveSessionsPage />,},
               { path: "admin/enrollments", element: <AdminEnrollments />,},
               { path: "admin/enrollment-requests", element: <AdminEnrollmentRequests /> },
               { path: "admin/attendance", element: <AdminAttendance />, },

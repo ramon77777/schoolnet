@@ -42,6 +42,7 @@ export default function LiveSessionsPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isTeacher = user?.role === "teacher";
+  const isAdmin = user?.role === "admin";
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [courses, setCourses] = useState<LiveCourse[]>([]);
   const [courseId, setCourseId] = useState("");
@@ -56,7 +57,11 @@ export default function LiveSessionsPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!user || user.isDemo || (user.role !== "teacher" && user.role !== "student")) {
+    if (
+      !user ||
+      user.isDemo ||
+      !["teacher", "student", "admin"].includes(user.role)
+    ) {
       setSessions([]);
       setCourses([]);
       setLoading(false);
@@ -140,9 +145,11 @@ export default function LiveSessionsPage() {
         <div className="text-xs font-bold uppercase tracking-[0.18em] text-blue-100">SCHOOLNET LIVE</div>
         <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">Cours en direct</h1>
         <p className="mt-2 max-w-2xl text-sm text-blue-50">
-          {isTeacher
-            ? "Programmez vos cours video et accueillez vos apprenants dans une salle securisee."
-            : "Consultez votre programme et rejoignez les cours ouverts par vos enseignants."}
+          {isAdmin
+            ? "Supervisez les cours vidéo, consultez les séances programmées et suivez leur déroulement."
+            : isTeacher
+              ? "Programmez vos cours vidéo et accueillez vos apprenants dans une salle sécurisée."
+              : "Consultez votre programme et rejoignez les cours ouverts par vos enseignants."}
         </p>
       </section>
 
@@ -197,22 +204,42 @@ export default function LiveSessionsPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-bold text-gray-900">{isTeacher ? "Mes seances video" : "Mes cours video"}</h2>
+        <h2 className="text-lg font-bold text-gray-900">
+          {isAdmin
+            ? "Supervision des séances vidéo"
+            : isTeacher
+              ? "Mes séances vidéo"
+              : "Mes cours vidéo"}
+        </h2>
         {loading ? (
           <div className="sn-card p-8 text-center text-sm text-gray-500">Chargement du calendrier...</div>
         ) : sessions.length === 0 ? (
           <div className="sn-card p-8 text-center">
             <div className="text-3xl">&#128249;</div>
             <p className="mt-2 font-semibold">Aucune seance disponible</p>
-            <p className="mt-1 text-sm text-gray-500">{isTeacher ? "Programmez votre premiere seance ci-dessus." : "Vos enseignants n'ont pas encore programme de cours."}</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {isAdmin
+                ? "Aucune séance vidéo n'a encore été programmée sur SCHOOLNET."
+                : isTeacher
+                  ? "Programmez votre première séance ci-dessus."
+                  : "Vos enseignants n'ont pas encore programmé de cours."}
+            </p>
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {sessions.map((item) => {
               const openTime = Date.parse(item.starts_at) - 15 * 60000;
               const endTime = Date.parse(item.ends_at);
-              const canJoin = !user?.isDemo && now >= openTime && now < endTime &&
-                (isTeacher ? item.teacher_id === user?.id && (item.status === "scheduled" || item.status === "live") : item.status === "live");
+              const canJoin =
+                !user?.isDemo &&
+                now >= openTime &&
+                now < endTime &&
+                (
+                  isTeacher
+                    ? item.teacher_id === user?.id &&
+                      (item.status === "scheduled" || item.status === "live")
+                    : user?.role === "student" && item.status === "live"
+                );
               const isPast = now >= endTime;
               const displayStatus: LiveStatus = isPast && item.status === "live" ? "completed" : item.status;
               return (
@@ -224,14 +251,34 @@ export default function LiveSessionsPage() {
                   {item.description && <p className="text-sm text-gray-600">{item.description}</p>}
                   <p className="text-sm text-gray-600">&#128197; {showDate(item.starts_at)} - {showDate(item.ends_at)}</p>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" className="sn-btn-primary" disabled={!canJoin} onClick={() => navigate(`/app/${isTeacher ? "teacher" : "student"}/live/${item.id}`)}>
-                      {isTeacher ? "Demarrer / rejoindre" : "Rejoindre le cours"}
-                    </button>
-                    {isTeacher && item.teacher_id === user?.id && item.status === "scheduled" && !isPast && (
-                      <button type="button" className="sn-btn-ghost" disabled={busyId === item.id} onClick={() => void cancelSession(item)}>
-                        {busyId === item.id ? "Annulation..." : "Annuler"}
+                    {!isAdmin && (
+                      <button
+                        type="button"
+                        className="sn-btn-primary"
+                        disabled={!canJoin}
+                        onClick={() =>
+                          navigate(
+                            `/app/${isTeacher ? "teacher" : "student"}/live/${item.id}`
+                          )
+                        }
+                      >
+                        {isTeacher ? "Démarrer / rejoindre" : "Rejoindre le cours"}
                       </button>
                     )}
+
+                    {(isAdmin ||
+                      (isTeacher && item.teacher_id === user?.id)) &&
+                      item.status === "scheduled" &&
+                      !isPast && (
+                        <button
+                          type="button"
+                          className="sn-btn-ghost"
+                          disabled={busyId !== null}
+                          onClick={() => void cancelSession(item)}
+                        >
+                          {busyId === item.id ? "Annulation..." : "Annuler la séance"}
+                        </button>
+                      )}
                   </div>
                   {!canJoin && !isPast && item.status === "scheduled" && (
                     <p className="text-xs text-gray-500">{isTeacher ? "Disponible 15 minutes avant le debut." : "En attente du demarrage par l'enseignant."}</p>
