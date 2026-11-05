@@ -216,6 +216,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/student/live"
+            >
+              &#127909; Cours en direct
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/student/quiz"
             >
               🧪 Quiz
@@ -405,6 +412,13 @@ export default function DashboardLayout() {
               to="/app/teacher/courses"
             >
               📚 Mes cours
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/live"
+            >
+              &#127909; Cours en direct
             </NavLink>
 
             <NavLink
