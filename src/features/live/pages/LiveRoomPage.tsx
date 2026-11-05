@@ -139,6 +139,16 @@ export default function LiveRoomPage() {
 
         const frame = daily.createFrame(container.current, {
           showLeaveButton: true,
+
+          // Bouton plein écran Daily
+          showFullscreenButton: true,
+
+          // Mise en avant automatique de l'orateur
+          activeSpeakerMode: true,
+
+          // Affichage des autres participants
+          showParticipantsBar: true,
+
           iframeStyle: {
             width: "100%",
             height: "100%",
@@ -388,7 +398,7 @@ export default function LiveRoomPage() {
 
         <div
           ref={container}
-          className="relative h-[70vh] min-h-[420px] w-full"
+          className="relative h-[78dvh] min-h-[420px] w-full lg:h-[84dvh]"
         />
       </div>
 
