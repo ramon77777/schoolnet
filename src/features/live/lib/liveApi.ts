@@ -84,7 +84,7 @@ export async function listLiveSessionsPage(
   const text = (filters.search ?? "").trim().slice(0, 80);
   if (text) {
     // Treat SQL LIKE wildcards as literal characters.
-    const literal = text.replace(/[\\%_]/g, (char) => "\\\\" + char);
+    const literal = text.replace(/[\\%_]/g, (char) => "\\" + char);
     query = query.ilike("title", `%${literal}%`);
   }
 
@@ -94,13 +94,13 @@ export async function listLiveSessionsPage(
   if (filters.classId) {
     query = query.eq("class_id", filters.classId);
   }
-  if (filters.fromDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(filters.fromDate)) {
+  if (filters.fromDate && /^\d{4}-\d{2}-\d{2}$/.test(filters.fromDate)) {
     query = query.gte(
       "starts_at",
       new Date(`${filters.fromDate}T00:00:00`).toISOString()
     );
   }
-  if (filters.toDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(filters.toDate)) {
+  if (filters.toDate && /^\d{4}-\d{2}-\d{2}$/.test(filters.toDate)) {
     query = query.lte(
       "starts_at",
       new Date(`${filters.toDate}T23:59:59.999`).toISOString()
