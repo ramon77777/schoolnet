@@ -19,6 +19,7 @@ import { useAuth, type UserRole } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { getDefaultPathByRole } from "@/lib/auth";
 import NotificationBell from "@/features/notifications/components/NotificationBell";
+import usePendingPublicRequestsCount from "@/features/enrollments/hooks/usePendingPublicRequestsCount";
 import { useMessagingNotifications } from "@/features/messaging/hooks/useMessagingNotifications";
 import schoolnetLogo from "@/assets/branding/schoolnet-logo.png";
 import { createPortal } from "react-dom";
@@ -97,6 +98,7 @@ function subtitle(
 }
 
 function isPathAllowedForRole(pathname: string, role: UserRole) {
+  if (pathname === "/app/profile") return true;
   if (role === "admin") return pathname.startsWith("/app/admin");
   if (role === "teacher") return pathname.startsWith("/app/teacher");
   if (role === "parent") return pathname.startsWith("/app/parent");
@@ -114,6 +116,7 @@ export default function DashboardLayout() {
     dismissIncomingAlert,
     requestBrowserNotificationPermission,
   } = useMessagingNotifications();
+  const pendingPublicRequests = usePendingPublicRequestsCount();
 
   const [failedLogoUrl, setFailedLogoUrl] =
     useState<string | null>(null);
@@ -498,6 +501,20 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/dashboard">📊 Tableau de bord</NavLink>
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
+            <NavLink className={navItem} to="/app/admin/enrollment-requests">
+              <span className="flex w-full items-center justify-between gap-3">
+                <span>&#128233; Demandes publiques</span>
+                {pendingPublicRequests > 0 && (
+                  <span
+                    aria-label={"Demandes nouvelles : " + pendingPublicRequests}
+                    className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white"
+                  >
+                    {pendingPublicRequests > 99 ? "99+" : pendingPublicRequests}
+                  </span>
+                )}
+              </span>
+            </NavLink>
+            <NavLink className={navItem} to="/app/admin/enrollments"> 📝 Inscriptions</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
             <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
@@ -523,6 +540,10 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/settings">⚙️ Paramètres</NavLink>
           </>
         )}
+
+        <NavLink className={navItem} to="/app/profile">
+          👤 Mon profil
+        </NavLink>
 
         <div className="h-px bg-gray-100 my-2" />
 
@@ -617,7 +638,7 @@ export default function DashboardLayout() {
         </button>
       </nav>
     );
-  }, [user, onLogout, unreadCount]);
+  }, [user, onLogout, unreadCount, pendingPublicRequests]);
 
   // ✅ Loading UI (évite les redirections pendant loading)
   if (loading) {

@@ -1,0 +1,266 @@
+/* SCHOOLNET | Public admission page, scoped to the signup screen only. */
+.sn-enroll-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #f4f7ff;
+  color: #132340;
+}
+.sn-enroll-page::before,
+.sn-enroll-page::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(48px);
+}
+.sn-enroll-page::before { top: 460px; left: -280px; width: 500px; height: 560px; background: #e4efff; }
+.sn-enroll-page::after { bottom: 20px; right: -260px; width: 560px; height: 500px; background: #ebe8ff; }
+.sn-enroll-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 265px;
+  background: linear-gradient(108deg,#116cde 0%,#303dc9 45%,#8a2be4 100%);
+}
+.sn-enroll-hero::before,
+.sn-enroll-hero::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 45%;
+}
+.sn-enroll-hero::before { width: 520px; height: 270px; left: -220px; bottom: -155px; background: rgba(95,177,255,.31); }
+.sn-enroll-hero::after { width: 430px; height: 340px; right: -120px; top: -210px; background: rgba(230,166,255,.18); transform: rotate(-23deg); }
+.sn-enroll-hero-content {
+  position: relative;
+  max-width: 1240px;
+  margin: 0 auto;
+  min-height: 265px;
+  padding: 34px 26px 94px;
+}
+.sn-enroll-hero-content > h1,
+.sn-enroll-hero-content > p { position: relative; z-index: 2; max-width: 680px; }
+.sn-enroll-hero-content > h1 {
+  margin-top: 15px;
+  font-size: clamp(32px,3.6vw,49px);
+  line-height: 1.1;
+  letter-spacing: -.04em;
+  font-weight: 900;
+  color: #fff;
+  text-wrap: balance;
+}
+.sn-enroll-hero-content > h1::after {
+  content: "";
+  display: block;
+  width: 124px;
+  height: 4px;
+  margin-top: 9px;
+  border-radius: 999px;
+  background: #e1a1ff;
+}
+.sn-enroll-hero-content > .sn-enroll-hero-subtitle {
+  margin-top: 14px;
+  max-width: 560px;
+  color: #ecf3ff;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.sn-enroll-hero-illustration {
+  position: absolute;
+  right: 18px;
+  bottom: 56px;
+  width: min(45%,530px);
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-mask-image: linear-gradient(to right,transparent,#000 12%,#000 93%,transparent);
+  mask-image: linear-gradient(to right,transparent,#000 12%,#000 93%,transparent);
+}
+.sn-enroll-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 328px;
+  align-items: start;
+  gap: 26px;
+  max-width: 1230px;
+  margin: -45px auto 0;
+  padding: 0 22px 68px;
+  z-index: 3;
+}
+.sn-enroll-form-card,
+.sn-enroll-steps,
+.sn-enroll-benefits {
+  background: white;
+  border: 1px solid #e2e9fb;
+  border-radius: 24px;
+  box-shadow: 0 18px 48px -25px rgba(37,62,135,.33), 0 3px 12px rgba(23,47,110,.045);
+}
+.sn-enroll-form-card { min-width: 0; padding: 28px 30px 30px; }
+.sn-enroll-form { display: flex; flex-direction: column; gap: 22px; }
+.sn-enroll-choices { min-width: 0; padding: 0; margin: 0; border: 0; }
+.sn-enroll-section-lead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0;
+  margin-bottom: 15px;
+  color: #101f43;
+  font-weight: 900;
+  font-size: 18px;
+}
+.sn-enroll-section-lead::before {
+  content: "\1F4CB";
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: #eaf1ff;
+  font-size: 18px;
+}
+.sn-enroll-choice-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.sn-enroll-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  min-height: 96px;
+  padding: 16px 42px 16px 65px;
+  border: 1px solid #e0e7f3;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  outline-offset: 3px;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.sn-enroll-option:hover { transform: translateY(-1px); border-color: #7ba6ff; }
+.sn-enroll-option[aria-pressed="true"] { background: #eef5ff; border-color: #4385ff; box-shadow: 0 0 0 2px rgba(68,136,255,.07); }
+.sn-enroll-option:focus-visible { outline: 3px solid #7bb0ff; }
+.sn-enroll-option::before {
+  position: absolute;
+  left: 16px;
+  top: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: #315edb;
+  background: #eef3ff;
+  font-size: 22px;
+}
+.sn-enroll-option-student::before { content: "\1F393"; }
+.sn-enroll-option-parent::before { content: "\1F465"; }
+.sn-enroll-option::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  right: 15px;
+  width: 15px;
+  height: 15px;
+  border: 2px solid #cad3e5;
+  border-radius: 50%;
+  background: white;
+}
+.sn-enroll-option[aria-pressed="true"]::after { border: 4px solid #276af3; }
+.sn-enroll-option-title { display: block; font-size: 13px; font-weight: 850; line-height: 1.45; color: #122145; }
+.sn-enroll-option-description { display: block; font-size: 11px; font-weight: 450; line-height: 1.5; color: #65748f; }
+.sn-enroll-section-heading { position: relative; padding: 20px 0 0 48px; border-top: 1px solid #edf0f8; min-height: 62px; }
+.sn-enroll-section-heading::before {
+  content: "\1F464";
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 37px;
+  height: 37px;
+  left: 0;
+  top: 19px;
+  border-radius: 12px;
+  background: linear-gradient(145deg,#e4edff,#ece6ff);
+  font-size: 17px;
+}
+.sn-enroll-section-heading:nth-of-type(3)::before { content: "\1F46A"; }
+.sn-enroll-section-title { color: #102043; font-size: 18px; font-weight: 900; line-height: 1.4; }
+.sn-enroll-section-description { margin-top: 2px; color: #78849b; font-size: 12px; line-height: 1.65; }
+.sn-enroll-label { display: block; min-width: 0; color: #22324f; font-size: 12px; font-weight: 800; line-height: 1.55; }
+.sn-enroll-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 43px;
+  margin-top: 7px;
+  padding: 10px 13px;
+  border: 1px solid #dce4f2;
+  border-radius: 10px;
+  background: #fcfdff;
+  color: #102343;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0,10,60,.025);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.sn-enroll-input::placeholder { color: #94a0b4; font-weight: 400; }
+.sn-enroll-input:hover { border-color: #b3c9f5; }
+.sn-enroll-input:focus { border-color: #3f7df0; box-shadow: 0 0 0 3px #dceaff; background: white; }
+.sn-enroll-input[type="email"] { text-transform: none; }
+.sn-enroll-input:disabled { opacity: .58; }
+.sn-enroll-two-cols { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
+.sn-enroll-textarea { min-height: 90px; height: auto; resize: vertical; line-height: 1.6; }
+.sn-enroll-label > span { font-weight: 400; }
+.sn-enroll-note { border: 1px solid #dce9ff; border-radius: 12px; background: #ecf3ff; color: #315da3; font-size: 12px; line-height: 1.7; padding: 13px 15px; }
+.sn-enroll-consent { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 12px; line-height: 1.7; color: #4f607a; }
+.sn-enroll-consent input { flex-shrink: 0; accent-color: #2769eb; }
+.sn-enroll-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 18px; border-top: 1px solid #edf0f8; }
+.sn-enroll-cancel,
+.sn-enroll-send { display: inline-flex; min-height: 43px; align-items: center; justify-content: center; padding: 11px 21px; border-radius: 12px; font-size: 12px; font-weight: 800; text-decoration: none; transition: filter .18s ease, background .18s ease; }
+.sn-enroll-cancel { background: #eff2f7; color: #506078; }
+.sn-enroll-cancel:hover { background: #e5eaf2; }
+.sn-enroll-send { border: 0; color: white; background: linear-gradient(115deg,#176df2,#742ceb); box-shadow: 0 7px 15px -7px #769cfa; }
+.sn-enroll-send::before { content: "\27A4"; margin-right: 9px; font-size: 15px; }
+.sn-enroll-send:hover:not(:disabled) { filter: brightness(1.08); }
+.sn-enroll-send:disabled { cursor: not-allowed; opacity: .48; box-shadow: none; }
+.sn-enroll-aside { display: flex; flex-direction: column; gap: 22px; padding-top: 24px; min-width: 0; }
+.sn-enroll-steps { overflow: hidden; }
+.sn-enroll-step-title { padding: 20px 21px; background: linear-gradient(105deg,#ecf2ff,#efe9ff); color: #142247; font-size: 18px; font-weight: 900; }
+.sn-enroll-step-title::before { content: "\1F680"; display: inline-block; margin-right: 11px; }
+.sn-enroll-step-list { counter-reset: stage; display: flex; flex-direction: column; gap: 22px; padding: 23px 20px 20px 57px; }
+.sn-enroll-step-list li { position: relative; counter-increment: stage; color: #63728c; font-size: 12px; line-height: 1.7; }
+.sn-enroll-step-list li::before { content: counter(stage); position: absolute; left: -36px; top: -1px; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(145deg,#2368fa,#8e55f6); color: white; font-weight: 800; box-shadow: 0 4px 7px #ceddff; }
+.sn-enroll-step-list li:not(:last-child)::after { content: ""; position: absolute; left: -24px; top: 29px; height: 45px; border-left: 2px dashed #dfdefa; }
+.sn-enroll-step-list strong { display: block; font-size: 13px; font-weight: 850; color: #245bea; }
+.sn-enroll-step-footer { border-top: 1px solid #eaf0f7; margin: 0 20px 21px; padding: 15px 12px; border-radius: 12px; background: #f4f2ff; color: #52627d; font-size: 12px; text-align: center; }
+.sn-enroll-step-footer a { text-decoration: none; }
+.sn-enroll-benefits { padding: 0 23px 25px; overflow: hidden; background: linear-gradient(180deg,#f5f0ff,white 62%); }
+.sn-enroll-books { display: block; width: 85%; max-width: 235px; height: auto; margin: 8px auto 6px; border-radius: 14px; mix-blend-mode: multiply; }
+.sn-enroll-benefits h2 { color: #132345; font-weight: 900; font-size: 17px; margin: 10px 0 17px; }
+.sn-enroll-benefits ul { display: flex; flex-direction: column; gap: 12px; }
+.sn-enroll-benefits li { display: flex; align-items: flex-start; gap: 10px; color: #52627b; font-size: 12px; line-height: 1.6; }
+.sn-enroll-benefits li::before { content: "\2713"; display: inline-flex; flex-shrink: 0; width: 19px; height: 19px; align-items: center; justify-content: center; border-radius: 50%; color: #2b65ea; background: #e4ecff; font-weight: 900; }
+@media (max-width: 900px) {
+  .sn-enroll-grid { grid-template-columns: minmax(0,1fr); max-width: 750px; }
+  .sn-enroll-aside { padding-top: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: stretch; }
+  .sn-enroll-hero-illustration { display: none; }
+}
+@media (max-width: 650px) {
+  .sn-enroll-hero { min-height: 210px; }
+  .sn-enroll-hero-content { min-height: 210px; padding: 26px 22px 68px; }
+  .sn-enroll-hero-content > h1 { font-size: 29px; }
+  .sn-enroll-hero-content > .sn-enroll-hero-subtitle { font-size: 12px; }
+  .sn-enroll-hero-illustration { display: none; }
+  .sn-enroll-grid { margin-top: -34px; padding: 0 13px 45px; gap: 19px; }
+  .sn-enroll-form-card { padding: 20px 17px; border-radius: 20px; }
+  .sn-enroll-choice-grid { grid-template-columns: 1fr; }
+  .sn-enroll-option { min-height: 79px; }
+  .sn-enroll-two-cols { grid-template-columns: 1fr; }
+  .sn-enroll-aside { display: flex; }
+  .sn-enroll-step-title { font-size: 16px; }
+  .sn-enroll-actions { justify-content: stretch; }
+  .sn-enroll-actions a, .sn-enroll-actions button { flex: 1 1 auto; }
+}

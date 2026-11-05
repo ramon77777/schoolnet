@@ -247,7 +247,7 @@ export default function PublicLayout() {
   const navItems = useMemo(
     () =>
       [...navigation]
-        .filter((item) => item.is_visible)
+        .filter((item) => item.is_visible && item.path !== "/inscription" && item.path !== "/auth/login")
         .sort((a, b) => a.sort_order - b.sort_order),
     [navigation],
   );
@@ -304,10 +304,10 @@ export default function PublicLayout() {
             : "sticky top-0 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl",
         ].join(" ")}
       >
-        <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-6 px-6 py-4 sm:px-8 lg:px-12 xl:px-16">
+        <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-3 px-3 py-3 sm:gap-6 sm:px-8 sm:py-4 lg:px-12 xl:px-16">
           <Link
             to="/"
-            className="flex min-w-0 items-center gap-3"
+            className="flex min-w-0 shrink items-center gap-3"
           >
             <div
               className={[
@@ -320,11 +320,11 @@ export default function PublicLayout() {
               <img
                 src={schoolnetLogo}
                 alt="SchoolNet"
-                className="h-11 w-auto shrink-0 object-contain"
+                className="h-9 w-auto shrink-0 object-contain sm:h-11"
               />
             </div>
 
-            <div className="min-w-0">
+            <div className="hidden min-w-0 sm:block">
               <div
                 className={[
                   "truncate text-xs font-semibold transition",
@@ -362,17 +362,38 @@ export default function PublicLayout() {
             ))}
           </nav>
 
-          <Link
-            to="/auth/login"
+          {/* Two cohesive CTA buttons: a single group on all screen sizes. */}
+          <div
             className={[
-              "shrink-0 rounded-2xl px-5 py-3 text-sm font-black transition",
+              "flex shrink-0 items-center gap-1 rounded-2xl border p-1 shadow-sm sm:gap-2 sm:p-1.5",
               isHomePage
-                ? "border border-white/80 bg-white text-blue-700 shadow-xl hover:-translate-y-0.5 hover:bg-blue-50"
-                : "bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700",
+                ? "border-white/25 bg-white/10 backdrop-blur-lg"
+                : "border-slate-200 bg-slate-100/80",
             ].join(" ")}
           >
-            {loginLabel}
-          </Link>
+            <Link
+              to="/inscription"
+              className={[
+                "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-xl border px-2.5 text-[11px] font-bold transition sm:h-11 sm:px-5 sm:text-sm",
+                isHomePage
+                  ? "border-white/50 bg-white/10 text-white hover:bg-white/20"
+                  : "border-transparent bg-white text-blue-700 shadow-sm hover:bg-blue-50",
+              ].join(" ")}
+            >
+              S'inscrire
+            </Link>
+            <Link
+              to="/auth/login"
+              className={[
+                "inline-flex h-10 items-center justify-center whitespace-nowrap rounded-xl px-2.5 text-[11px] font-bold shadow-sm transition sm:h-11 sm:px-5 sm:text-sm",
+                isHomePage
+                  ? "bg-white text-blue-700 hover:bg-blue-50"
+                  : "bg-blue-600 text-white hover:bg-blue-700",
+              ].join(" ")}
+            >
+              {loginLabel}
+            </Link>
+          </div>
         </div>
 
         <div
