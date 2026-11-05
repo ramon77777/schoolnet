@@ -44,6 +44,125 @@ export type DailyAccess = {
   expires_at: string;
 };
 
+export const LIVE_SESSIONS_PAGE_SIZE = 10;
+
+export type LiveSessionsFilters = {
+  page: number;
+  search?: string;
+  status?: LiveStatus | "all";
+  classId?: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+export type LiveSessionsPage = {
+  items: LiveSession[];
+  count: number;
+  pages: number;
+};
+
+export type LiveSessionSummary = {
+  scheduled: number;
+  live: number;
+};
+
+export type LiveClassOption = { id: string; name: string };
+
+const LIVE_SESSION_FIELDS =
+  "id, course_id, class_id, teacher_id, title, description, starts_at, ends_at, status, created_at";
+
+/** Pagination and filters run in PostgREST, under existing RLS rules. */
+export async function listLiveSessionsPage(
+  filters: LiveSessionsFilters
+): Promise<LiveSessionsPage> {
+  const page = Math.max(1, Math.trunc(filters.page || 1));
+  const start = (page - 1) * LIVE_SESSIONS_PAGE_SIZE;
+  let query = supabase
+    .from("live_sessions")
+    .select(LIVE_SESSION_FIELDS, { count: "exact" });
+
+  const text = (filters.search ?? "").trim().slice(0, 80);
+  if (text) {
+    // Treat SQL LIKE wildcards as literal characters.
+    const literal = text.replace(/[\\%_]/g, (char) => "\\\\" + char);
+    query = query.ilike("title", `%${literal}%`);
+  }
+
+  if (filters.status && filters.status !== "all") {
+    query = query.eq("status", filters.status);
+  }
+  if (filters.classId) {
+    query = query.eq("class_id", filters.classId);
+  }
+  if (filters.fromDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(filters.fromDate)) {
+    query = query.gte(
+      "starts_at",
+      new Date(`${filters.fromDate}T00:00:00`).toISOString()
+    );
+  }
+  if (filters.toDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(filters.toDate)) {
+    query = query.lte(
+      "starts_at",
+      new Date(`${filters.toDate}T23:59:59.999`).toISOString()
+    );
+  }
+
+  const { data, error, count } = await query
+    .order("starts_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(start, start + LIVE_SESSIONS_PAGE_SIZE - 1);
+
+  if (error) throw error;
+  const total = count ?? 0;
+  return {
+    items: (data ?? []) as LiveSession[],
+    count: total,
+    pages: Math.max(1, Math.ceil(total / LIVE_SESSIONS_PAGE_SIZE)),
+  };
+}
+
+/** Global counts should not depend on the current page or filters. */
+export async function getLiveSessionSummary(): Promise<LiveSessionSummary> {
+  const now = new Date().toISOString();
+  const [upcoming, running] = await Promise.all([
+    supabase
+      .from("live_sessions")
+      .select("id", { head: true, count: "exact" })
+      .eq("status", "scheduled")
+      .gt("ends_at", now),
+    supabase
+      .from("live_sessions")
+      .select("id", { head: true, count: "exact" })
+      .eq("status", "live")
+      .gt("ends_at", now),
+  ]);
+  if (upcoming.error) throw upcoming.error;
+  if (running.error) throw running.error;
+  return { scheduled: upcoming.count ?? 0, live: running.count ?? 0 };
+}
+
+export async function getLiveSessionById(
+  sessionId: string
+): Promise<LiveSession | null> {
+  const { data, error } = await supabase
+    .from("live_sessions")
+    .select(LIVE_SESSION_FIELDS)
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as LiveSession | null;
+}
+
+/** Class labels are fetched under the current user's existing RLS. */
+export async function listLiveClassOptions(): Promise<LiveClassOption[]> {
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, name")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []) as LiveClassOption[];
+}
+
 export async function listLiveSessions(): Promise<LiveSession[]> {
   const { data, error } = await supabase.from("live_sessions")
     .select("id, course_id, class_id, teacher_id, title, description, starts_at, ends_at, status, created_at")
