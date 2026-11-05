@@ -475,7 +475,9 @@ export default function LiveSessionsPage() {
               const endTime = Date.parse(item.ends_at);
               const isPast = now >= endTime;
               const displayStatus: LiveStatus =
-                isPast && item.status === "live" ? "completed" : item.status;
+                isPast && (item.status === "live" || item.status === "scheduled")
+                  ? "completed"
+                  : item.status;
               const canJoin =
                 !user?.isDemo &&
                 (user?.role === "teacher" || user?.role === "student") &&
