@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -16,6 +16,8 @@ type EnrollmentRequest = {
   review_note: string | null;
   submitted_at: string; reviewed_at: string | null;
 };
+
+const REQUEST_SELECT_FIELDS = 'id, reference, request_type, student_email, student_full_name, student_gender, requested_level, guardian_full_name, guardian_relationship, guardian_phone, guardian_email, message, status, review_note, submitted_at, reviewed_at';
 
 const statusLabels: Record<RequestStatus, string> = {
   new: 'Nouvelle', contacted: 'Famille contactee',
@@ -38,6 +40,17 @@ export default function AdminEnrollmentRequests() {
   const [selected, setSelected] = useState<EnrollmentRequest | null>(null);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestIdFromUrl = searchParams.get('request');
+
+  const closeRequest = useCallback(() => {
+    setSelected(null);
+    if (requestIdFromUrl) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('request');
+      setSearchParams(next, { replace: true });
+    }
+  }, [requestIdFromUrl, searchParams, setSearchParams]);
 
   const load = useCallback(async (silent = false) => {
     if (!user || user.role !== 'admin' || user.isDemo) {
@@ -49,7 +62,7 @@ export default function AdminEnrollmentRequests() {
       setError(null);
       const { data, error: queryError } = await supabase
         .from('public_enrollment_requests')
-        .select('id, reference, request_type, student_email, student_full_name, student_gender, requested_level, guardian_full_name, guardian_relationship, guardian_phone, guardian_email, message, status, review_note, submitted_at, reviewed_at')
+        .select(REQUEST_SELECT_FIELDS)
         .order('submitted_at', { ascending: false }).limit(200);
       if (queryError) throw queryError;
       setRows((data ?? []) as EnrollmentRequest[]);
@@ -59,6 +72,43 @@ export default function AdminEnrollmentRequests() {
   }, [user]);
 
   useEffect(() => { if (!authLoading) void load(); }, [authLoading, load]);
+
+  // Un clic sur une notification ouvre directement le bon dossier.
+  // La recherche individuelle fonctionne meme pour les dossiers hors des 200 plus recents.
+  useEffect(() => {
+    if (!requestIdFromUrl || authLoading || loading || user?.role !== 'admin' || user.isDemo) return;
+    let cancelled = false;
+
+    void (async () => {
+      const existing = rows.find((row) => row.id === requestIdFromUrl);
+      if (existing) {
+        if (!cancelled) {
+          setSelected(existing);
+          setNote(existing.review_note ?? '');
+        }
+        return;
+      }
+
+      const { data, error: lookupError } = await supabase
+        .from('public_enrollment_requests')
+        .select(REQUEST_SELECT_FIELDS)
+        .eq('id', requestIdFromUrl)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (lookupError) {
+        setError('Impossible de retrouver la demande liee a la notification.');
+      } else if (data) {
+        const found = data as EnrollmentRequest;
+        setSelected(found);
+        setNote(found.review_note ?? '');
+      } else {
+        setError('La demande liee a cette notification est introuvable.');
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [requestIdFromUrl, authLoading, loading, rows, user]);
 
   const displayed = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase('fr');
@@ -91,7 +141,7 @@ export default function AdminEnrollmentRequests() {
         { p_request_id: selected.id, p_status: status, p_note: note.trim() || null },
       );
       if (mutationError) throw mutationError;
-      setSelected(null);
+      closeRequest();
       setNote('');
       setSuccess('Demande mise a jour.');
       await load(true);
@@ -167,7 +217,7 @@ export default function AdminEnrollmentRequests() {
           </div>}
       </div>
 
-      {selected && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving) setSelected(null); }}>
+      {selected && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving) closeRequest(); }}>
         <section role="dialog" aria-modal="true" aria-label="Examen de la demande" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
           <div className="flex items-start justify-between gap-4">
             <div><div className="text-xs font-bold tracking-wide text-blue-600">{selected.reference}</div>
@@ -175,7 +225,7 @@ export default function AdminEnrollmentRequests() {
               <h2 className="mt-2 text-2xl font-black">{selected.student_full_name}</h2>
               <p className="mt-2 text-sm text-slate-500">{selected.request_type === 'parent_access' ? 'Enfant a rattacher apres verification' : `${selected.requested_level ?? '--'} - ${selected.student_gender === 'male' ? 'Masculin' : selected.student_gender === 'female' ? 'Feminin' : '--'}`}</p>
             </div>
-            <button onClick={() => setSelected(null)} disabled={saving} aria-label="Fermer" className="rounded-lg bg-slate-100 px-3 py-2">&#10005;</button>
+            <button onClick={closeRequest} disabled={saving} aria-label="Fermer" className="rounded-lg bg-slate-100 px-3 py-2">&#10005;</button>
           </div>
           <div className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-5 text-sm sm:grid-cols-2">
             <div><div className="text-slate-500">Responsable</div><strong>{selected.guardian_full_name}</strong></div>
@@ -195,7 +245,7 @@ export default function AdminEnrollmentRequests() {
               className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
           </label>
           <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
-            <button onClick={() => setSelected(null)} disabled={saving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
+            <button onClick={closeRequest} disabled={saving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
             <button onClick={() => void review('rejected')} disabled={saving} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
             <button onClick={() => void review('contacted')} disabled={saving} className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactee</button>
             <button onClick={() => void review('processed')} disabled={saving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Traitee</button>

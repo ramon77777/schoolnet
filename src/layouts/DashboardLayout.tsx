@@ -19,6 +19,7 @@ import { useAuth, type UserRole } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { getDefaultPathByRole } from "@/lib/auth";
 import NotificationBell from "@/features/notifications/components/NotificationBell";
+import usePendingPublicRequestsCount from "@/features/enrollments/hooks/usePendingPublicRequestsCount";
 import { useMessagingNotifications } from "@/features/messaging/hooks/useMessagingNotifications";
 import schoolnetLogo from "@/assets/branding/schoolnet-logo.png";
 import { createPortal } from "react-dom";
@@ -115,6 +116,7 @@ export default function DashboardLayout() {
     dismissIncomingAlert,
     requestBrowserNotificationPermission,
   } = useMessagingNotifications();
+  const pendingPublicRequests = usePendingPublicRequestsCount();
 
   const [failedLogoUrl, setFailedLogoUrl] =
     useState<string | null>(null);
@@ -499,7 +501,19 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/admin/dashboard">📊 Tableau de bord</NavLink>
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
-            <NavLink className={navItem} to="/app/admin/enrollment-requests">  📩 Demandes publiques </NavLink>
+            <NavLink className={navItem} to="/app/admin/enrollment-requests">
+              <span className="flex w-full items-center justify-between gap-3">
+                <span>&#128233; Demandes publiques</span>
+                {pendingPublicRequests > 0 && (
+                  <span
+                    aria-label={"Demandes nouvelles : " + pendingPublicRequests}
+                    className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white"
+                  >
+                    {pendingPublicRequests > 99 ? "99+" : pendingPublicRequests}
+                  </span>
+                )}
+              </span>
+            </NavLink>
             <NavLink className={navItem} to="/app/admin/enrollments"> 📝 Inscriptions</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
             <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
@@ -624,7 +638,7 @@ export default function DashboardLayout() {
         </button>
       </nav>
     );
-  }, [user, onLogout, unreadCount]);
+  }, [user, onLogout, unreadCount, pendingPublicRequests]);
 
   // ✅ Loading UI (évite les redirections pendant loading)
   if (loading) {
