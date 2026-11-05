@@ -163,6 +163,35 @@ export async function listLiveClassOptions(): Promise<LiveClassOption[]> {
   return (data ?? []) as LiveClassOption[];
 }
 
+/** Classes effectivement affectées à cet enseignant (y compris sans cours actif). */
+export async function listTeacherLiveClassOptions(
+  teacherId: string
+): Promise<LiveClassOption[]> {
+  const { data: assignments, error: assignmentError } = await supabase
+    .from("class_teachers")
+    .select("class_id")
+    .eq("teacher_id", teacherId);
+
+  if (assignmentError) throw assignmentError;
+
+  const assignedIds = [...new Set(
+    ((assignments ?? []) as ClassIdRecord[])
+      .map((item) => item.class_id)
+      .filter(Boolean)
+  )];
+
+  if (assignedIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, name")
+    .in("id", assignedIds)
+    .order("name");
+
+  if (error) throw error;
+  return (data ?? []) as LiveClassOption[];
+}
+
 export async function listLiveSessions(): Promise<LiveSession[]> {
   const { data, error } = await supabase.from("live_sessions")
     .select("id, course_id, class_id, teacher_id, title, description, starts_at, ends_at, status, created_at")
