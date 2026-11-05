@@ -8,8 +8,37 @@ type CallFrame = {
   join: (options: { url: string; token: string }) => Promise<unknown>;
   leave: () => Promise<unknown>;
   destroy: () => Promise<unknown>;
-  on: (event: string, listener: () => void) => unknown;
+  on: (event: string, listener: (details?: unknown) => void) => unknown;
 };
+
+function dailyErrorMessage(details: unknown): string {
+  if (details && typeof details === "object") {
+    const event = details as {
+      errorMsg?: unknown;
+      error?: {
+        localizedMsg?: unknown;
+        type?: unknown;
+      };
+    };
+
+    if (typeof event.errorMsg === "string" && event.errorMsg.trim()) {
+      return event.errorMsg;
+    }
+
+    if (
+      typeof event.error?.localizedMsg === "string" &&
+      event.error.localizedMsg.trim()
+    ) {
+      return event.error.localizedMsg;
+    }
+
+    if (typeof event.error?.type === "string") {
+      return event.error.type;
+    }
+  }
+
+  return "Erreur de connexion à la visioconférence.";
+}
 
 export default function LiveRoomPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -52,10 +81,45 @@ export default function LiveRoomPage() {
         }) as unknown as CallFrame;
         currentFrame = frame;
         frameRef.current = frame;
-        frame.on("left-meeting", () => {
-          if (!cancelled) navigate(listPath, { replace: true });
+        frame.on("joined-meeting", () => {
+          if (cancelled) return;
+
+          setLoading(false);
+          setError(null);
         });
-        await frame.join({ url: access.room_url, token: access.meeting_token });
+
+        frame.on("left-meeting", () => {
+          if (cancelled) return;
+
+          setLoading(false);
+          setError(
+            "La réunion Daily a été quittée ou interrompue. " +
+            "Vous pouvez retourner au calendrier et réessayer."
+          );
+        });
+
+        frame.on("error", (details) => {
+          if (cancelled) return;
+
+          setLoading(false);
+          setError(`Erreur Daily : ${dailyErrorMessage(details)}`);
+        });
+
+        frame.on("load-attempt-failed", (details) => {
+          if (cancelled) return;
+
+          setLoading(false);
+          setError(`Chargement Daily : ${dailyErrorMessage(details)}`);
+        });
+
+        // Afficher l'interface Daily sans attendre la fin de la connexion.
+        if (!cancelled) setLoading(false);
+
+        await frame.join({
+          url: access.room_url,
+          token: access.meeting_token,
+        });
+
         if (!cancelled) setLoading(false);
       } catch (err) {
         if (!cancelled) {

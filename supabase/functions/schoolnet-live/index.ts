@@ -246,7 +246,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
           eject_at_room_exp: true,
           enable_prejoin_ui: true,
           enable_chat: true,
-          max_participants: 60,
         },
       });
       let dailyRoom = created.ok ? created.data : null;
