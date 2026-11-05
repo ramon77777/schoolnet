@@ -7,6 +7,7 @@ import {
   getLiveSessionById,
   getLiveSessionSummary,
   listLiveClassOptions,
+  listTeacherLiveClassOptions,
   LIVE_SESSIONS_PAGE_SIZE,
   listTeacherLiveCourses,
   readableError,
@@ -114,6 +115,7 @@ export default function LiveSessionsPage() {
   const navigate = useNavigate();
   const isTeacher = user?.role === "teacher";
   const isAdmin = user?.role === "admin";
+  const canChooseClass = isAdmin || isTeacher;
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [courses, setCourses] = useState<LiveCourse[]>([]);
   const [courseId, setCourseId] = useState("");
@@ -167,7 +169,10 @@ export default function LiveSessionsPage() {
           page,
           search: debouncedSearch,
           status: statusFilter,
-          classId: classFilter,
+          // Un élève n'envoie jamais de filtre de classe.
+          classId: userRole === "admin" || userRole === "teacher"
+            ? classFilter
+            : undefined,
           fromDate,
           toDate,
         }),
@@ -175,8 +180,14 @@ export default function LiveSessionsPage() {
         userRole === "teacher"
           ? listTeacherLiveCourses(userId)
           : Promise.resolve([] as LiveCourse[]),
-        // Failure to load class labels must not block the calendar.
-        listLiveClassOptions().catch(() => [] as LiveClassOption[]),
+        // Ne pas lister les classes dans l'espace apprenant.
+        // L'enseignant ne reçoit que ses classes affectées.
+        (userRole === "admin"
+          ? listLiveClassOptions()
+          : userRole === "teacher"
+            ? listTeacherLiveClassOptions(userId)
+            : Promise.resolve([] as LiveClassOption[])
+        ).catch(() => [] as LiveClassOption[]),
       ]);
       if (requestId !== requestCounter.current) return;
       if (page > result.pages) {
@@ -299,7 +310,10 @@ export default function LiveSessionsPage() {
   const liveCount = summary.live;
   const scheduledCount = summary.scheduled;
   const pages = Math.max(1, Math.ceil(total / LIVE_SESSIONS_PAGE_SIZE));
-  const filtered = Boolean(search || classFilter || fromDate || toDate || statusFilter !== "all");
+  const filtered = Boolean(
+    search || (canChooseClass && classFilter) || fromDate || toDate ||
+    statusFilter !== "all"
+  );
 
   function clearFilters() {
     setSearch("");
@@ -425,17 +439,19 @@ export default function LiveSessionsPage() {
                 <option value="cancelled">Annulées</option>
               </select>
             </label>
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-gray-600">Classe</span>
-              <select value={classFilter}
-                onChange={(event) => { setClassFilter(event.target.value); setPage(1); }}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
-                <option value="">Toutes les classes</option>
-                {classOptions.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
-              </select>
-            </label>
+            {canChooseClass && (
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-gray-600">Classe</span>
+                <select value={classFilter}
+                  onChange={(event) => { setClassFilter(event.target.value); setPage(1); }}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
+                  <option value="">{isTeacher ? "Mes classes" : "Toutes les classes"}</option>
+                  {classOptions.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="space-y-1">
               <span className="text-xs font-medium text-gray-600">Du</span>
               <input type="date" value={fromDate} max={toDate || undefined}
