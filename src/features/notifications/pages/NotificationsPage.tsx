@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import NotificationPreferencesPanel from "@/features/notifications/components/NotificationPreferencesPanel";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -80,6 +81,8 @@ function endOfDate(value: string) {
 export default function NotificationsPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showPreferences = searchParams.get("tab") === "preferences";
 
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [search, setSearch] = useState("");
@@ -286,7 +289,7 @@ export default function NotificationsPage() {
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-extrabold sm:text-3xl">Toutes mes notifications</h1>
+            <h1 className="text-2xl font-extrabold sm:text-3xl">{showPreferences ? "Mes préférences" : "Toutes mes notifications"}</h1>
             <p className="mt-2 max-w-2xl text-sm text-blue-100">
               Retrouvez vos informations scolaires, cours en direct, bulletins et inscriptions.
             </p>
@@ -298,7 +301,28 @@ export default function NotificationsPage() {
         </div>
       </header>
 
-      {user?.isDemo ? (
+      <nav className="sn-card flex flex-wrap gap-2 p-2" aria-label="Rubriques des notifications">
+        <button
+          type="button"
+          onClick={() => setSearchParams({})}
+          aria-current={!showPreferences ? "page" : undefined}
+          className={"rounded-xl px-4 py-2.5 text-sm font-bold transition " + (!showPreferences ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100")}
+        >
+          Historique
+        </button>
+        <button
+          type="button"
+          onClick={() => setSearchParams({ tab: "preferences" })}
+          aria-current={showPreferences ? "page" : undefined}
+          className={"rounded-xl px-4 py-2.5 text-sm font-bold transition " + (showPreferences ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100")}
+        >
+          Préférences
+        </button>
+      </nav>
+
+      {showPreferences ? (
+        <NotificationPreferencesPanel />
+      ) : user?.isDemo ? (
         <section className="sn-card p-6 text-sm text-amber-800" role="status">
           L'historique réel n'est pas disponible en mode démonstration. Connectez-vous avec un compte SCHOOLNET pour le consulter.
         </section>
