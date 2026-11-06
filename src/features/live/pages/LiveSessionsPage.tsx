@@ -15,6 +15,7 @@ import {
   type LiveCourse,
   type LiveSession,
   type LiveStatus,
+  type LiveStatusFilter,
   type LiveClassOption,
   type LiveSessionSummary,
 } from "../lib/liveApi";
@@ -171,7 +172,7 @@ export default function LiveSessionsPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<LiveStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<LiveStatusFilter>("all");
   const [classFilter, setClassFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -201,7 +202,7 @@ export default function LiveSessionsPage() {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!userId || isDemo || !userRole ||
         !["teacher", "student", "admin"].includes(userRole)) {
       setSessions([]);
@@ -212,7 +213,7 @@ export default function LiveSessionsPage() {
       return;
     }
     const requestId = ++requestCounter.current;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [result, totals, eligible, availableClasses] = await Promise.all([
@@ -263,6 +264,22 @@ export default function LiveSessionsPage() {
   useEffect(() => {
     if (!authLoading) queueMicrotask(() => void refresh());
   }, [authLoading, refresh]);
+
+  // Les catégories basées sur l'heure sont réévaluées côté Supabase.
+  // Le rafraîchissement discret évite des résultats devenus incohérents
+  // lorsqu'un cours se termine pendant que le calendrier reste ouvert.
+  useEffect(() => {
+    if (authLoading || !userId || isDemo) return;
+    const revalidate = () => {
+      if (document.visibilityState === "visible") void refresh(true);
+    };
+    const timer = window.setInterval(revalidate, 60000);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
+  }, [authLoading, isDemo, refresh, userId]);
 
   // A resumed call can be absent from the current paginated/filtered page.
   // Fetch its metadata by ID under RLS and let the Edge Function verify access.
@@ -480,12 +497,13 @@ export default function LiveSessionsPage() {
             <label className="space-y-1">
               <span className="text-xs font-medium text-gray-600">Statut</span>
               <select value={statusFilter}
-                onChange={(event) => { setStatusFilter(event.target.value as LiveStatus | "all"); setPage(1); }}
+                onChange={(event) => { setStatusFilter(event.target.value as LiveStatusFilter); setPage(1); }}
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
                 <option value="all">Tous les statuts</option>
                 <option value="scheduled">Programmées</option>
                 <option value="live">En direct</option>
                 <option value="completed">Terminées</option>
+                <option value="expired">Créneaux expirés</option>
                 <option value="cancelled">Annulées</option>
               </select>
             </label>
