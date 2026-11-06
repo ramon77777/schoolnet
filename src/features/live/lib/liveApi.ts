@@ -2,6 +2,9 @@ import { supabase } from "@/lib/supabaseClient";
 
 export type LiveStatus = "scheduled" | "live" | "completed" | "cancelled";
 
+// Les filtres correspondent aux statuts affichés, et non uniquement au statut brut.
+export type LiveStatusFilter = LiveStatus | "expired" | "all";
+
 export type LiveSession = {
   id: string;
   course_id: string;
@@ -49,7 +52,7 @@ export const LIVE_SESSIONS_PAGE_SIZE = 10;
 export type LiveSessionsFilters = {
   page: number;
   search?: string;
-  status?: LiveStatus | "all";
+  status?: LiveStatusFilter;
   classId?: string;
   fromDate?: string;
   toDate?: string;
@@ -89,7 +92,32 @@ export async function listLiveSessionsPage(
   }
 
   if (filters.status && filters.status !== "all") {
-    query = query.eq("status", filters.status);
+    // Même définition des statuts que celle affichée dans LiveSessionsPage.
+    // Le temps provient de l'instant de la requête, avant pagination.
+    const nowIso = new Date().toISOString();
+
+    switch (filters.status) {
+      case "scheduled":
+        query = query.eq("status", "scheduled").gt("ends_at", nowIso);
+        break;
+      case "live":
+        query = query.eq("status", "live").gt("ends_at", nowIso);
+        break;
+      case "completed":
+        // Inclut les séances clôturées explicitement ET les anciens directs.
+        // Un filtre sur le tableau déjà paginé manquerait des séances.
+        query = query.or(
+          `status.eq.completed,and(status.eq.live,ends_at.lte.${nowIso})`
+        );
+        break;
+      case "expired":
+        // Créneau expiré, mais toujours enregistré comme "scheduled".
+        query = query.eq("status", "scheduled").lte("ends_at", nowIso);
+        break;
+      case "cancelled":
+        query = query.eq("status", "cancelled");
+        break;
+    }
   }
   if (filters.classId) {
     query = query.eq("class_id", filters.classId);
