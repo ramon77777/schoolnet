@@ -37,6 +37,11 @@ create unique index if not exists notifications_schoolnet_live_event_once_idx
   on public.notifications (user_id, event_key)
   where event_key like 'schoolnet_live:%';
 
+-- Accelere le controle des cours imminents sur une base de grande taille.
+create index if not exists live_sessions_reminders_due_idx
+  on public.live_sessions (starts_at)
+  where status = 'scheduled';
+
 create or replace function schoolnet_private.dispatch_live_reminders_15m()
 returns integer
 language plpgsql
