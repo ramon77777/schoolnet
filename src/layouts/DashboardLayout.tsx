@@ -318,6 +318,13 @@ export default function DashboardLayout() {
 
             <NavLink
               className={navItem}
+              to="/app/parent/live"
+            >
+              &#127909; Cours en direct
+            </NavLink>
+
+            <NavLink
+              className={navItem}
               to="/app/parent/deadlines"
             >
               🗓️ Échéances
