@@ -82,6 +82,9 @@ import PublicEnrollmentRequest from "@/features/public/pages/PublicEnrollmentReq
 import MessagingPage from "../features/messages/pages/MessagingPage";
 import ClassFeedPage from "@/features/class-posts/pages/ClassFeedPage";
 import MyProfile from "@/features/profile/pages/MyProfile";
+import LiveSessionsPage from "@/features/live/pages/LiveSessionsPage";
+import ParentLiveSessionsPage from "@/features/live/pages/ParentLiveSessionsPage";
+import LiveRoomPage from "@/features/live/pages/LiveRoomPage";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/features/auth/pages/ResetPasswordPage";
 
@@ -140,6 +143,9 @@ export const router = createBrowserRouter([
                 path: "student/courses",
                 element: <StudentCourses />,
               },
+
+              { path: "student/live", element: <LiveSessionsPage /> },
+              { path: "student/live/:sessionId", element: <LiveRoomPage /> },
 
               {
                 path: "student/courses/:courseId",
@@ -259,6 +265,7 @@ export const router = createBrowserRouter([
               },
 
               { path: "parent/children", element: <ParentChildren /> },
+              { path: "parent/live", element: <ParentLiveSessionsPage /> },
               { path: "parent/deadlines", element: <ParentDeadlines /> },
               { path: "parent/results", element: <ParentResults /> },
               { path: "parent/results/:id", element: <ParentResultsDetail /> },
@@ -296,6 +303,8 @@ export const router = createBrowserRouter([
               },
 
               { path: "teacher/courses", element: <TeacherCourses /> },
+              { path: "teacher/live", element: <LiveSessionsPage /> },
+              { path: "teacher/live/:sessionId", element: <LiveRoomPage /> },
               {
                 path: "teacher/courses/:courseId",
                 element: <TeacherCourseDetail />,
@@ -360,6 +369,7 @@ export const router = createBrowserRouter([
               { path: "admin/dashboard", element: <AdminDashboard /> },
               { path: "admin/users", element: <AdminUsers /> },
               { path: "admin/classes", element: <AdminClasses /> },
+              { path: "admin/live", element: <LiveSessionsPage />,},
               { path: "admin/enrollments", element: <AdminEnrollments />,},
               { path: "admin/enrollment-requests", element: <AdminEnrollmentRequests /> },
               { path: "admin/attendance", element: <AdminAttendance />, },

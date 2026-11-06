@@ -251,6 +251,17 @@ export default function NotificationBell() {
 
       setOpen(false);
 
+      // Les notifications SCHOOLNET LIVE des parents pointaient auparavant
+      // vers l'emploi du temps : ouvrir désormais leur suivi des séances,
+      // y compris pour les notifications déjà enregistrées.
+      if (
+        user?.role === "parent" &&
+        notification.event_key?.startsWith("schoolnet_live:")
+      ) {
+        navigate("/app/parent/live");
+        return;
+      }
+
       if (
         notification.action_url &&
         notification.action_url.startsWith("/app/")
@@ -258,7 +269,7 @@ export default function NotificationBell() {
         navigate(notification.action_url);
       }
     },
-    [markAsRead, navigate]
+    [markAsRead, navigate, user?.role]
   );
 
   if (!user || user.isDemo) {

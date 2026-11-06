@@ -25,3 +25,11 @@ entrypoint = "./functions/admin-reset-user-password/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/public-enrollment-request/index.ts"
+
+
+[functions.schoolnet-live]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/schoolnet-live/index.ts"
+
+
