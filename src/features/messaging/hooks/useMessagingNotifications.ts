@@ -7,6 +7,11 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  loadNotificationPreferences,
+  NOTIFICATION_PREFERENCES_CHANGED,
+} from "@/features/notifications/lib/notificationPreferences";
 
 type ConversationSummaryRow = {
   conversation_id: string;
@@ -58,6 +63,52 @@ function messagePreview(body: string) {
 
 export function useMessagingNotifications() {
   const { user } = useAuth();
+  const realUserId = user && !user.isDemo ? user.id : null;
+
+  // Conserver la compatibilité avec les comptes sans ligne de préférence.
+  const preferenceRef = useRef({
+    messageBanner: DEFAULT_NOTIFICATION_PREFERENCES.messageBanner,
+    messageBrowser: DEFAULT_NOTIFICATION_PREFERENCES.messageBrowser,
+  });
+
+  useEffect(() => {
+    let active = true;
+    preferenceRef.current = {
+      messageBanner: DEFAULT_NOTIFICATION_PREFERENCES.messageBanner,
+      messageBrowser: DEFAULT_NOTIFICATION_PREFERENCES.messageBrowser,
+    };
+
+    if (!realUserId) return;
+
+    const refresh = async () => {
+      try {
+        const values = await loadNotificationPreferences(realUserId);
+        if (!active) return;
+        preferenceRef.current = {
+          messageBanner: values.messageBanner,
+          messageBrowser: values.messageBrowser,
+        };
+        if (!values.messageBanner) setIncomingAlert(null);
+      } catch (error) {
+        // Avant l'application de la migration, garder le comportement historique.
+        console.warn("[MessagingNotifications] Préférences non disponibles :", error);
+      }
+    };
+
+    const onPreferencesChanged = () => { void refresh(); };
+    const onVisibilityChanged = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    void refresh();
+    window.addEventListener(NOTIFICATION_PREFERENCES_CHANGED, onPreferencesChanged);
+    document.addEventListener("visibilitychange", onVisibilityChanged);
+
+    return () => {
+      active = false;
+      window.removeEventListener(NOTIFICATION_PREFERENCES_CHANGED, onPreferencesChanged);
+      document.removeEventListener("visibilitychange", onVisibilityChanged);
+    };
+  }, [realUserId]);
 
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -148,7 +199,7 @@ export function useMessagingNotifications() {
         return;
       }
 
-      if (Notification.permission !== "granted") {
+      if (Notification.permission !== "granted" || !preferenceRef.current.messageBrowser) {
         return;
       }
 
@@ -235,7 +286,7 @@ export function useMessagingNotifications() {
             candidate.last_message_body?.trim() ||
             "Vous avez reçu un nouveau message.";
 
-            setIncomingAlert({
+            if (preferenceRef.current.messageBanner) setIncomingAlert({
             messageId: candidate.last_message_id,
             conversationId:
                 candidate.conversation_id,
@@ -330,7 +381,7 @@ export function useMessagingNotifications() {
             body: message.body,
           };
 
-          setIncomingAlert(alert);
+          if (preferenceRef.current.messageBanner) setIncomingAlert(alert);
 
           /*
            * Notification système surtout utile
