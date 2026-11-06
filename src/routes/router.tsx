@@ -82,6 +82,7 @@ import PublicEnrollmentRequest from "@/features/public/pages/PublicEnrollmentReq
 import MessagingPage from "../features/messages/pages/MessagingPage";
 import ClassFeedPage from "@/features/class-posts/pages/ClassFeedPage";
 import MyProfile from "@/features/profile/pages/MyProfile";
+import NotificationsPage from "@/features/notifications/pages/NotificationsPage";
 import LiveSessionsPage from "@/features/live/pages/LiveSessionsPage";
 import ParentLiveSessionsPage from "@/features/live/pages/ParentLiveSessionsPage";
 import LiveRoomPage from "@/features/live/pages/LiveRoomPage";
@@ -125,6 +126,7 @@ export const router = createBrowserRouter([
           { path: "forbidden", element: <div className="sn-card p-6">⛔ Accès interdit</div> },
 
           { path: "profile", element: <MyProfile /> },
+          { path: "notifications", element: <NotificationsPage /> },
 
           {
             element: <RoleGate allowed={["student"]} />,
