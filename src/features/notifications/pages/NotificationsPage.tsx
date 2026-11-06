@@ -216,9 +216,11 @@ export default function NotificationsPage() {
     if (notification.is_read) return true;
     setWorkingId(notification.id);
     try {
+      // La base renseigne read_at via trg_sync_notification_read_at.
+      // Les utilisateurs ne peuvent modifier directement que is_read.
       const { error: updateError } = await supabase
         .from("notifications")
-        .update({ is_read: true, read_at: new Date().toISOString() })
+        .update({ is_read: true })
         .eq("id", notification.id)
         .eq("user_id", user.id)
         .eq("is_read", false);
@@ -248,7 +250,7 @@ export default function NotificationsPage() {
     try {
       const { error: updateError } = await supabase
         .from("notifications")
-        .update({ is_read: true, read_at: new Date().toISOString() })
+        .update({ is_read: true })
         .eq("user_id", user.id)
         .eq("is_read", false);
 
