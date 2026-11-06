@@ -98,7 +98,7 @@ function subtitle(
 }
 
 function isPathAllowedForRole(pathname: string, role: UserRole) {
-  if (pathname === "/app/profile") return true;
+  if (pathname === "/app/profile" || pathname === "/app/notifications") return true;
   if (role === "admin") return pathname.startsWith("/app/admin");
   if (role === "teacher") return pathname.startsWith("/app/teacher");
   if (role === "parent") return pathname.startsWith("/app/parent");
