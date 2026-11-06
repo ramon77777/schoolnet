@@ -9,6 +9,7 @@ import {
   type LiveSession,
   type LiveSessionSummary,
   type LiveStatus,
+  type LiveStatusFilter,
 } from "../lib/liveApi";
 import {
   listParentLiveChildren,
@@ -22,30 +23,33 @@ function formatLiveDate(value: string): string {
   }).format(new Date(value));
 }
 
-function visibleStatus(session: LiveSession, now: number): LiveStatus {
-  if (
-    (session.status === "scheduled" || session.status === "live") &&
-    Date.parse(session.ends_at) <= now
-  ) {
-    return "completed";
+type VisibleParentStatus = LiveStatus | "expired";
+
+function visibleStatus(session: LiveSession, now: number): VisibleParentStatus {
+  const endTime = Date.parse(session.ends_at);
+  if (Number.isFinite(endTime) && endTime <= now) {
+    if (session.status === "scheduled") return "expired";
+    if (session.status === "live") return "completed";
   }
   return session.status;
 }
 
-function statusLabel(status: LiveStatus): string {
+function statusLabel(status: VisibleParentStatus): string {
   switch (status) {
     case "scheduled": return "Programmée";
     case "live": return "En direct";
     case "completed": return "Terminée";
+    case "expired": return "Créneau expiré";
     default: return "Annulée";
   }
 }
 
-function statusClass(status: LiveStatus): string {
+function statusClass(status: VisibleParentStatus): string {
   switch (status) {
     case "live": return "border-emerald-200 bg-emerald-50 text-emerald-700";
     case "scheduled": return "border-blue-200 bg-blue-50 text-blue-700";
     case "cancelled": return "border-gray-200 bg-gray-100 text-gray-600";
+    case "expired": return "border-gray-200 bg-gray-100 text-gray-600";
     default: return "border-violet-200 bg-violet-50 text-violet-700";
   }
 }
@@ -65,7 +69,7 @@ export default function ParentLiveSessionsPage() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<LiveStatus | "all">("all");
+  const [status, setStatus] = useState<LiveStatusFilter>("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -316,13 +320,14 @@ export default function ParentLiveSessionsPage() {
                       <span className="text-xs font-medium text-gray-600">Statut</span>
                       <select
                         value={status}
-                        onChange={(event) => { setStatus(event.target.value as LiveStatus | "all"); setPage(1); }}
+                        onChange={(event) => { setStatus(event.target.value as LiveStatusFilter); setPage(1); }}
                         className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
                       >
                         <option value="all">Tous les statuts</option>
                         <option value="scheduled">Programmées</option>
                         <option value="live">En direct</option>
                         <option value="completed">Terminées</option>
+                        <option value="expired">Créneaux expirés</option>
                         <option value="cancelled">Annulées</option>
                       </select>
                     </label>
@@ -406,7 +411,9 @@ export default function ParentLiveSessionsPage() {
                                 ? "Séance à venir"
                                 : viewStatus === "cancelled"
                                   ? "Séance annulée"
-                                  : "Séance terminée"}
+                                  : viewStatus === "expired"
+                                    ? "Créneau expiré"
+                                    : "Séance terminée"}
                           </p>
                         </article>
                       );
