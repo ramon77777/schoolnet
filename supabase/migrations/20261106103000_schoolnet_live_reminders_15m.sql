@@ -131,7 +131,7 @@ begin
     case
       when r.audience = 'parent'
         then 'Rappel : cours en direct de votre enfant'
-      else 'Rappel : votre cours en direct commence bientot'
+      else 'Rappel : votre cours en direct commence bientôt'
     end,
     case
       when r.audience = 'parent' then format(
@@ -139,7 +139,7 @@ begin
         d.title,
         to_char(
           d.starts_at at time zone 'Africa/Abidjan',
-          'DD/MM/YYYY "a" HH24:MI'
+          'DD/MM/YYYY "à" HH24:MI'
         )
       )
       else format(
@@ -147,7 +147,7 @@ begin
         d.title,
         to_char(
           d.starts_at at time zone 'Africa/Abidjan',
-          'DD/MM/YYYY "a" HH24:MI'
+          'DD/MM/YYYY "à" HH24:MI'
         )
       )
     end,
