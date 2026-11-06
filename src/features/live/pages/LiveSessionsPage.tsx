@@ -15,6 +15,7 @@ import {
   type LiveCourse,
   type LiveSession,
   type LiveStatus,
+  type LiveStatusFilter,
   type LiveClassOption,
   type LiveSessionSummary,
 } from "../lib/liveApi";
@@ -110,6 +111,43 @@ function isSessionJoinable(
   return session.status === "live";
 }
 
+// Nouveau : libellé adapté à l'état réel de la séance.
+function getJoinButtonLabel(
+  session: LiveSession,
+  isPast: boolean,
+  canJoin: boolean,
+  isTeacher: boolean
+): string {
+  if (session.status === "cancelled") {
+    return "Séance annulée";
+  }
+
+  if (
+    session.status === "completed" ||
+    (session.status === "live" && isPast)
+  ) {
+    return "Séance terminée";
+  }
+
+  if (isPast) {
+    return "Créneau expiré";
+  }
+
+  if (canJoin) {
+    return isTeacher
+      ? "Démarrer / rejoindre"
+      : "Rejoindre le cours";
+  }
+
+  if (session.status === "scheduled") {
+    return isTeacher
+      ? "Disponible prochainement"
+      : "En attente du démarrage";
+  }
+
+  return "Accès indisponible";
+}
+
 export default function LiveSessionsPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -134,23 +172,37 @@ export default function LiveSessionsPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<LiveStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<LiveStatusFilter>("all");
   const [classFilter, setClassFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [classOptions, setClassOptions] = useState<LiveClassOption[]>([]);
   const [summary, setSummary] = useState<LiveSessionSummary>({ scheduled: 0, live: 0 });
+  // Temps local réactif pour les statuts et boutons des séances.
+  const [now, setNow] = useState(() => Date.now());
 
   const userId = user?.id;
   const userRole = user?.role;
   const isDemo = Boolean(user?.isDemo);
+  
+  // Recalcule les droits visibles et les créneaux toutes les 15 secondes,
+  // y compris lorsque l'utilisateur revient sur un onglet inactif.
+  useEffect(() => {
+    const updateNow = () => setNow(Date.now());
+    const timer = window.setInterval(updateNow, 15000);
+    document.addEventListener("visibilitychange", updateNow);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", updateNow);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!userId || isDemo || !userRole ||
         !["teacher", "student", "admin"].includes(userRole)) {
       setSessions([]);
@@ -161,7 +213,7 @@ export default function LiveSessionsPage() {
       return;
     }
     const requestId = ++requestCounter.current;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [result, totals, eligible, availableClasses] = await Promise.all([
@@ -212,6 +264,22 @@ export default function LiveSessionsPage() {
   useEffect(() => {
     if (!authLoading) queueMicrotask(() => void refresh());
   }, [authLoading, refresh]);
+
+  // Les catégories basées sur l'heure sont réévaluées côté Supabase.
+  // Le rafraîchissement discret évite des résultats devenus incohérents
+  // lorsqu'un cours se termine pendant que le calendrier reste ouvert.
+  useEffect(() => {
+    if (authLoading || !userId || isDemo) return;
+    const revalidate = () => {
+      if (document.visibilityState === "visible") void refresh(true);
+    };
+    const timer = window.setInterval(revalidate, 60000);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
+  }, [authLoading, isDemo, refresh, userId]);
 
   // A resumed call can be absent from the current paginated/filtered page.
   // Fetch its metadata by ID under RLS and let the Edge Function verify access.
@@ -306,7 +374,6 @@ export default function LiveSessionsPage() {
     navigate(`/app/${user.role}/live/${id}`);
   }
 
-  const now = Date.now();
   const liveCount = summary.live;
   const scheduledCount = summary.scheduled;
   const pages = Math.max(1, Math.ceil(total / LIVE_SESSIONS_PAGE_SIZE));
@@ -430,12 +497,13 @@ export default function LiveSessionsPage() {
             <label className="space-y-1">
               <span className="text-xs font-medium text-gray-600">Statut</span>
               <select value={statusFilter}
-                onChange={(event) => { setStatusFilter(event.target.value as LiveStatus | "all"); setPage(1); }}
+                onChange={(event) => { setStatusFilter(event.target.value as LiveStatusFilter); setPage(1); }}
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
                 <option value="all">Tous les statuts</option>
                 <option value="scheduled">Programmées</option>
                 <option value="live">En direct</option>
                 <option value="completed">Terminées</option>
+                <option value="expired">Créneaux expirés</option>
                 <option value="cancelled">Annulées</option>
               </select>
             </label>
@@ -489,42 +557,86 @@ export default function LiveSessionsPage() {
           <div className="grid gap-3 md:grid-cols-2">
             {sessions.map((item) => {
               const endTime = Date.parse(item.ends_at);
-              const isPast = now >= endTime;
+
+              const isPast =
+                Number.isFinite(endTime) &&
+                now >= endTime;
+
+              // Une séance programmée dont l'heure de fin
+              // est passée est affichée comme expirée.
+              const isExpiredScheduled =
+                isPast &&
+                item.status === "scheduled";
+
+              // Une séance "live" dépassant son horaire
+              // est présentée comme terminée.
+              // Cela ne modifie pas le statut en base.
               const displayStatus: LiveStatus =
-                isPast && (item.status === "live" || item.status === "scheduled")
+                isPast && item.status === "live"
                   ? "completed"
                   : item.status;
+
               const canJoin =
                 !user?.isDemo &&
-                (user?.role === "teacher" || user?.role === "student") &&
-                isSessionJoinable(item, user.role, user.id, now);
+                (
+                  user?.role === "teacher" ||
+                  user?.role === "student"
+                ) &&
+                isSessionJoinable(
+                  item,
+                  user.role,
+                  user.id,
+                  now
+                );
+
+              const joinLabel = getJoinButtonLabel(
+                item,
+                isPast,
+                canJoin,
+                isTeacher
+              );
+
+              // Bouton actif : bleu.
+              // Bouton inaccessible : gris et désactivé.
+              const joinButtonClasses = canJoin
+                ? "sn-btn-primary"
+                : "inline-flex cursor-not-allowed items-center justify-center rounded-xl border border-gray-200 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-500";
 
               return (
                 <article key={item.id} className="sn-card space-y-3 p-5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-bold text-gray-900">{item.title}</h3>
-                    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(displayStatus)}`}>
-                      {labelForStatus(displayStatus)}
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                        isExpiredScheduled
+                          ? "border-gray-200 bg-gray-100 text-gray-600"
+                          : statusClasses(displayStatus)
+                      }`}
+                    >
+                      {isExpiredScheduled
+                        ? "Créneau expiré"
+                        : labelForStatus(displayStatus)}
                     </span>
                   </div>
                   {item.description && <p className="text-sm text-gray-600">{item.description}</p>}
                   <p className="text-sm text-gray-600">&#128197; {showDate(item.starts_at)} - {showDate(item.ends_at)}</p>
                   <div className="flex flex-wrap gap-2">
                     {!isAdmin && (
-                      canJoin ? (
-                        <button type="button" className="sn-btn-primary"
-                          onClick={() => openSession(item.id)}>
-                          {isTeacher ? "Démarrer / rejoindre" : "Rejoindre le cours"}
-                        </button>
-                      ) : (
-                        <span className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600">
-                          {displayStatus === "cancelled"
-                            ? "Séance annulée"
-                            : displayStatus === "completed" || isPast
-                              ? "Séance terminée"
-                              : "Pas encore accessible"}
-                        </span>
-                      )
+                      <button
+                        type="button"
+                        className={joinButtonClasses}
+                        disabled={!canJoin}
+                        onClick={() =>
+                          openSession(item.id)
+                        }
+                        title={
+                          canJoin
+                            ? "Accéder à la salle vidéo"
+                            : joinLabel
+                        }
+                      >
+                        {joinLabel}
+                      </button>
                     )}
                     {(isAdmin || (isTeacher && item.teacher_id === user?.id)) &&
                       item.status === "scheduled" &&
