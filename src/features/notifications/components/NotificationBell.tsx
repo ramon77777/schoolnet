@@ -441,6 +441,19 @@ export default function NotificationBell() {
                 </button>
               ))}
           </div>
+
+          <div className="border-t border-slate-100 bg-slate-50/70 p-3">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                navigate("/app/notifications");
+              }}
+              className="w-full rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-center text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-50"
+            >
+              Voir toutes les notifications
+            </button>
+          </div>
         </div>
       )}
     </div>
