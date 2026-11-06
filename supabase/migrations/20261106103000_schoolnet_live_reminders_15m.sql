@@ -5,6 +5,8 @@
 --   l'extension pg_cron activee dans Supabase > Integrations > Cron
 --
 -- A executer une fois dans le projet Supabase souhaite, apres validation.
+-- Le job Cron est INSTALLE INACTIF. L'activation est une etape separee
+-- apres verification/recette sur des comptes de test.
 -- Aucune adresse Daily, aucun token, aucun e-mail ni push n'est genere.
 -- Tache programmee en base : aucune dependance aux visites du site Vercel.
 -- Compatible avec plusieurs executions : idempotence par user_id + event_key.
@@ -183,6 +185,17 @@ select cron.schedule(
   'schoolnet_live_reminders_15m',
   '* * * * *',
   'select schoolnet_private.dispatch_live_reminders_15m();'
+);
+
+-- Meme transaction : le job est desactive AVANT le COMMIT.
+-- Aucune minute de notification ne peut s'executer entre les deux.
+-- L'activation sera volontaire, apres la recette fonctionnelle.
+select cron.alter_job(
+  job_id := (
+    select jobid from cron.job
+    where jobname = 'schoolnet_live_reminders_15m'
+  ),
+  active := false
 );
 
 commit;
