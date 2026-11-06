@@ -67,16 +67,24 @@ export function useMessagingNotifications() {
 
   // Conserver la compatibilité avec les comptes sans ligne de préférence.
   const preferenceRef = useRef({
-    messageBanner: DEFAULT_NOTIFICATION_PREFERENCES.messageBanner,
-    messageBrowser: DEFAULT_NOTIFICATION_PREFERENCES.messageBrowser,
+    messageBanner: false,
+    messageBrowser: false,
   });
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const [incomingAlert, setIncomingAlert] =
+    useState<MessagingIncomingAlert | null>(null);
+
+  const [realtimeConnected, setRealtimeConnected] =
+    useState(false);
+
+  const lastNotifiedMessageIdRef =
+    useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    preferenceRef.current = {
-      messageBanner: DEFAULT_NOTIFICATION_PREFERENCES.messageBanner,
-      messageBrowser: DEFAULT_NOTIFICATION_PREFERENCES.messageBrowser,
-    };
+    preferenceRef.current = { messageBanner: false, messageBrowser: false };
 
     if (!realUserId) return;
 
@@ -91,6 +99,12 @@ export function useMessagingNotifications() {
         if (!values.messageBanner) setIncomingAlert(null);
       } catch (error) {
         // Avant l'application de la migration, garder le comportement historique.
+        if (active) {
+          preferenceRef.current = {
+            messageBanner: DEFAULT_NOTIFICATION_PREFERENCES.messageBanner,
+            messageBrowser: DEFAULT_NOTIFICATION_PREFERENCES.messageBrowser,
+          };
+        }
         console.warn("[MessagingNotifications] Préférences non disponibles :", error);
       }
     };
@@ -110,16 +124,6 @@ export function useMessagingNotifications() {
     };
   }, [realUserId]);
 
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const [incomingAlert, setIncomingAlert] =
-    useState<MessagingIncomingAlert | null>(null);
-
-  const [realtimeConnected, setRealtimeConnected] =
-    useState(false);
-
-  const lastNotifiedMessageIdRef =
-    useRef<string | null>(null);
 
   const loadConversationSummary =
     useCallback(async () => {
