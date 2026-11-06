@@ -20,7 +20,7 @@ type NotificationRow = {
 };
 
 type ReadFilter = "all" | "unread" | "read";
-type CategoryFilter = "all" | "live" | "report_cards" | "enrollments";
+type CategoryFilter = "all" | "live" | "report_cards" | "enrollments" | "attendance";
 
 const PAGE_SIZE = 12;
 const FIELDS = "id, user_id, title, body, type, is_read, created_at, action_url, event_key, related_id, read_at";
@@ -30,12 +30,14 @@ const CATEGORIES: { value: CategoryFilter; label: string }[] = [
   { value: "live", label: "Cours en direct" },
   { value: "report_cards", label: "Bulletins" },
   { value: "enrollments", label: "Inscriptions" },
+  { value: "attendance", label: "Présences et retards" },
 ];
 
 function notificationCategory(eventKey: string | null) {
   if (eventKey?.startsWith("schoolnet_live:")) return "Cours en direct";
   if (eventKey?.startsWith("report_card_published:")) return "Bulletins";
   if (eventKey?.startsWith("public_enrollment_request:")) return "Inscriptions";
+  if (eventKey?.startsWith("attendance:closed:")) return "Présences et retards";
   return "Informations";
 }
 
@@ -137,6 +139,7 @@ export default function NotificationsPage() {
       if (category === "live") query = query.like("event_key", "schoolnet_live:%");
       if (category === "report_cards") query = query.like("event_key", "report_card_published:%");
       if (category === "enrollments") query = query.like("event_key", "public_enrollment_request:%");
+      if (category === "attendance") query = query.like("event_key", "attendance:closed:%");
 
       const term = cleanSearch(debouncedSearch);
       if (term) query = query.or("title.ilike.%" + term + "%,body.ilike.%" + term + "%");
