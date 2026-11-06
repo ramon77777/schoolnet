@@ -23,7 +23,9 @@ COMMENT ON TABLE public.notification_preferences IS
 -- Une nouvelle table du schéma public doit être protégée par les deux couches :
 -- GRANT minimaux + RLS par propriétaire. Pas de droit DELETE.
 REVOKE ALL ON TABLE public.notification_preferences FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT ON TABLE public.notification_preferences TO authenticated;
+GRANT SELECT ON TABLE public.notification_preferences TO authenticated;
+GRANT INSERT (user_id, category, channel, enabled)
+  ON TABLE public.notification_preferences TO authenticated;
 GRANT UPDATE (enabled) ON TABLE public.notification_preferences TO authenticated;
 
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
