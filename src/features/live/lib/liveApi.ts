@@ -122,19 +122,24 @@ export async function listLiveSessionsPage(
 }
 
 /** Global counts should not depend on the current page or filters. */
-export async function getLiveSessionSummary(): Promise<LiveSessionSummary> {
+export async function getLiveSessionSummary(
+  classId?: string
+): Promise<LiveSessionSummary> {
   const now = new Date().toISOString();
+  const upcomingQuery = supabase
+    .from("live_sessions")
+    .select("id", { head: true, count: "exact" })
+    .eq("status", "scheduled")
+    .gt("ends_at", now);
+  const liveQuery = supabase
+    .from("live_sessions")
+    .select("id", { head: true, count: "exact" })
+    .eq("status", "live")
+    .gt("ends_at", now);
+
   const [upcoming, running] = await Promise.all([
-    supabase
-      .from("live_sessions")
-      .select("id", { head: true, count: "exact" })
-      .eq("status", "scheduled")
-      .gt("ends_at", now),
-    supabase
-      .from("live_sessions")
-      .select("id", { head: true, count: "exact" })
-      .eq("status", "live")
-      .gt("ends_at", now),
+    classId ? upcomingQuery.eq("class_id", classId) : upcomingQuery,
+    classId ? liveQuery.eq("class_id", classId) : liveQuery,
   ]);
   if (upcoming.error) throw upcoming.error;
   if (running.error) throw running.error;
