@@ -45,7 +45,7 @@ une école 100 % à distance.
 - Fonctions disponibles : `getVisibleTimetableRooms`,
   `createAdminTimetableRoom`, `updateAdminTimetableRoom`,
   `setAdminTimetableRoomActive`, `deleteAdminTimetableRoom`.
-- À l'audit, **0 salle enregistrée et 0 créneau affecté à une salle**.
+- Après le premier test utilisateur, **1 salle enregistrée** (« Salle Informatique », code historique `LAB-01`, capacité 30), sans affectation à un créneau.
 
 ### Nouvelle interface préparée sur GitHub — 09/11/2026
 
@@ -54,14 +54,11 @@ une école 100 % à distance.
 - Liste et recherche (nom, code, observations), filtres actif/inactif,
   indicateurs, ajout, modification, activation/désactivation et suppression
   confirmée. Contrôles de nom et de capacité ; erreurs SQL/RLS visibles.
-- Réutilisation stricte de `public.rooms` et des fonctions existantes :
-  **aucune migration SQL nécessaire pour cette première version**.
+- Réutilisation stricte de `public.rooms` et des fonctions existantes pour le CRUD initial, sans nouvelle table.
+- **Amélioration post-recette préparée le 09/11/2026 :** migration `20261109145700_auto_room_codes.sql` : génération automatique des codes `SAL-000001`, `SAL-000002`, etc. en base, code non modifiable, conservation du code existant `LAB-01`. Migration testée avec `BEGIN ... ROLLBACK`, **non appliquée à Supabase**.
 - La sélection des salles actives demeure dans l'éditeur d'emploi du temps.
 
-**Recette ciblée nécessaire :** créer une salle de test (ex. LAB-01, 30 places),
-l'affecter à un créneau, vérifier l'affichage dans les emplois du temps et le
-refus de chevauchement, puis tester la désactivation et l'impossibilité
-de supprimer une salle référencée. Confirmer le refus d'écriture pour
+**Recette ciblée :** la création initiale de « Salle Informatique / LAB-01 / 30 places » est validée. Après autorisation d'appliquer la migration automatique, créer une **nouvelle** salle de test et confirmer le code généré `SAL-000001` (ou le prochain numéro disponible), puis vérifier sa conservation à la modification ; l'affecter à un créneau, vérifier l'affichage dans les emplois du temps et le refus de chevauchement, puis tester la désactivation et l'impossibilité de supprimer une salle référencée. Confirmer le refus d'écriture pour
 Enseignant/Parent/Apprenant. Vérifier 412 px, tablette et desktop.
 Ne pas remplir les salles réelles avant validation.
 
@@ -76,7 +73,7 @@ sans validation des besoins de l'établissement.
 
 | Ordre opérationnel | Bloc | Travail prioritaire |
 | --- | --- | --- |
-| A | **Salles de classe physiques — complément Lot 2** | Recette de l'interface, conflits, liaison avec créneaux et permissions |
+| A | **Salles de classe physiques — complément Lot 2** | CRUD testé, codes automatiques préparés ; migration à autoriser, puis recette d'affectation, conflits et permissions |
 | B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | Audit du flux actuel, dossier complet par année, pièces protégées, admission, réinscription, affectation et visibilité Parent/Apprenant |
 | C | **Lot 6 — Vie scolaire** | Observations, incidents, encouragements, sanctions contrôlées, circuit de validation, confidentialité et historique ; ne pas dupliquer les absences |
 | D | **Lot 7 — Scolarité / Finances** | Plans de frais, échéances, paiements, imputations, annulations tracées, soldes, reçus et consultation Parent ; ne pas confondre tarifs publics de la plateforme et frais d'un établissement |
@@ -111,10 +108,9 @@ Pour chaque module : cadrage → réutilisation du modèle → migration si néc
 → RLS par rôle → services → UI desktop/mobile → tests ciblés → lint/build
 GitHub Actions → recette → autorisation de fusion/déploiement.
 
-Au 09/11/2026, la base a **26 migrations appliquées**. La migration
-`20261109140104_harden_assessment_legacy_rpcs.sql` concernant les corrections
-est **préparée mais non appliquée** ; elle reste dans le plan de sécurité
-de la PR #5 et demande une autorisation spécifique distincte.
+Au 09/11/2026, la base a **26 migrations appliquées**. Deux migrations sur la branche restent en attente d'autorisation spécifique :
+`20261109140104_harden_assessment_legacy_rpcs.sql` (sécurité des corrections)
+et `20261109145700_auto_room_codes.sql` (codes des salles). **Ne pas exécuter un `supabase db push --remote` global** : il appliquerait également la migration des corrections, qui n'a pas encore été autorisée. Appliquer individuellement les migrations après validation.
 
 La PR #5 peut rester en brouillon pendant le développement, mais un lot
 métier indépendant pourra ensuite être isolé dans sa propre branche/PR pour
