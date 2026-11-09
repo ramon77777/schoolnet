@@ -41,17 +41,19 @@ export default function AdminEnrollmentRequests() {
   const [selected, setSelected] = useState<EnrollmentRequest | null>(null);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestIdFromUrl = searchParams.get('request');
 
   const closeRequest = useCallback(() => {
+    if (resolving) return;
     setSelected(null);
     if (requestIdFromUrl) {
       const next = new URLSearchParams(searchParams);
       next.delete('request');
       setSearchParams(next, { replace: true });
     }
-  }, [requestIdFromUrl, searchParams, setSearchParams]);
+  }, [requestIdFromUrl, resolving, searchParams, setSearchParams]);
 
   const load = useCallback(async (silent = false) => {
     if (!user || user.role !== 'admin' || user.isDemo) {
@@ -129,7 +131,7 @@ export default function AdminEnrollmentRequests() {
   }), [rows]);
 
   async function review(status: 'contacted' | 'rejected') {
-    if (!selected || saving) return;
+    if (!selected || saving || resolving) return;
     setSaving(true);
     try {
       const { error: mutationError } = await supabase.rpc(
@@ -223,7 +225,7 @@ export default function AdminEnrollmentRequests() {
           </div>}
       </div>
 
-      {selected && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving) closeRequest(); }}>
+      {selected && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving && !resolving) closeRequest(); }}>
         <section role="dialog" aria-modal="true" aria-label="Examen de la demande" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
           <div className="flex items-start justify-between gap-4">
             <div><div className="text-xs font-bold tracking-wide text-blue-600">{selected.reference}</div>
@@ -231,7 +233,7 @@ export default function AdminEnrollmentRequests() {
               <h2 className="mt-2 text-2xl font-black">{selected.student_full_name}</h2>
               <p className="mt-2 text-sm text-slate-500">{selected.request_type === 'parent_access' ? 'Enfant a rattacher apres verification' : `${selected.requested_level ?? '--'} - ${selected.student_gender === 'male' ? 'Masculin' : selected.student_gender === 'female' ? 'Feminin' : '--'}`}</p>
             </div>
-            <button onClick={closeRequest} disabled={saving} aria-label="Fermer" className="rounded-lg bg-slate-100 px-3 py-2">&#10005;</button>
+            <button onClick={closeRequest} disabled={saving || resolving} aria-label="Fermer" className="rounded-lg bg-slate-100 px-3 py-2">&#10005;</button>
           </div>
           <div className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-5 text-sm sm:grid-cols-2">
             <div><div className="text-slate-500">Responsable</div><strong>{selected.guardian_full_name}</strong></div>
@@ -251,16 +253,17 @@ export default function AdminEnrollmentRequests() {
             request={selected}
             disabled={Boolean(user?.isDemo)}
             onFinalized={handleFinalized}
+            onBusyChange={setResolving}
           />
           <label className="mt-6 block text-sm font-semibold text-slate-700">Note interne (facultatif)
             <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000}
               className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
           </label>
           <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
-            <button onClick={closeRequest} disabled={saving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
+            <button onClick={closeRequest} disabled={saving || resolving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
             {selected.status !== 'processed' && <>
-              <button onClick={() => void review('rejected')} disabled={saving} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
-              <button onClick={() => void review('contacted')} disabled={saving} className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactée</button>
+              <button onClick={() => void review('rejected')} disabled={saving || resolving} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
+              <button onClick={() => void review('contacted')} disabled={saving || resolving} className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactée</button>
             </>}
             {selected.status === 'processed' && <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Traitée · Rattachement contrôlé</span>}
           </div>
