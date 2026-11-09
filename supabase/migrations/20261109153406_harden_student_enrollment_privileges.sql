@@ -23,6 +23,8 @@ BEGIN
      OR to_regprocedure('public.get_admin_student_enrollments(uuid,uuid,text,text)') IS NULL
      OR to_regprocedure('public.admin_upsert_student_enrollment_with_gender(uuid,uuid,date,text,text,text,text)') IS NULL
      OR to_regprocedure('public.admin_set_student_enrollment_status(uuid,text,text)') IS NULL
+     OR to_regclass('public.student_enrollment_events') IS NULL
+     OR to_regprocedure('public.get_admin_student_enrollment_history(uuid)') IS NULL
      OR NOT EXISTS (
        SELECT 1 FROM pg_catalog.pg_policies
        WHERE schemaname='public'
@@ -81,6 +83,30 @@ BEGIN
   END IF;
 END
 $schoolnet_enrollment_privileges_postcheck$;
+
+-- Meme durcissement pour les evenements du dossier : ils contiennent
+-- aussi des observations internes. Seule la lecture Admin via RLS est
+-- directement autorisee. Les inserts d'historique restent assures par
+-- le declencheur SECURITY DEFINER existant.
+REVOKE ALL PRIVILEGES ON TABLE public.student_enrollment_events
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.student_enrollment_events TO authenticated;
+
+DO $schoolnet_enrollment_events_postcheck$
+BEGIN
+  IF pg_catalog.has_table_privilege(
+       'anon','public.student_enrollment_events','TRUNCATE')
+     OR pg_catalog.has_table_privilege(
+       'authenticated','public.student_enrollment_events','INSERT')
+     OR pg_catalog.has_table_privilege(
+       'authenticated','public.student_enrollment_events','DELETE')
+     OR NOT pg_catalog.has_table_privilege(
+       'authenticated','public.student_enrollment_events','SELECT')
+  THEN
+    RAISE EXCEPTION 'SCHOOLNET Lot 5.B.1 : historique insuffisamment protege';
+  END IF;
+END
+$schoolnet_enrollment_events_postcheck$;
 
 -- Les donnees, l'historique, les numeros, les statuts et la RLS ne changent pas.
 -- Migration independante des corrections : 20261109140104 reste en attente.
