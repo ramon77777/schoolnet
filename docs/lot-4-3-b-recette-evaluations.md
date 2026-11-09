@@ -50,3 +50,29 @@ Les anciennes fonctions de correction notifiaient les parents listés dans `prof
 3. Activer la migration 4.3.B **uniquement avec validation**, en conservant la version exacte de GitHub.
 4. Réaliser la recette de publication et de correction sur des données de test.
 5. Continuer le Bloc 4.3.C (modifications de l'emploi du temps), sans fusionner la PR avant recette globale.
+
+## 5. Correctifs de recette — remise des travaux et affichage de la cloche (09/11/2026)
+
+Les tests ont montré deux problèmes indépendants :
+
+1. **Remise d'un devoir :** une copie `homework_submissions.status='submitted'` était bien enregistrée, mais aucun déclencheur n'avertissait l'enseignant. Les triggers existants ne couvraient que la publication des corrections.
+2. **Affichage transversal :** le panneau déroulant `NotificationBell` restait prisonnier du contexte d'empilement CSS de l'en-tête et passait derrière les bannières des tableaux de bord des différents rôles.
+
+### Modifications sur `feature/schoolnet-notifications`
+
+- `src/features/notifications/components/NotificationBell.tsx` : panneau rendu avec `createPortal(...,document.body)`, position fixe ajustée à la cloche et à la taille de l'écran ; fermeture au clic extérieur ou avec Échap ; interaction et historique existants conservés.
+- `src/features/notifications/pages/NotificationsPage.tsx` : nouvelle catégorie `Travaux remis` pour les clés `submission:%`.
+- `supabase/migrations/20261109105000_notify_teacher_submissions.sql` : **préparée, non appliquée**, création des alertes aux enseignants responsables quand un devoir ou une évaluation en ligne devient `submitted` pour la première fois. Vérification de la responsabilité par `assessments.created_by` ou `course_teachers`, RLS et index anti-doublons conservés.
+- `supabase/verification/20261109_teacher_submissions_readonly.sql` : lecture seule pour contrôler triggers, destinataires, URLs, index, RLS, Cron et doublons.
+
+### Test ciblé à réaliser après validation et application séparée de la migration
+
+1. Sur le compte Apprenant, **un nouveau travail non soumis** est remis pour la première fois : l'Enseignant reçoit `Nouveau devoir remis` ou `Nouvelle copie à corriger` selon le type.
+2. Filtre `Travaux remis` et `Ouvrir` mènent à `/app/teacher/grading?assessmentId=...` avec la bonne évaluation.
+3. Un enseignant qui n'a aucun lien avec le cours ne reçoit rien.
+4. Réenregistrer un rendu déjà `submitted` ne crée pas de doublon. Une remise antérieure à la migration n'est pas notifiée rétroactivement.
+5. Le panneau de cloche s'affiche **entièrement au-dessus** des bannières du tableau de bord pour Admin, Enseignant, Apprenant et Parent, y compris à faible largeur d'écran.
+6. Le marquage comme lu, `Tout marquer comme lu`, `Voir toutes les notifications`, la fermeture au clic extérieur et au clavier fonctionnent toujours.
+7. `npm run lint`, `npm run build`, puis recette réelle après autorisation SQL. `main` et Vercel production restent inchangés durant ce travail.
+
+**Statut avant validation :** essai SQL transactionnel `BEGIN; ... ROLLBACK` réussi ; 23 migrations en production et Cron LIVE actif ; nouvelle migration ni trigger activé. Aucun SQL définitif appliqué sans accord.
