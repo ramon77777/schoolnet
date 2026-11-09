@@ -20,7 +20,7 @@ type NotificationRow = {
 };
 
 type ReadFilter = "all" | "unread" | "read";
-type CategoryFilter = "all" | "live" | "report_cards" | "enrollments" | "attendance";
+type CategoryFilter = "all" | "live" | "report_cards" | "enrollments" | "attendance" | "assessments" | "results";
 
 const PAGE_SIZE = 12;
 const FIELDS = "id, user_id, title, body, type, is_read, created_at, action_url, event_key, related_id, read_at";
@@ -31,6 +31,8 @@ const CATEGORIES: { value: CategoryFilter; label: string }[] = [
   { value: "report_cards", label: "Bulletins" },
   { value: "enrollments", label: "Inscriptions" },
   { value: "attendance", label: "Présences et retards" },
+  { value: "assessments", label: "Devoirs et évaluations" },
+  { value: "results", label: "Résultats et corrections" },
 ];
 
 function notificationCategory(eventKey: string | null) {
@@ -38,6 +40,8 @@ function notificationCategory(eventKey: string | null) {
   if (eventKey?.startsWith("report_card_published:")) return "Bulletins";
   if (eventKey?.startsWith("public_enrollment_request:")) return "Inscriptions";
   if (eventKey?.startsWith("attendance:closed:")) return "Présences et retards";
+  if (eventKey === "assessment_published") return "Devoirs et évaluations";
+  if (eventKey === "correction_published") return "Résultats et corrections";
   return "Informations";
 }
 
@@ -140,6 +144,9 @@ export default function NotificationsPage() {
       if (category === "report_cards") query = query.like("event_key", "report_card_published:%");
       if (category === "enrollments") query = query.like("event_key", "public_enrollment_request:%");
       if (category === "attendance") query = query.like("event_key", "attendance:closed:%");
+      // Les déclencheurs historiques utilisent des clés exactes sans préfixe.
+      if (category === "assessments") query = query.eq("event_key", "assessment_published");
+      if (category === "results") query = query.eq("event_key", "correction_published");
 
       const term = cleanSearch(debouncedSearch);
       if (term) query = query.or("title.ilike.%" + term + "%,body.ilike.%" + term + "%");
@@ -294,7 +301,7 @@ export default function NotificationsPage() {
           <div>
             <h1 className="text-2xl font-extrabold sm:text-3xl">{showPreferences ? "Mes préférences" : "Toutes mes notifications"}</h1>
             <p className="mt-2 max-w-2xl text-sm text-blue-100">
-              Retrouvez vos informations scolaires, cours en direct, bulletins et inscriptions.
+              Suivez vos devoirs, évaluations, résultats, présences, cours en direct et bulletins.
             </p>
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-center">
