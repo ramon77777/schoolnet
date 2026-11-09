@@ -47,6 +47,14 @@ CREATE TABLE public.public_enrollment_request_resolutions (
   )
 );
 
+-- parent_links est une table RLS, mais les anciens droits anon/authenticated
+-- incluent TRUNCATE (qui ignore RLS). Conserver les operations Admin via RLS,
+-- supprimer les privileges destructifs superflus pour tous les clients.
+REVOKE ALL PRIVILEGES ON TABLE public.parent_links
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.parent_links
+  TO authenticated;
+
 -- Une inscription annuelle ne doit pas etre revendiquee par deux admissions
 -- publiques finalisees. Les demandes d'acces Parent ne consomment pas un dossier.
 CREATE UNIQUE INDEX schoolnet_request_resolutions_one_enrollment
@@ -247,6 +255,24 @@ BEGIN
     RAISE EXCEPTION 'Impossible de verifier ou etablir le lien familial.';
   END IF;
 
+  -- SCHOOLNET utilise aussi profiles.child_ids (notamment pour la messagerie
+  -- familiale). Synchroniser uniquement apres verification Admin, sans doublon
+  -- et sans effacer les enfants deja rattaches.
+  UPDATE public.profiles p
+  SET child_ids = CASE
+    WHEN p_student_id = ANY(COALESCE(p.child_ids, ARRAY[]::uuid[]))
+      THEN p.child_ids
+    ELSE pg_catalog.array_append(COALESCE(p.child_ids, ARRAY[]::uuid[]), p_student_id)
+  END
+  WHERE p.id=p_parent_id AND p.role::text='parent';
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.id=p_parent_id AND p_student_id=ANY(COALESCE(p.child_ids, ARRAY[]::uuid[]))
+  ) THEN
+    RAISE EXCEPTION 'Synchronisation du lien familial impossible.';
+  END IF;
+
   -- L'index unique enrollment_id evite une double admission vers le meme
   -- dossier ; la transaction annulera aussi un parent_link si elle echoue.
   INSERT INTO public.public_enrollment_request_resolutions(
@@ -325,6 +351,12 @@ BEGIN
        'anon','public.public_enrollment_request_resolutions','SELECT')
     OR pg_catalog.has_table_privilege(
        'authenticated','public.public_enrollment_request_resolutions','INSERT')
+    OR pg_catalog.has_table_privilege(
+       'anon','public.parent_links','TRUNCATE')
+    OR pg_catalog.has_table_privilege(
+       'authenticated','public.parent_links','TRUNCATE')
+    OR NOT pg_catalog.has_table_privilege(
+       'authenticated','public.parent_links','SELECT')
     OR pg_catalog.has_function_privilege(
       'anon','public.admin_finalize_public_enrollment_request(uuid,uuid,uuid,uuid,boolean,text)'::regprocedure,'EXECUTE')
     OR NOT pg_catalog.has_function_privilege(
