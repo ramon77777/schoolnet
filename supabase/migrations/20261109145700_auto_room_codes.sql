@@ -102,7 +102,7 @@ BEGIN
     );
     NEW.code := 'SAL-' || pg_catalog.lpad(
       v_number::text,
-      pg_catalog.greatest(6, pg_catalog.length(v_number::text)),
+      GREATEST(6, pg_catalog.length(v_number::text)),
       '0'
     );
     RETURN NEW;
