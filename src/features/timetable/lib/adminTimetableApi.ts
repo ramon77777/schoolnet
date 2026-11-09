@@ -90,7 +90,7 @@ export type AdminTimetableSlotWriteInput = {
 export type AdminTimetableRoomWriteInput = {
   name: string;
 
-  code?: string | null;
+  // Le code est attribue exclusivement par PostgreSQL a la creation.
   capacity?: number | null;
   notes?: string | null;
 
@@ -908,9 +908,7 @@ export async function createAdminTimetableRoom(
       name:
         cleanName,
 
-      code:
-        nullableText(input.code),
-
+      // Ne jamais envoyer code : le trigger SQL l'attribue.
       capacity:
         input.capacity ?? null,
 
@@ -965,9 +963,7 @@ export async function updateAdminTimetableRoom(
       name:
         cleanName,
 
-      code:
-        nullableText(input.code),
-
+      // Le code historique est conserve et rendu immuable en base.
       capacity:
         input.capacity ?? null,
 
