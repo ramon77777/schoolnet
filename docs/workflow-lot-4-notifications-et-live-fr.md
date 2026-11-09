@@ -2,7 +2,7 @@
 
 **Mise à jour :** 09 novembre 2026  
 **Branche de travail :** `feature/schoolnet-notifications`  
-**Statut :** LIVE-FR implémenté sur la branche de développement ; en attente de compilation locale et de recette Enseignant/Apprenant. Aucun déploiement Vercel.  
+**Statut :** LIVE-FR implémenté ; GitHub Actions (npm ci + ESLint + build) réussi. Test réel caméra/micro reporté à une Preview Vercel sur téléphone ou autre ordinateur équipé. Aucun déploiement de production.  
 **Règle :** conserver `main` inchangée ; ne pas modifier la production ou fusionner sans autorisation distincte.
 
 ## 1. Validation de faisabilité — Daily Prebuilt
@@ -30,7 +30,7 @@ L'option front-end est privilégiée, car elle permet de cibler SCHOOLNET sans c
 | 4 | **4.3.B — Devoirs, évaluations, résultats** | Nouveaux filtres, soumissions et corrections, notifications Parent/Enseignant | **Scénarios principaux validés ; migrations `20261109082000` et `20261109105000` appliquées. Recette sécurité et cas particuliers restants.** |
 | 5 | **4.3.C — Emploi du temps** | Alerter sur changement réel des créneaux, des enseignants et des salles, avec anti-doublons | **Scénarios principaux validés : modification, désactivation et réactivation ; migration `20261109114749` appliquée.** |
 | 6 | **LIVE-FR — Interface vidéo des cours en français** | Langue française Daily Prebuilt, tests Enseignant/Apprenant et responsive | **Implémentation GitHub effectuée ; lint/build local et recette vidéo/audio à valider.** |
-| 7 | **4.3.D — Recette globale et sécurité** | Notifications et LIVE-FR, quatre rôles, RLS, pas de doublons, Cron, lint/build, PWA/navigateurs, Preview | À terminer |
+| 7 | **4.3.D — Recette globale et sécurité** | Notifications, quatre rôles, RLS, audit des fonctions privilégiées, Cron, CI, Preview | **Audit commencé, CI vert, deux migrations de sécurité préparées et NON appliquées ; recette croisée à terminer.** |
 | 8 | **Clôture du Lot 4** | Revue PR, sauvegarde, fusion et déploiement uniquement après validation explicite | Non engagé |
 
 Ce nouvel item `LIVE-FR` s'ajoute **sans renuméroter ni supprimer** les blocs 4.3.C et 4.3.D.
@@ -57,6 +57,19 @@ Les captures fournies de `schoolnet-snowy.vercel.app` illustrent l'interface de 
 
 ## 5. Prochaine action immédiate
 
-**LIVE-FR est maintenant implémenté sur la branche, sans fusion et sans déploiement.** Prochaine étape : `git pull --ff-only origin feature/schoolnet-notifications`, `npm run lint`, `npm run build`, puis tester en local une salle vidéo réelle avec les comptes Enseignant et Apprenant. Vérifier la préconnexion et les commandes en français avant et après une reprise.
+**LIVE-FR est implémenté sur la branche et vérifié par GitHub Actions.** Comme le PC de travail n'a pas de caméra, les tests réels audio/vidéo sont reportés à la Preview Vercel, depuis un téléphone ou un PC équipé. Il ne faut pas considérer cette recette comme réussie avant ce test.
 
 Ensuite : clôture de LIVE-FR avec captures de test → recette globale 4.3.D (notifications, sécurité, cas particuliers) → validation distincte de fusion de la PR et du déploiement.
+
+
+## 6. Recette 4.3.D — état actuel et prochaines autorisations
+
+Le journal de recette et de sécurité est désormais dans
+[`docs/lot-4-3-d-recette-globale-et-securite.md`](lot-4-3-d-recette-globale-et-securite.md).
+
+- Requête de recette conforme pour les scénarios principaux des notifications 4.1 à 4.3.C.
+- Audit Supabase : 60 tables publiques avec RLS, 5 vues en `security_invoker`, isolation des notifications et préférences vérifiée sur les 4 profils.
+- CI GitHub Actions : `npm ci`, `npm run lint` et `npm run build` automatisés, `package-lock.json` corrigé, workflow vert.
+- Sécurité : les migrations `20261109135338_harden_chat_relationship_rpcs.sql` et `20261109140104_harden_assessment_legacy_rpcs.sql` sont **sur GitHub uniquement**. Elles ont été vérifiées dans des transactions avec `ROLLBACK` : messagerie autorisée conservée, publication des notes réservée au professeur propriétaire. **Ne pas appliquer sans autorisation distincte.**
+- Après les correctifs SQL et la recette croisée : mise à disposition éventuelle d'une URL de **Preview Vercel** pour tester LIVE-FR depuis un téléphone, sans fusionner `main`.
+- Ensuite : examen des cas limites, contrôle des droits restants, revue finale de la PR, fusion/déploiement sur validation.
