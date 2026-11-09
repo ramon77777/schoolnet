@@ -30,7 +30,7 @@ L'option front-end est privilégiée, car elle permet de cibler SCHOOLNET sans c
 | 4 | **4.3.B — Devoirs, évaluations, résultats** | Nouveaux filtres, soumissions et corrections, notifications Parent/Enseignant | **Scénarios principaux validés ; migrations `20261109082000` et `20261109105000` appliquées. Recette sécurité et cas particuliers restants.** |
 | 5 | **4.3.C — Emploi du temps** | Alerter sur changement réel des créneaux, des enseignants et des salles, avec anti-doublons | **Scénarios principaux validés : modification, désactivation et réactivation ; migration `20261109114749` appliquée.** |
 | 6 | **LIVE-FR — Interface vidéo des cours en français** | Langue française Daily Prebuilt, tests Enseignant/Apprenant et responsive | **Implémentation GitHub effectuée ; lint/build local et recette vidéo/audio à valider.** |
-| 7 | **4.3.D — Recette globale et sécurité** | Notifications, quatre rôles, RLS, audit des fonctions privilégiées, Cron, CI, Preview | **Audit commencé, CI vert, deux migrations de sécurité préparées et NON appliquées ; recette croisée à terminer.** |
+| 7 | **4.3.D — Recette globale et sécurité** | Notifications, quatre rôles, RLS, audit des fonctions privilégiées, Cron, CI, Preview | **Audit et CI validés ; migration Messagerie `20261109135338` appliquée (26/27). Migration Corrections `20261109140104` non appliquée, recette navigateur à poursuivre.** |
 | 8 | **Clôture du Lot 4** | Revue PR, sauvegarde, fusion et déploiement uniquement après validation explicite | Non engagé |
 
 Ce nouvel item `LIVE-FR` s'ajoute **sans renuméroter ni supprimer** les blocs 4.3.C et 4.3.D.
@@ -70,6 +70,6 @@ Le journal de recette et de sécurité est désormais dans
 - Requête de recette conforme pour les scénarios principaux des notifications 4.1 à 4.3.C.
 - Audit Supabase : 60 tables publiques avec RLS, 5 vues en `security_invoker`, isolation des notifications et préférences vérifiée sur les 4 profils.
 - CI GitHub Actions : `npm ci`, `npm run lint` et `npm run build` automatisés, `package-lock.json` corrigé, workflow vert.
-- Sécurité : les migrations `20261109135338_harden_chat_relationship_rpcs.sql` et `20261109140104_harden_assessment_legacy_rpcs.sql` sont **sur GitHub uniquement**. Elles ont été vérifiées dans des transactions avec `ROLLBACK` : messagerie autorisée conservée, publication des notes réservée au professeur propriétaire. **Ne pas appliquer sans autorisation distincte.**
+- Sécurité : `20261109135338_harden_chat_relationship_rpcs.sql` **appliquée le 09/11/2026 sur `schoolnet_2.0`**, après autorisation explicite et contrôle du contenu exact. Trois RPC de messagerie ne sont plus exécutables par `anon` ; tests SQL pour les rôles Parent/Enseignant/Apprenant réussis, 26 migrations enregistrées. `20261109140104_harden_assessment_legacy_rpcs.sql` **reste préparée sur GitHub uniquement** (27e migration) ; tests `ROLLBACK` réussis, **ne pas appliquer sans nouvelle autorisation**.
 - Après les correctifs SQL et la recette croisée : mise à disposition éventuelle d'une URL de **Preview Vercel** pour tester LIVE-FR depuis un téléphone, sans fusionner `main`.
 - Ensuite : examen des cas limites, contrôle des droits restants, revue finale de la PR, fusion/déploiement sur validation.
