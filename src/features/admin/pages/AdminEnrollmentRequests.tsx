@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
+import AdminRequestResolutionPanel, { type RequestResolution } from '@/features/enrollments/components/AdminRequestResolutionPanel';
 
 type RequestStatus = 'new' | 'contacted' | 'processed' | 'rejected';
 type RequestType = 'student_enrollment' | 'parent_access';
@@ -127,13 +128,8 @@ export default function AdminEnrollmentRequests() {
     parents: rows.filter((row) => row.request_type === 'parent_access').length,
   }), [rows]);
 
-  async function review(status: Exclude<RequestStatus, 'new'>) {
+  async function review(status: 'contacted' | 'rejected') {
     if (!selected || saving) return;
-    if (status === 'processed' && !window.confirm(
-      selected.request_type === 'parent_access'
-        ? 'Avez-vous verifie le lien familial, cree le compte parent et rattache son profil a l enfant concerne ?'
-        : 'Avez-vous verifie les informations puis cree le dossier scolaire et les comptes autorises avec les e-mails fournis ?',
-    )) return;
     setSaving(true);
     try {
       const { error: mutationError } = await supabase.rpc(
@@ -148,6 +144,16 @@ export default function AdminEnrollmentRequests() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Modification impossible.');
     } finally { setSaving(false); }
+  }
+
+  async function handleFinalized(result: RequestResolution) {
+    // Le traitement serveur est atomique ; actualiser le compteur et la vue
+    // sans fermer la preuve de rattachement ni perdre le lien de notification.
+    setSelected((current) =>
+      current?.id === result.request_id ? { ...current, status: 'processed' } : current,
+    );
+    setSuccess('Demande finalisée et comptes liés : ' + selected?.reference + '.');
+    await load(true);
   }
 
   const badge = (status: RequestStatus) => status === 'new' ?
@@ -240,15 +246,23 @@ export default function AdminEnrollmentRequests() {
             {' '}<Link className="font-bold underline" to="/app/admin/users">Utilisateurs</Link> : creez ou identifiez le compte parent, puis rattachez-le a l'enfant apres verification.
             {selected.request_type === 'student_enrollment' && <> Finalisez ensuite le dossier dans <Link className="font-bold underline" to="/app/admin/enrollments">Inscriptions</Link>.</>}
           </div>
+          <AdminRequestResolutionPanel
+            key={selected.id}
+            request={selected}
+            disabled={Boolean(user?.isDemo)}
+            onFinalized={handleFinalized}
+          />
           <label className="mt-6 block text-sm font-semibold text-slate-700">Note interne (facultatif)
             <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000}
               className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
           </label>
           <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
             <button onClick={closeRequest} disabled={saving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
-            <button onClick={() => void review('rejected')} disabled={saving} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
-            <button onClick={() => void review('contacted')} disabled={saving} className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactee</button>
-            <button onClick={() => void review('processed')} disabled={saving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Traitee</button>
+            {selected.status !== 'processed' && <>
+              <button onClick={() => void review('rejected')} disabled={saving} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
+              <button onClick={() => void review('contacted')} disabled={saving} className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactée</button>
+            </>}
+            {selected.status === 'processed' && <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Traitée · Rattachement contrôlé</span>}
           </div>
         </section>
       </div>}
