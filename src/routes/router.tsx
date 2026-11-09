@@ -23,6 +23,7 @@ import AdminTimetable from "@/features/admin/pages/AdminTimetable";
 import AdminRooms from "@/features/admin/pages/AdminRooms";
 import AdminReportCards from "@/features/admin/pages/AdminReportCards";
 import AdminEnrollments from "@/features/admin/pages/AdminEnrollments";
+import EnrollmentRecordsPage from "@/features/enrollments/pages/EnrollmentRecordsPage";
 import AdminEnrollmentRequests from "@/features/admin/pages/AdminEnrollmentRequests";
 
 
@@ -141,6 +142,8 @@ export const router = createBrowserRouter([
                 path: "student/dashboard",
                 element: <StudentDashboard />,
               },
+
+              { path: "student/enrollments", element: <EnrollmentRecordsPage /> },
 
               {
                 path: "student/courses",
@@ -268,6 +271,7 @@ export const router = createBrowserRouter([
               },
 
               { path: "parent/children", element: <ParentChildren /> },
+              { path: "parent/enrollments", element: <EnrollmentRecordsPage /> },
               { path: "parent/live", element: <ParentLiveSessionsPage /> },
               { path: "parent/deadlines", element: <ParentDeadlines /> },
               { path: "parent/results", element: <ParentResults /> },
