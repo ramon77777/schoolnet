@@ -1,0 +1,40 @@
+name: SCHOOLNET — Vérifications du code
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Ce workflow vérifie uniquement le code : aucun accès à Supabase,
+# aucune donnée sensible, aucune fusion et aucun déploiement Vercel.
+permissions:
+  contents: read
+
+concurrency:
+  group: schoolnet-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-build:
+    name: ESLint et build TypeScript / Vite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Télécharger la branche de la PR
+        uses: actions/checkout@v4
+
+      - name: Préparer Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Installer les dépendances du lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Vérification ESLint
+        run: npm run lint
+
+      - name: Compilation TypeScript et Vite
+        run: npm run build
