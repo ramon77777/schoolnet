@@ -56,11 +56,12 @@ function displayChoice(value: UserChoice) {
 // Administration uniquement. Les identifiants choisis sont revalides par
 // la RPC transactionnelle ; la validation d'interface ne suffit pas.
 export default function AdminRequestResolutionPanel({
-  request, disabled = false, onFinalized,
+  request, disabled = false, onFinalized, onBusyChange,
 }: {
   request: PublicRequestForResolution;
   disabled?: boolean;
   onFinalized: (result: RequestResolution) => void | Promise<void>;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [users, setUsers] = useState<UserChoice[]>([]);
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
@@ -185,6 +186,7 @@ export default function AdminRequestResolutionPanel({
       "Cette action rattache definitivement la demande aux comptes selectionnes.",
     )) return;
     setSaving(true);
+    onBusyChange?.(true);
     setError(null);
     setSuccess(null);
     try {
@@ -209,7 +211,7 @@ export default function AdminRequestResolutionPanel({
         : "Demande finalisee : lien familial et dossier verifies sans doublon.");
       await onFinalized(saved);
     } catch (cause) { setError(errorMessage(cause)); }
-    finally { setSaving(false); }
+    finally { setSaving(false); onBusyChange?.(false); }
   }
 
   return (
