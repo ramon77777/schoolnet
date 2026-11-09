@@ -20,7 +20,7 @@ type NotificationRow = {
 };
 
 type ReadFilter = "all" | "unread" | "read";
-type CategoryFilter = "all" | "live" | "report_cards" | "enrollments" | "attendance" | "assessments" | "results" | "submissions";
+type CategoryFilter = "all" | "live" | "report_cards" | "enrollments" | "attendance" | "assessments" | "results" | "submissions" | "timetable";
 
 const PAGE_SIZE = 12;
 const FIELDS = "id, user_id, title, body, type, is_read, created_at, action_url, event_key, related_id, read_at";
@@ -34,6 +34,7 @@ const CATEGORIES: { value: CategoryFilter; label: string }[] = [
   { value: "assessments", label: "Devoirs et évaluations" },
   { value: "results", label: "Résultats et corrections" },
   { value: "submissions", label: "Travaux remis" },
+  { value: "timetable", label: "Emploi du temps" },
 ];
 
 function notificationCategory(eventKey: string | null) {
@@ -44,6 +45,7 @@ function notificationCategory(eventKey: string | null) {
   if (eventKey === "assessment_published") return "Devoirs et évaluations";
   if (eventKey === "correction_published") return "Résultats et corrections";
   if (eventKey?.startsWith("submission:")) return "Travaux remis";
+  if (eventKey?.startsWith("timetable:")) return "Emploi du temps";
   return "Informations";
 }
 
@@ -150,6 +152,7 @@ export default function NotificationsPage() {
       if (category === "assessments") query = query.eq("event_key", "assessment_published");
       if (category === "results") query = query.eq("event_key", "correction_published");
       if (category === "submissions") query = query.like("event_key", "submission:%");
+      if (category === "timetable") query = query.like("event_key", "timetable:%");
 
       const term = cleanSearch(debouncedSearch);
       if (term) query = query.or("title.ilike.%" + term + "%,body.ilike.%" + term + "%");
