@@ -230,6 +230,17 @@ BEGIN
     RAISE EXCEPTION 'Le responsable doit etre Parent/Tuteur et l enfant doit etre Apprenant.';
   END IF;
 
+  -- Refuser le rattachement de comptes desactives ; le controle n'utilise
+  -- aucune donnee modifiable par les utilisateurs (ex. user_metadata).
+  IF EXISTS (
+    SELECT 1 FROM auth.users u
+    WHERE u.id IN (p_parent_id,p_student_id)
+      AND u.banned_until IS NOT NULL
+      AND u.banned_until > pg_catalog.now()
+  ) THEN
+    RAISE EXCEPTION 'Un compte selectionne est desactive : reactiver le compte avant de finaliser.';
+  END IF;
+
   IF v_request.request_type='student_enrollment' THEN
     SELECT * INTO v_enrollment
     FROM public.student_enrollments
