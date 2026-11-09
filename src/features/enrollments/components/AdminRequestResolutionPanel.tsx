@@ -94,20 +94,18 @@ export default function AdminRequestResolutionPanel({
         .eq("request_id", request.id).maybeSingle();
       if (result.error) throw result.error;
       if (cancelled()) return;
-      if (result.data) {
-        setResolution(result.data as RequestResolution);
-        return;
-      }
-      const [userResult, enrollmentResult] = await Promise.all([
-        supabase.rpc("admin_list_users"),
-        getAdminEnrollments(),
-      ]);
+      const userResult = await supabase.rpc("admin_list_users");
       if (userResult.error) throw userResult.error;
       if (cancelled()) return;
       setUsers(((userResult.data ?? []) as UserChoice[]).filter(
         (item) => item.role === "parent" || item.role === "student",
       ));
-      setEnrollments(enrollmentResult);
+      if (result.data) {
+        setResolution(result.data as RequestResolution);
+        return;
+      }
+      const enrollmentResult = await getAdminEnrollments();
+      if (!cancelled()) setEnrollments(enrollmentResult);
     } catch (cause) {
       if (cancelled()) return;
       if (isMissingMigration(cause)) setMigrationPending(true);
@@ -171,7 +169,9 @@ export default function AdminRequestResolutionPanel({
   const selectedStudent = users.find((item) => item.id === studentId);
   const selectedEnrollment = studentEnrollments.find((item) => item.enrollment_id === enrollmentId);
   const ready = !disabled && !loading && !saving && !error && !migrationPending && !resolution &&
-    request.status !== "rejected" && Boolean(parentId && studentId && parentId !== studentId) &&
+    request.status !== "rejected" && Boolean(
+      parentId && studentId && parentId !== studentId && selectedParent && selectedStudent
+    ) &&
     selectedParent?.is_active !== false && selectedStudent?.is_active !== false &&
     (request.request_type === "parent_access" || Boolean(selectedEnrollment)) &&
     linkExists !== null && !linkLoading && familyVerified &&
@@ -235,8 +235,16 @@ export default function AdminRequestResolutionPanel({
       ) : resolution ? (
         <div className="space-y-2 rounded-xl border border-emerald-200 bg-white p-4 text-sm text-slate-800">
           <p className="font-bold text-emerald-700">✓ Finalisation vérifiée et enregistrée</p>
-          <p>Parent / Tuteur : <strong>{resolution.parent_id}</strong></p>
-          <p>Apprenant : <strong>{resolution.student_id}</strong></p>
+          <p>Parent / Tuteur : <strong>{
+            users.find((item) => item.id === resolution.parent_id)
+              ? displayChoice(users.find((item) => item.id === resolution.parent_id)!)
+              : resolution.parent_id
+          }</strong></p>
+          <p>Apprenant : <strong>{
+            users.find((item) => item.id === resolution.student_id)
+              ? displayChoice(users.find((item) => item.id === resolution.student_id)!)
+              : resolution.student_id
+          }</strong></p>
           {resolution.enrollment_id && <p>Inscription : <strong>{resolution.enrollment_id}</strong></p>}
           <p className="text-xs text-slate-500">
             Enregistrée le {new Date(resolution.verified_at).toLocaleString("fr-FR")}.
@@ -305,6 +313,14 @@ export default function AdminRequestResolutionPanel({
                   : "Le lien Parent–Enfant sera établi lors de la finalisation vérifiée."}
             </p>
           )}
+          {parentId && studentId && selectedParent && selectedStudent &&
+            (selectedParent.full_name?.trim().toLocaleLowerCase("fr") !== request.guardian_full_name.trim().toLocaleLowerCase("fr") ||
+              selectedStudent.full_name?.trim().toLocaleLowerCase("fr") !== request.student_full_name.trim().toLocaleLowerCase("fr")) && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Le nom déclaré dans la demande diffère d'au moins un des profils sélectionnés.
+                Vérifiez l'identité et documentez la différence avant toute finalisation.
+              </p>
+            )}
           {request.request_type === "student_enrollment" && (
             <label className="block text-xs font-semibold text-slate-700">
               Inscription annuelle de cet Apprenant *
