@@ -26,6 +26,7 @@ type CallFrame = {
   destroy: () => Promise<unknown>;
   setLocalAudio: (enabled: boolean) => unknown;
   setLocalVideo: (enabled: boolean) => unknown;
+  setDailyLang?: (language: string) => unknown;
   on: (event: string, listener: (details?: unknown) => void) => unknown;
 };
 
@@ -245,6 +246,19 @@ export default function LiveRoomPage() {
         });
         if (cancelled || leavingRef.current) return;
 
+        // Daily Prebuilt peut heriter d'une langue de salle ou de jeton :
+        // setDailyLang a priorite et consolide le francais apres chaque join.
+        // Une erreur de traduction ne doit jamais couper le cours video.
+        try {
+          await frame.setDailyLang?.("fr");
+        } catch (localizationError) {
+          console.warn(
+            "[SCHOOLNET LIVE] Localisation Daily en francais :",
+            readableError(localizationError)
+          );
+        }
+        if (cancelled || leavingRef.current) return;
+
         if (muted) {
           frame.setLocalAudio(false);
           frame.setLocalVideo(false);
@@ -282,6 +296,8 @@ export default function LiveRoomPage() {
           }
 
           const created = daily.createFrame(containerRef.current, {
+            // Active les traductions Daily des l'ecran de preconnexion.
+            lang: "fr",
             showLeaveButton: true,
             showFullscreenButton: true,
             activeSpeakerMode: true,
