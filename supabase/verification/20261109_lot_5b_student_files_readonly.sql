@@ -8,11 +8,11 @@ SELECT
   EXISTS (
     SELECT 1 FROM supabase_migrations.schema_migrations
     WHERE version='20261109153406'
-  ) AS 5b1_security_applied,
+  ) AS security_5b1_applied,
   EXISTS (
     SELECT 1 FROM supabase_migrations.schema_migrations
     WHERE version='20261109153500'
-  ) AS 5b2_documents_applied,
+  ) AS documents_5b2_applied,
   EXISTS (
     SELECT 1 FROM supabase_migrations.schema_migrations
     WHERE version='20261109140104'
