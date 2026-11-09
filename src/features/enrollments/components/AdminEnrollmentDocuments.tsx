@@ -202,14 +202,15 @@ export default function AdminEnrollmentDocuments({
       const { error: storageError } = await supabase.storage
         .from(BUCKET).remove([item.storage_path]);
       if (storageError) throw storageError;
-      const { error: metadataError } = await supabase
+      const { data: deletedRows, error: metadataError } = await supabase
         .from("student_enrollment_documents")
         .delete()
         .eq("id", item.id)
-        .eq("enrollment_id", enrollmentId);
-      if (metadataError) {
+        .eq("enrollment_id", enrollmentId)
+        .select("id");
+      if (metadataError || deletedRows?.length !== 1) {
         throw new Error(
-          `Fichier supprimé du stockage, mais le registre n'a pas été actualisé : ${messageFrom(metadataError)}. Réessayez la suppression.`,
+          `Fichier supprimé du stockage, mais le registre n'a pas été actualisé. ${metadataError ? messageFrom(metadataError) : "La ligne du dossier n'a pas été supprimée."} Réessayez la suppression.`,
         );
       }
       setSuccess("Pièce justificative supprimée.");
