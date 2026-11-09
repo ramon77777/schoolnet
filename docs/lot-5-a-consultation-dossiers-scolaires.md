@@ -2,7 +2,7 @@
 
 **Date :** 09/11/2026  
 **Branche :** `feature/schoolnet-notifications` ; PR #5 en brouillon  
-**État :** écran et routes implémentés, lint et build GitHub Actions réussis, recette navigateur ciblée à effectuer.  
+**État :** écrans et routes implémentés, lint et build GitHub Actions réussis, **recette visuelle Parent/Apprenant validée le 09/11/2026**.  
 **Base :** `schoolnet_2.0` — **27 migrations appliquées** ; aucune nouvelle migration pour 5.A.
 
 ## Objectif et périmètre
@@ -77,7 +77,7 @@ comme une protection de données.**
 **Aucune mise à jour de Supabase, aucune fusion dans `main` et aucun
 déploiement Vercel** pour ce sous-lot.
 
-## Recette ciblée demandée
+## Recette ciblée — résultats du 09/11/2026
 
 1. Récupérer la branche, lancer l'application locale, ouvrir
    **Apprenant → Mon dossier scolaire** ; vérifier classe, numéro d'inscription,
@@ -92,6 +92,8 @@ déploiement Vercel** pour ce sous-lot.
 6. Vérifier le rendu mobile et l'absence d'observations administratives dans
    les champs affichés, sans considérer cela comme suffisant pour sécuriser
    la colonne côté API.
+
+Les captures des comptes de test Parent/Tuteur et Apprenant montrent le **même dossier** (Aïcha K., année 2025-2026, 6e A, réinscription active, numéro d'inscription cohérent). Le test de consultation et de cohérence des deux pages est validé ; la confidentialité de la colonne SQL `notes` reste traitée par le Lot 5.B, sans confondre rendu visuel et accès API.
 
 ## Sous-lots suivants — sans duplication
 
