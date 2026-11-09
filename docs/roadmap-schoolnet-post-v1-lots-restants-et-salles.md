@@ -55,10 +55,10 @@ une école 100 % à distance.
   indicateurs, ajout, modification, activation/désactivation et suppression
   confirmée. Contrôles de nom et de capacité ; erreurs SQL/RLS visibles.
 - Réutilisation stricte de `public.rooms` et des fonctions existantes pour le CRUD initial, sans nouvelle table.
-- **Amélioration post-recette appliquée le 09/11/2026 :** migration `20261109145700_auto_room_codes.sql` : génération automatique des codes `SAL-000001`, `SAL-000002`, etc. en base, code non modifiable, conservation du code existant `LAB-01`. Migration testée avec `BEGIN ... ROLLBACK` puis **appliquée et enregistrée dans Supabase** après autorisation explicite. Séquence présente, premier numéro `SAL-000001` encore disponible lors du contrôle.
+- **Amélioration post-recette appliquée le 09/11/2026 :** migration `20261109145700_auto_room_codes.sql` : génération automatique des codes `SAL-000001`, `SAL-000002`, etc. en base, code non modifiable, conservation du code existant `LAB-01`. Migration testée avec `BEGIN ... ROLLBACK` puis **appliquée et enregistrée dans Supabase** après autorisation explicite. Séquence en service, premier numéro `SAL-000001` **attribué et validé par l'utilisateur** lors du test de création.
 - La sélection des salles actives demeure dans l'éditeur d'emploi du temps.
 
-**Recette ciblée :** la création initiale de « Salle Informatique / LAB-01 / 30 places » est validée. La migration automatique est maintenant appliquée. Créer une **nouvelle** salle de test et confirmer le code généré `SAL-000001` (ou le prochain numéro disponible), puis vérifier sa conservation à la modification ; l'affecter à un créneau, vérifier l'affichage dans les emplois du temps et le refus de chevauchement, puis tester la désactivation et l'impossibilité de supprimer une salle référencée. Confirmer le refus d'écriture pour
+**Recette ciblée :** la création initiale de « Salle Informatique / LAB-01 / 30 places » est validée. La migration automatique est maintenant appliquée ; la création de **Salle laboratoire 2 / SAL-000001** a été validée par capture utilisateur. Il reste à vérifier la conservation du code à la modification ; l'affecter à un créneau, vérifier l'affichage dans les emplois du temps et le refus de chevauchement, puis tester la désactivation et l'impossibilité de supprimer une salle référencée. Confirmer le refus d'écriture pour
 Enseignant/Parent/Apprenant. Vérifier 412 px, tablette et desktop.
 Ne pas remplir les salles réelles avant validation.
 
@@ -74,13 +74,13 @@ sans validation des besoins de l'établissement.
 | Ordre opérationnel | Bloc | Travail prioritaire |
 | --- | --- | --- |
 | A | **Salles de classe physiques — complément Lot 2** | CRUD testé, codes automatiques en base et historique vérifiés ; recette UI d'affectation, conflits et permissions à terminer |
-| B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | **5.A validé sur captures Parent/Apprenant** ; **5.B préparé** : protections SQL des notes/historique et documents privés Admin, 2 migrations à autoriser ; 5.C admissions et 5.D réinscription à poursuivre |
+| B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | **5.A validé sur captures Parent/Apprenant** ; **5.B SQL appliqué** : notes/historique sécurisés et documents privés Admin, **recette de dépôt/téléchargement/suppression à faire** ; 5.C admissions et 5.D réinscription à poursuivre |
 | C | **Lot 6 — Vie scolaire** | Observations, incidents, encouragements, sanctions contrôlées, circuit de validation, confidentialité et historique ; ne pas dupliquer les absences |
 | D | **Lot 7 — Scolarité / Finances** | Plans de frais, échéances, paiements, imputations, annulations tracées, soldes, reçus et consultation Parent ; ne pas confondre tarifs publics de la plateforme et frais d'un établissement |
 | E | **Lot 8 — Documents scolaires** | Certificat, attestation, relevé, reçu, numérotation unique, PDF, archivage, contrôle des accès et versions figées |
 | F | **Recette transversale et LIVE-FR sur Preview** | RLS pour tous les profils, mobilité, notifications, non-régression, audio/vidéo sur téléphone, validation distincte du déploiement |
 
-**Audit 5.A :** `docs/lot-5-a-consultation-dossiers-scolaires.md` : les vues Parent/Apprenant sont validées. **Lot 5.B :** `docs/lot-5-b-confidentialite-et-pieces-justificatives.md` : durcissement SQL des notes/historique et stockage privé préparés sur GitHub, **non appliqués**. Les notes restent actuellement lisibles via l'API pour les rôles autorisés à consulter leur ligne ; ne pas publier avant résolution.
+**Audit 5.A :** `docs/lot-5-a-consultation-dossiers-scolaires.md` : les vues Parent/Apprenant sont validées. **Lot 5.B :** `docs/lot-5-b-confidentialite-et-pieces-justificatives.md` : durcissement SQL des notes/historique et stockage privé **appliqués après autorisation**. La lecture des notes via l'API est désormais refusée aux profils familiaux ; une recette documentaire complète (fichier fictif) reste nécessaire avant publication.
 
 Les données financières et de documents officiels nécessiteront des règles
 métier et des migrations spécifiques, préparées puis approuvées une à une.
@@ -110,7 +110,7 @@ Pour chaque module : cadrage → réutilisation du modèle → migration si néc
 → RLS par rôle → services → UI desktop/mobile → tests ciblés → lint/build
 GitHub Actions → recette → autorisation de fusion/déploiement.
 
-Au 09/11/2026, la base a **27 migrations appliquées**. La migration de génération automatique `20261109145700_auto_room_codes.sql` a été appliquée individuellement et enregistrée sous sa version exacte, sans toucher à la migration des corrections. **Seule `20261109140104_harden_assessment_legacy_rpcs.sql` demeure en attente d'autorisation.** Ne pas exécuter un `supabase db push --remote` global sans accord : il pourrait appliquer cette migration non autorisée.
+Au 09/11/2026, la base a **29 migrations appliquées**. Après validation des codes de salles, les deux migrations de sécurité du Lot 5.B ont été appliquées ensemble dans une transaction atomique, avec historique de migration identique aux fichiers GitHub. **La migration `20261109140104_harden_assessment_legacy_rpcs.sql` demeure non appliquée et attend une autorisation spécifique.** Ne pas exécuter un `supabase db push --remote` global sans accord : il pourrait appliquer cette migration non autorisée.
 
 La PR #5 peut rester en brouillon pendant le développement, mais un lot
 métier indépendant pourra ensuite être isolé dans sa propre branche/PR pour
