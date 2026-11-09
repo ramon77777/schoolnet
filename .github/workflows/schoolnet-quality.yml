@@ -30,6 +30,13 @@ jobs:
           node-version: "24"
           cache: npm
 
+      # Un build local peut réussir avec des dépendances déjà installées
+      # alors que le fichier de verrouillage ne permet pas une installation propre.
+      - name: Vérifier la cohérence du fichier de verrouillage
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          git diff --exit-code -- package-lock.json
+
       - name: Installer les dépendances du lockfile
         run: npm ci --no-audit --no-fund
 
