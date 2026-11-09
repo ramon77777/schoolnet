@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { Link } from "react-router-dom";
 import AdminTimetableSlotCreateForm from "@/features/timetable/components/AdminTimetableSlotCreateForm";
 import TimetableWeeklyView from "@/features/timetable/components/TimetableWeeklyView";
 
@@ -788,6 +789,10 @@ export default function AdminTimetable() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+
+            <Link to="/app/admin/rooms" className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50">
+              🚪 Gérer les salles
+            </Link>
 
             <button
               type="button"
