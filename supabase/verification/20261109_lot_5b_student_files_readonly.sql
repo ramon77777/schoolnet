@@ -28,7 +28,13 @@ SELECT
   ) AS anonymous_can_truncate_enrollments,
   pg_catalog.has_table_privilege(
     'authenticated','public.student_enrollments','UPDATE'
-  ) AS authenticated_can_update_enrollments_directly;
+  ) AS authenticated_can_update_enrollments_directly,
+  pg_catalog.has_table_privilege(
+    'anon','public.student_enrollment_events','TRUNCATE'
+  ) AS anonymous_can_truncate_history,
+  pg_catalog.has_table_privilege(
+    'authenticated','public.student_enrollment_events','INSERT'
+  ) AS authenticated_can_insert_history;
 
 SELECT
   id,
