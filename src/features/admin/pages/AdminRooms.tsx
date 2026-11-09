@@ -232,6 +232,7 @@ export default function AdminRooms() {
               <button type="button" aria-label="Fermer" className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100" disabled={saving} onClick={() => setFormOpen(false)}>✕</button>
             </div>
             <form onSubmit={(event) => void save(event)} className="space-y-4">
+              {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
               <label className="block"><span className="mb-1 block text-xs font-semibold text-slate-600">Nom de la salle *</span><input className={inputClass} maxLength={120} required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ex. Salle 6e A, Laboratoire informatique…" /></label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block"><span className="mb-1 block text-xs font-semibold text-slate-600">Code (facultatif)</span><input className={inputClass} maxLength={40} value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} placeholder="Ex. BAT-A-101" /></label>
