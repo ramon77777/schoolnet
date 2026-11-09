@@ -20,6 +20,7 @@ import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
 import AdminTimetable from "@/features/admin/pages/AdminTimetable";
+import AdminRooms from "@/features/admin/pages/AdminRooms";
 import AdminReportCards from "@/features/admin/pages/AdminReportCards";
 import AdminEnrollments from "@/features/admin/pages/AdminEnrollments";
 import AdminEnrollmentRequests from "@/features/admin/pages/AdminEnrollmentRequests";
@@ -376,6 +377,7 @@ export const router = createBrowserRouter([
               { path: "admin/enrollment-requests", element: <AdminEnrollmentRequests /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
               { path: "admin/timetable",  element: <AdminTimetable />, },
+              { path: "admin/rooms", element: <AdminRooms />, },
               { path: "admin/school-years", element: <AdminSchoolYears />, },
               { path: "admin/averages", element: <AdminAverages /> },
               { path: "/app/admin/report-cards", element: <AdminReportCards />, },
