@@ -74,13 +74,13 @@ sans validation des besoins de l'établissement.
 | Ordre opérationnel | Bloc | Travail prioritaire |
 | --- | --- | --- |
 | A | **Salles de classe physiques — complément Lot 2** | CRUD testé, codes automatiques en base et historique vérifiés ; recette UI d'affectation, conflits et permissions à terminer |
-| B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | **5.A validé sur captures Parent/Apprenant** ; **5.B SQL appliqué** : notes/historique sécurisés et documents privés Admin, **recette de dépôt/téléchargement/suppression à faire** ; 5.C admissions et 5.D réinscription à poursuivre |
+| B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | **5.A validé sur captures Parent/Apprenant** ; **5.B SQL appliqué** : notes/historique sécurisés, dépôt et suppression de documents validés, stockage confirmé vide ; ouverture du PDF téléchargé à confirmer. **5.C cadré** : finalisation vérifiée avec rattachement des comptes/dossiers sans doublon ; 5.D réinscription à poursuivre |
 | C | **Lot 6 — Vie scolaire** | Observations, incidents, encouragements, sanctions contrôlées, circuit de validation, confidentialité et historique ; ne pas dupliquer les absences |
 | D | **Lot 7 — Scolarité / Finances** | Plans de frais, échéances, paiements, imputations, annulations tracées, soldes, reçus et consultation Parent ; ne pas confondre tarifs publics de la plateforme et frais d'un établissement |
 | E | **Lot 8 — Documents scolaires** | Certificat, attestation, relevé, reçu, numérotation unique, PDF, archivage, contrôle des accès et versions figées |
 | F | **Recette transversale et LIVE-FR sur Preview** | RLS pour tous les profils, mobilité, notifications, non-régression, audio/vidéo sur téléphone, validation distincte du déploiement |
 
-**Audit 5.A :** `docs/lot-5-a-consultation-dossiers-scolaires.md` : les vues Parent/Apprenant sont validées. **Lot 5.B :** `docs/lot-5-b-confidentialite-et-pieces-justificatives.md` : durcissement SQL des notes/historique et stockage privé **appliqués après autorisation**. La lecture des notes via l'API est désormais refusée aux profils familiaux ; une recette documentaire complète (fichier fictif) reste nécessaire avant publication.
+**Audit 5.A :** `docs/lot-5-a-consultation-dossiers-scolaires.md` : les vues Parent/Apprenant sont validées. **Lot 5.B :** `docs/lot-5-b-confidentialite-et-pieces-justificatives.md` : durcissement SQL des notes/historique et stockage privé **appliqués après autorisation**. La lecture des notes via l'API est désormais refusée aux profils familiaux ; recette de dépôt et suppression validée le 09/11/2026 (0 fichier et 0 métadonnée après suppression), ouverture du PDF téléchargé à confirmer. **Lot 5.C** : `docs/lot-5-c-cadrage-demandes-et-rattachement.md` — audit et scénario de liaison vérifiée préparés, aucune migration créée ni appliquée.
 
 Les données financières et de documents officiels nécessiteront des règles
 métier et des migrations spécifiques, préparées puis approuvées une à une.
