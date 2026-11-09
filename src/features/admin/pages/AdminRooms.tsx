@@ -11,13 +11,12 @@ import { getVisibleTimetableRooms } from "@/features/timetable/lib/timetableApi"
 import type { TimetableRoom } from "@/features/timetable/types/timetable.types";
 
 type RoomFilter = "all" | "active" | "inactive";
-type RoomDraft = { name: string; code: string; capacity: string; notes: string };
-const emptyDraft: RoomDraft = { name: "", code: "", capacity: "", notes: "" };
+type RoomDraft = { name: string; capacity: string; notes: string };
+const emptyDraft: RoomDraft = { name: "", capacity: "", notes: "" };
 
 function validateRoomDraft(draft: RoomDraft): string | null {
   if (!draft.name.trim()) return "Le nom de la salle est obligatoire.";
   if (draft.name.trim().length > 120) return "Le nom ne doit pas dépasser 120 caractères.";
-  if (draft.code.trim().length > 40) return "Le code ne doit pas dépasser 40 caractères.";
   if (draft.capacity.trim() && (!/^\d+$/.test(draft.capacity.trim()) || Number(draft.capacity) < 1 || !Number.isSafeInteger(Number(draft.capacity)))) {
     return "La capacité doit être un nombre entier positif.";
   }
@@ -74,7 +73,6 @@ export default function AdminRooms() {
     setEditing(room);
     setDraft({
       name: room.name,
-      code: room.code ?? "",
       capacity: room.capacity?.toString() ?? "",
       notes: room.notes ?? "",
     });
@@ -92,7 +90,6 @@ export default function AdminRooms() {
     try {
       const input = {
         name: draft.name.trim(),
-        code: draft.code.trim() || null,
         capacity: draft.capacity.trim() ? Number(draft.capacity) : null,
         notes: draft.notes.trim() || null,
         isActive: editing?.isActive ?? true,
@@ -101,7 +98,7 @@ export default function AdminRooms() {
       else await createAdminTimetableRoom(input);
       setFormOpen(false);
       setEditing(null);
-      setSuccess(editing ? "La salle a été modifiée." : "La salle a été créée.");
+      setSuccess(editing ? "La salle a été modifiée. Son code est conservé." : "La salle a été créée avec un code automatique.");
       await refresh();
     } catch (failure) {
       setError(getAdminTimetableErrorMessage(failure, "Impossible d'enregistrer la salle."));
@@ -235,7 +232,7 @@ export default function AdminRooms() {
               {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
               <label className="block"><span className="mb-1 block text-xs font-semibold text-slate-600">Nom de la salle *</span><input className={inputClass} maxLength={120} required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ex. Salle 6e A, Laboratoire informatique…" /></label>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block"><span className="mb-1 block text-xs font-semibold text-slate-600">Code (facultatif)</span><input className={inputClass} maxLength={40} value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} placeholder="Ex. BAT-A-101" /></label>
+                <div className="block"><label htmlFor="room-generated-code" className="mb-1 block text-xs font-semibold text-slate-600">Code automatique</label><input id="room-generated-code" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600" readOnly value={editing ? (editing.code ?? "Aucun code historique") : "Attribué à la création"} /><p className="mt-1 text-xs text-slate-500">Format SAL-000001 · non modifiable</p></div>
                 <label className="block"><span className="mb-1 block text-xs font-semibold text-slate-600">Nombre de places</span><input className={inputClass} inputMode="numeric" type="number" min="1" step="1" value={draft.capacity} onChange={(e) => setDraft({ ...draft, capacity: e.target.value })} placeholder="Ex. 40" /></label>
               </div>
               <label className="block"><span className="mb-1 block text-xs font-semibold text-slate-600">Observations</span><textarea className={inputClass} rows={3} maxLength={2000} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} placeholder="Étage, équipement, particularités…" /></label>
