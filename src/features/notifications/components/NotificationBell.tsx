@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -175,29 +175,26 @@ export default function NotificationBell() {
   // Le panneau est monté directement dans document.body : il ne peut plus
   // rester sous les bannières (transform/stacking context de l'en-tête).
   // L'ancrage est recalculé en cas de défilement ou de redimensionnement.
-  useLayoutEffect(() => {
+  const updatePosition = useCallback(() => {
+    const trigger = wrapperRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 12;
+    const width = Math.max(0, Math.min(390, window.innerWidth - margin * 2));
+    const left = Math.max(
+      margin,
+      Math.min(rect.right - width, window.innerWidth - width - margin)
+    );
+    const top = rect.bottom + 8;
+    const maxHeight = Math.max(100, window.innerHeight - top - margin);
+    setPanelPosition({ top, left, width, maxHeight });
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
-
-    function updatePosition() {
-      const trigger = wrapperRef.current;
-      if (!trigger) return;
-      const rect = trigger.getBoundingClientRect();
-      const margin = 12;
-      const width = Math.max(0, Math.min(390, window.innerWidth - margin * 2));
-      const left = Math.max(
-        margin,
-        Math.min(rect.right - width, window.innerWidth - width - margin)
-      );
-      const top = rect.bottom + 8;
-      const maxHeight = Math.max(100, window.innerHeight - top - margin);
-      setPanelPosition({ top, left, width, maxHeight });
-    }
-
     function onEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
-
-    updatePosition();
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     document.addEventListener("keydown", onEscape);
@@ -206,7 +203,7 @@ export default function NotificationBell() {
       window.removeEventListener("scroll", updatePosition, true);
       document.removeEventListener("keydown", onEscape);
     };
-  }, [open]);
+  }, [open, updatePosition]);
 
   const hasUnread = unreadCount > 0;
 
@@ -324,7 +321,10 @@ export default function NotificationBell() {
     <div ref={wrapperRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (!open) updatePosition();
+          setOpen((current) => !current);
+        }}
         className={[
           "relative h-10 w-10 rounded-full",
           "border border-gray-200 bg-white",
