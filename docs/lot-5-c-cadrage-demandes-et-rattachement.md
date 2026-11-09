@@ -2,7 +2,57 @@
 
 **Date :** 09/11/2026  
 **Branche :** `feature/schoolnet-notifications` — PR #5 en brouillon  
-**État :** audit et proposition de workflow, **pas encore d'implémentation 5.C ni de migration SQL**. La base `schoolnet_2.0` reste à **29 migrations**.
+**État :** workflow validé, migration et interface **développées sur la branche**, **non appliquées à Supabase** ; la base `schoolnet_2.0` reste à **29 migrations**.
+
+## Implémentation 5.C préparée après validation du workflow
+
+Le cadrage d'origine reste documenté dans les sections suivantes. Le nouvel
+état du développement est précisé ici.
+
+- **Migration** : `supabase/migrations/20261109170500_verified_public_enrollment_resolutions.sql`.
+  Crée `public.public_enrollment_request_resolutions`, PK sur `request_id`,
+  FK vers `profiles` et `student_enrollments`, index unique de dossier annuel,
+  RLS **Admin en lecture uniquement**.
+- **Finalisation atomique** : nouvelle RPC
+  `public.admin_finalize_public_enrollment_request` réservée à l'Admin,
+  exigeant vérification familiale attestée, note (10–1000 caractères),
+  profils Parent et Apprenant valides et dossier annuel cohérent
+  uniquement si la demande est une inscription. Compte désactivé refusé.
+- **Création du lien familial** : si `parent_links` ne contient pas déjà
+  le couple vérifié, la RPC le crée sans doublon, puis synchronise
+  `profiles.child_ids` pour les autres modules (notamment la messagerie).
+  Les anciens enfants liés sont conservés ; toutes les écritures sont
+  annulées en cas d'échec.
+- **Statut vérifié** : le lien, la résolution, `processed` et l'événement
+  historique sont enregistrés ensemble. Un déclencheur bloque le statut
+  « Traitée » sans preuve relationnelle. Les anciens dossiers
+  `processed` ne sont pas modifiés automatiquement ; leur liaison
+  peut être régularisée explicitement après contrôle.
+- **Idempotence** : verrou de la demande ; appel identique retourne
+  le rattachement existant sans écriture supplémentaire. Une autre cible
+  est refusée ; le même dossier annuel ne peut pas justifier deux demandes
+  d'inscription finalisées.
+- **Sécurité complémentaire** : retrait des permissions `TRUNCATE`
+  dangereuses sur `parent_links`, RLS et lecture familiale préservées.
+- **Écran** : `src/features/enrollments/components/AdminRequestResolutionPanel.tsx`
+  intégré à `AdminEnrollmentRequests.tsx`. Sélection de comptes existants,
+  recherche par nom/e-mail, indicateur du lien parental, liste des
+  inscriptions valides, note et attestation, avertissement des noms
+  discordants. L'ancien bouton « Traitée » non vérifié est remplacé.
+- **Avant activation SQL** : affiche « migration en attente » et bloque
+  toute finalisation, tout en conservant l'examen et les statuts
+  « Famille contactée » et « Refusée ».
+- **Contrôle en lecture seule** :
+  `supabase/verification/20261109_lot_5c_public_request_resolution_readonly.sql`
+  exécuté avec succès. État actuel : 29 migrations, table/RPC 5.C absentes,
+  3 demandes publiques préservées. Aucun test DDL appliqué.
+
+**Avant la recette du nouveau workflow :** autorisation explicite requise
+pour la migration 5.C. La migration `20261109140104` sur les corrections
+reste non autorisée : **ne pas faire de `supabase db push --remote` global**.
+Aucune fusion `main` ni déploiement Vercel n'a eu lieu.
+
+---
 
 ## 1. Socle déjà présent à réutiliser
 
