@@ -2,7 +2,7 @@
 
 **Date de préparation :** 09/11/2026  
 **Branche :** `feature/schoolnet-notifications`, PR #5 en brouillon  
-**État :** migrations **5.B.1 et 5.B.2 appliquées le 09/11/2026** après autorisation explicite ; recette navigateur des fichiers à effectuer.  
+**État :** migrations **5.B.1 et 5.B.2 appliquées le 09/11/2026** après autorisation explicite. **Dépôt et suppression du fichier test validés sur captures et en base** ; téléchargement proposé par l'interface, ouverture du PDF téléchargé restant à confirmer.  
 **Données existantes :** **29 migrations enregistrées**, 2 dossiers annuels, 4 événements historiques, salles `LAB-01` et `SAL-000001` conservées ; aucun document administratif déposé au moment des contrôles.
 
 ## 1. Recette du Lot 5.A
@@ -79,7 +79,7 @@ Fichier : `supabase/migrations/20261109153500_private_student_enrollment_documen
   pièces dans cette première version. Un parcours de transmission familial
   pourra être ajouté séparément après validation du besoin et des rôles.
 
-## 5. Interface activée en base (recette utilisateur en attente)
+## 5. Interface activée et recette partielle validée
 
 - `src/features/enrollments/components/AdminEnrollmentDocuments.tsx` :
   ajout, liste, téléchargement et suppression confirmée.
@@ -137,7 +137,10 @@ Fichier de contrôle SQL non mutatif :
 - Administration : RPC de lecture des inscriptions et de l'historique fonctionnelles.
 - Tables : droits `TRUNCATE` publics retirés, insertion directe d'événements d'inscription refusée, dossiers annuels existants inchangés.
 - Stockage : bucket **privé**, 10 Mo, MIME PDF/JPEG/PNG/WEBP ; 3 politiques RLS sur les métadonnées et 3 politiques RLS sur les objets Storage.
-- Limite de vérification : **le dépôt, le téléchargement et la suppression réels de fichiers depuis l'interface n'ont pas encore été testés** ; aucun document réel ou fictif n'a été téléversé par l'assistant.
+- **Recette utilisateur (09/11/2026)** : captures de la fiche administrative confirmant la pièce PDF affichée après dépôt et le message de suppression avec retour à une liste vide. Le bouton Télécharger est visible, mais les captures ne prouvent pas à elles seules la réussite de l'ouverture du PDF téléchargé.
+- **Vérification Supabase après suppression :** `0` ligne dans `public.student_enrollment_documents`, `0` objet dans `storage.objects` pour le bucket privé et le bucket `student-enrollment-documents` toujours non public. Aucun fichier orphelin.
+- Les essais SQL sous rôles Parent/Apprenant et Administrateur avaient été validés ; la protection des observations administratives reste en vigueur.
+- **Restant à confirmer** : le fichier téléchargé s'ouvre sans erreur, ainsi que les essais négatifs sur les autorisations Storage depuis des sessions réelles Parent et Apprenant.
 
 ## 8. Sous-lots restants du Lot 5
 
