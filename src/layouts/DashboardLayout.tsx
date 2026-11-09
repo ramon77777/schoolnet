@@ -207,6 +207,10 @@ export default function DashboardLayout() {
               📊 Tableau de bord
             </NavLink>
 
+            <NavLink className={navItem} to="/app/student/enrollments">
+              📁 Mon dossier scolaire
+            </NavLink>
+
             <NavLink
               className={navItem}
               to="/app/student/courses"
@@ -314,6 +318,10 @@ export default function DashboardLayout() {
               to="/app/parent/children"
             >
               👧 Mes enfants
+            </NavLink>
+
+            <NavLink className={navItem} to="/app/parent/enrollments">
+              📁 Dossiers scolaires
             </NavLink>
 
             <NavLink
