@@ -74,13 +74,13 @@ sans validation des besoins de l'établissement.
 | Ordre opérationnel | Bloc | Travail prioritaire |
 | --- | --- | --- |
 | A | **Salles de classe physiques — complément Lot 2** | CRUD testé, codes automatiques en base et historique vérifiés ; recette UI d'affectation, conflits et permissions à terminer |
-| B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | **5.A développé** : consultation dossiers annuels par Parent/Apprenant, GitHub CI ; à tester en navigateur. **5.B–5.D** : confidentialité notes, pièces privées, admission et réinscription, sans recréer le socle |
+| B | **Lot 5 — Inscriptions et dossiers élèves (complément)** | **5.A validé sur captures Parent/Apprenant** ; **5.B préparé** : protections SQL des notes/historique et documents privés Admin, 2 migrations à autoriser ; 5.C admissions et 5.D réinscription à poursuivre |
 | C | **Lot 6 — Vie scolaire** | Observations, incidents, encouragements, sanctions contrôlées, circuit de validation, confidentialité et historique ; ne pas dupliquer les absences |
 | D | **Lot 7 — Scolarité / Finances** | Plans de frais, échéances, paiements, imputations, annulations tracées, soldes, reçus et consultation Parent ; ne pas confondre tarifs publics de la plateforme et frais d'un établissement |
 | E | **Lot 8 — Documents scolaires** | Certificat, attestation, relevé, reçu, numérotation unique, PDF, archivage, contrôle des accès et versions figées |
 | F | **Recette transversale et LIVE-FR sur Preview** | RLS pour tous les profils, mobilité, notifications, non-régression, audio/vidéo sur téléphone, validation distincte du déploiement |
 
-**Audit 5.A :** `docs/lot-5-a-consultation-dossiers-scolaires.md`. L'écran ne demande pas la colonne `student_enrollments.notes`, mais sa lecture par l'API reste actuellement possible pour les utilisateurs autorisés à voir leur ligne : une correction de permissions séparée est requise avant livraison publique.
+**Audit 5.A :** `docs/lot-5-a-consultation-dossiers-scolaires.md` : les vues Parent/Apprenant sont validées. **Lot 5.B :** `docs/lot-5-b-confidentialite-et-pieces-justificatives.md` : durcissement SQL des notes/historique et stockage privé préparés sur GitHub, **non appliqués**. Les notes restent actuellement lisibles via l'API pour les rôles autorisés à consulter leur ligne ; ne pas publier avant résolution.
 
 Les données financières et de documents officiels nécessiteront des règles
 métier et des migrations spécifiques, préparées puis approuvées une à une.
