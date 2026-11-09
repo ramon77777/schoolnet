@@ -5,7 +5,7 @@
 **Base consultée :** `schoolnet_2.0`  
 **Décision de test :** le poste de travail actuel n'a pas de caméra ; **les tests vidéo réels de LIVE-FR sont reportés à une Preview Vercel, sur téléphone ou ordinateur équipé**.
 
-> Les changements SQL de sécurité décrits ci-dessous sont **préparés sur GitHub, non appliqués à Supabase**. Aucun déploiement en production, aucune fusion dans `main` sans une autorisation distincte.
+> **Mise à jour 09/11/2026 :** la première migration de sécurité (messagerie, `20261109135338`) a été appliquée sur Supabase avec autorisation explicite. La seconde (corrections, `20261109140104`) est **préparée mais non appliquée**. Aucun déploiement Vercel ni aucune fusion dans `main`.
 
 ## 1. État fonctionnel consolidé
 
@@ -17,11 +17,11 @@
 | 4.3.B — Devoirs et corrections | Publication du devoir, remise, alerte Enseignant, correction publiée, alertes Apprenant et Parent lié, zéro doublon | Quiz/examen, tentative d'accès Parent non lié, non-publication |
 | 4.3.C — Emploi du temps | Horaire modifié, désactivé et réactivé ; un avis par destinataire Enseignant et Apprenant | Changement de classe, nouvel enseignant, suppression de créneau fictif, ouverture des liens |
 | LIVE-FR | `lang: "fr"` et `setDailyLang("fr")` dans Daily Prebuilt, libellés React français | **Micro/caméra, préconnexion, discussion, partage, reconnexion et responsive sur Vercel Preview après préparation** |
-| 4.3.D — Recette et sécurité | Contrôles SQL/RLS, deux corrections de permissions préparées, CI automatisée | Validation finale du durcissement et scénarios croisés |
+| 4.3.D — Recette et sécurité | Contrôles SQL/RLS, correctif messagerie appliqué (26 migrations), CI automatisée | Recette utilisateur de la messagerie et correctif des corrections encore en attente d'autorisation |
 
 ## 2. Vérifications réalisées dans Supabase (lecture seule)
 
-- **25 migrations** en base au démarrage de 4.3.D ; les **deux nouvelles migrations de sécurité sont en attente**.
+- **25 migrations** au démarrage de 4.3.D ; **26 migrations appliquées après validation du durcissement des relations de messagerie**. La seconde migration de sécurité reste en attente.
 - **60 tables publiques sur 60** avec RLS activée ; **5 vues sur 5** avec `security_invoker=true`.
 - `chat_message_hidden_for_users` et `live_session_rooms` : pas de politique utilisateur ni de droit de lecture pour `anon` ou `authenticated`. Cette isolation est intentionnelle ; le linter signale « RLS activée sans politique », mais cela ne démontre pas une fuite.
 - Isolation RLS testée en transaction `BEGIN READ ONLY` / `ROLLBACK` pour les comptes **student, parent et teacher** : **zéro notification étrangère, zéro préférence étrangère et zéro lien parental non pertinent**. Le compte **admin** dispose d'une visibilité élargie conformément aux politiques actuelles.
@@ -31,7 +31,7 @@
 
 Scripts : `supabase/verification/20261109_release_security_readonly.sql` et `supabase/verification/20261109_public_rpc_security_readonly.sql`.
 
-## 3. Corrections de confidentialité préparées — **non appliquées**
+## 3. Corrections de confidentialité — **messagerie appliquée, notes en attente**
 
 ### 3.1 Relations de messagerie : `20261109135338_harden_chat_relationship_rpcs.sql`
 
@@ -44,7 +44,7 @@ Le correctif :
 - interdit `EXECUTE` à `anon` et à `PUBLIC` tout en conservant `authenticated` et `service_role` ;
 - fixe `search_path=pg_catalog` et conserve les signatures RPC et la logique métier des relations.
 
-**Vérification transactionnelle avec annulation réussie :** compte membre autorisé, interrogation d'un autre membre refusée, échanges Parent → Enseignant, Apprenant → Parent et Enseignant → Parent conservés.
+**Application autorisée et exécutée le 09/11/2026 :** migration `20261109135338` enregistrée dans `supabase_migrations.schema_migrations` (26/27 en GitHub). Contenu SQL stocké **identique octet pour octet** au fichier de la branche. Contrôles réels après application : les trois fonctions refusent l'exécution `anon`, conservent `authenticated` et `service_role`, et utilisent `search_path=pg_catalog`. Scénarios transactionnels en lecture seule réussis : membre propriétaire voit ses conversations, appartenance d'autrui masquée, contacts Parent/Enseignant/Apprenant conservés. Les 5 politiques RLS de messagerie et 6 adhésions existantes sont inchangées ; Cron LIVE actif. Les tests navigateur de réception/envoi de messages restent à faire.
 
 ### 3.2 Publication des notes : `20261109140104_harden_assessment_legacy_rpcs.sql`
 
@@ -62,7 +62,7 @@ Le correctif :
 - limite le recalcul direct au rôle de service ; le déclencheur `trg_submission_question_grades_recalculate_score` conserve sa capacité de calcul ;
 - ne modifie **aucune note ni aucune copie historique**.
 
-**Vérification transactionnelle avec annulation réussie :** publication refusée avec le compte Apprenant, autorisée avec le compte Enseignant propriétaire ; déclencheur de notification conservé, aucune écriture persistante.
+**Statut : migration `20261109140104` NON appliquée.** Vérification transactionnelle avec annulation réussie : publication refusée avec le compte Apprenant, autorisée avec le compte Enseignant propriétaire ; déclencheur de notification conservé, aucune écriture persistante. Son application nécessitera une nouvelle autorisation.
 
 ### Précautions de déploiement SQL
 
@@ -72,7 +72,7 @@ Le correctif :
 4. Réexécuter les scripts de vérification **en lecture seule** après chaque application.
 5. Vérifier les workflows Messagerie et Corrections avec les comptes factices ; ne pas modifier les permissions des autres RPC sans examen des dépendances.
 
-**Statut : 25 migrations appliquées, 2 en attente.** Les tests `ROLLBACK` ne constituent pas un déploiement.
+**Statut au 09/11/2026 : 26 migrations appliquées dans `schoolnet_2.0`, 1 en attente (`20261109140104`).** La première migration a bien été enregistrée ; les tests `ROLLBACK` de la seconde ne constituent pas un déploiement.
 
 ## 4. Qualité du code et dépendances
 
@@ -86,7 +86,7 @@ Le correctif :
 
 | Priorité | Vérification ciblée | Critère de succès |
 | --- | --- | --- |
-| **P0** | Appliquer les deux durcissements SQL après accord | Aucune relation de messagerie accessible à anon ; aucune publication de correction par un autre professeur/apprenant |
+| **P0** | Durcissement Messagerie appliqué ; durcissement Corrections à autoriser séparément | Accès anonyme aux relations de messagerie bloqué ; aucune publication par un autre enseignant/apprenant après seconde migration |
 | **P0** | Tester Messagerie et publication de correction après changements SQL | Contact Parent/Enfant/Professeur, notes et notifications toujours fonctionnels |
 | P1 | Contrôler les rôles en navigateur sur ordinateur | Navigation et données strictement accessibles pour Admin/Enseignant/Apprenant/Parent |
 | P1 | Tester un rappel facultatif réellement désactivé | Aucune notification de rappel non souhaitée, alertes essentielles toujours reçues |
