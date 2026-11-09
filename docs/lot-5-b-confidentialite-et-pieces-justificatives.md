@@ -2,8 +2,8 @@
 
 **Date de préparation :** 09/11/2026  
 **Branche :** `feature/schoolnet-notifications`, PR #5 en brouillon  
-**État :** code et migrations préparés, **AUCUNE application à Supabase** sans autorisation distincte.  
-**Données existantes :** 27 migrations enregistrées, 2 dossiers annuels, salle historique `LAB-01` et nouvelle salle `SAL-000001` conservées.
+**État :** migrations **5.B.1 et 5.B.2 appliquées le 09/11/2026** après autorisation explicite ; recette navigateur des fichiers à effectuer.  
+**Données existantes :** **29 migrations enregistrées**, 2 dossiers annuels, 4 événements historiques, salles `LAB-01` et `SAL-000001` conservées ; aucun document administratif déposé au moment des contrôles.
 
 ## 1. Recette du Lot 5.A
 
@@ -79,7 +79,7 @@ Fichier : `supabase/migrations/20261109153500_private_student_enrollment_documen
   pièces dans cette première version. Un parcours de transmission familial
   pourra être ajouté séparément après validation du besoin et des rôles.
 
-## 5. Interface préparée
+## 5. Interface activée en base (recette utilisateur en attente)
 
 - `src/features/enrollments/components/AdminEnrollmentDocuments.tsx` :
   ajout, liste, téléchargement et suppression confirmée.
@@ -98,7 +98,7 @@ Fichier : `supabase/migrations/20261109153500_private_student_enrollment_documen
 
 ## 6. État d'autorisation
 
-**NE PAS lancer `supabase db push --remote` global.**
+**NE PAS lancer `supabase db push --remote` global.** La version `20261109140104` (sécurité des corrections) n'a pas encore été autorisée. La base compte à présent 29 migrations appliquées.
 
 Les migrations suivantes coexistent sur la branche :
 
@@ -106,14 +106,12 @@ Les migrations suivantes coexistent sur la branche :
 | --- | --- | --- |
 | `20261109140104` | Sécurité RPC évaluations/corrections | En attente — hors Lot 5 |
 | `20261109145700` | Codes SAL- des salles | Déjà appliquée |
-| `20261109153406` | Sécurité des dossiers et événements | **Préparée, non appliquée** |
-| `20261109153500` | Bucket et pièces justificatives | **Préparée, non appliquée** |
+| `20261109153406` | Sécurité des dossiers et événements | **Appliquée et vérifiée** |
+| `20261109153500` | Bucket et pièces justificatives | **Appliquée et vérifiée** |
 
-La prochaine action SQL nécessite une **autorisation explicite** pour les
-deux versions 5.B.1 / 5.B.2, et un contrôle transactionnel séparé
-de la migration non autorisée `20261109140104`.
+Les deux migrations 5.B ont été testées dans une transaction avec `ROLLBACK`, puis appliquées ensemble dans une **transaction atomique** après autorisation explicite. Le contenu SQL enregistré dans `supabase_migrations.schema_migrations` correspond exactement à chacun des fichiers GitHub. La migration de sécurité des corrections `20261109140104` reste **non appliquée** et n'a pas été incluse.
 
-## 7. Recette ciblée après autorisation SQL
+## 7. Recette ciblée après application SQL (à réaliser)
 
 1. Sous Administrateur, ouvrir **Inscriptions → Dossier → Pièces
    justificatives**, déposer uniquement un PDF fictif de moins de 10 Mo.
@@ -131,6 +129,15 @@ de la migration non autorisée `20261109140104`.
 
 Fichier de contrôle SQL non mutatif :
 `supabase/verification/20261109_lot_5b_student_files_readonly.sql`.
+
+### Vérifications post-application du 09/11/2026
+
+- Historique : **29 versions**, 5.B.1 / 5.B.2 appliquées, migration Corrections non appliquée.
+- Lecture Parent et Apprenant : leurs dossiers restent accessibles, zéro dossier étranger ; la lecture de la colonne `notes` renvoie un refus SQL.
+- Administration : RPC de lecture des inscriptions et de l'historique fonctionnelles.
+- Tables : droits `TRUNCATE` publics retirés, insertion directe d'événements d'inscription refusée, dossiers annuels existants inchangés.
+- Stockage : bucket **privé**, 10 Mo, MIME PDF/JPEG/PNG/WEBP ; 3 politiques RLS sur les métadonnées et 3 politiques RLS sur les objets Storage.
+- Limite de vérification : **le dépôt, le téléchargement et la suppression réels de fichiers depuis l'interface n'ont pas encore été testés** ; aucun document réel ou fictif n'a été téléversé par l'assistant.
 
 ## 8. Sous-lots restants du Lot 5
 
