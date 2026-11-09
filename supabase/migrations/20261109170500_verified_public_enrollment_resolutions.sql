@@ -208,6 +208,16 @@ BEGIN
     IF v_request.status<>'processed' THEN
       RAISE EXCEPTION 'Rattachement existant sans statut Traitee : contacter l administration.';
     END IF;
+    IF NOT EXISTS (
+       SELECT 1 FROM public.parent_links l
+       WHERE l.parent_id=p_parent_id AND l.student_id=p_student_id
+    ) OR NOT EXISTS (
+       SELECT 1 FROM public.profiles p
+       WHERE p.id=p_parent_id
+         AND p_student_id=ANY(COALESCE(p.child_ids,ARRAY[]::uuid[]))
+    ) THEN
+      RAISE EXCEPTION 'Rattachement historique incoherent : verifier le lien familial avant de poursuivre.';
+    END IF;
     RETURN pg_catalog.jsonb_build_object(
       'request_id',v_request.id,
       'reference',v_request.reference,
