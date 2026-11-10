@@ -13,15 +13,8 @@ export default function LocalSchoolDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user?.id || user.isDemo) {
-      setSchools([]);
-      setLoading(false);
-      return;
-    }
+    if (authLoading || !user?.id || user.isDemo) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     void getAdminSchools()
       .then((data) => { if (!cancelled) setSchools(data); })
       .catch(() => {
@@ -33,6 +26,9 @@ export default function LocalSchoolDashboard() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [user?.id, user?.isDemo, authLoading]);
+
+  const isLoading = authLoading || (Boolean(user?.id) && !user?.isDemo && loading);
+  const visibleSchools = user?.id && !user.isDemo ? schools : [];
 
   return (
     <main className="space-y-6 pb-10">
@@ -51,15 +47,15 @@ export default function LocalSchoolDashboard() {
 
       <section className="sn-card space-y-3 p-5 md:p-6">
         <h2 className="text-lg font-bold text-slate-950">Mon établissement</h2>
-        {loading ? <p className="text-sm text-slate-600">Vérification des droits…</p> : null}
+        {isLoading ? <p className="text-sm text-slate-600">Vérification des droits…</p> : null}
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-        {!loading && schools.length === 0 && (
+        {!isLoading && visibleSchools.length === 0 && (
           <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
             Aucun établissement actif n'est associé à ce compte.
             Contactez le Super Administrateur SCHOOLNET.
           </p>
         )}
-        {schools.map((school) => (
+        {visibleSchools.map((school) => (
           <article key={school.id} className="rounded-xl border border-slate-200 p-4">
             <p className="text-base font-bold text-slate-900">{school.name}</p>
             <p className="mt-1 font-mono text-xs text-slate-500">{school.code}</p>
