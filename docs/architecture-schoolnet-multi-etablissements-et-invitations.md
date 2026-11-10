@@ -2,7 +2,7 @@
 
 **Date de cadrage et développement initial :** 10 novembre 2026  
 **Branche :** `feature/schoolnet-multi-etablissements` (créée depuis `feature/schoolnet-notifications`, PR #5 toujours en brouillon)  
-**État :** fondation SQL + écran central préparés. Migration SQL **non appliquée**. Comptes scolaires locaux et invitations **non activés**. Pas de fusion `main`, pas de déploiement de production.
+**État :** fondation SQL + écran central préparés ; tests SQL réversibles, ESLint et compilation **réussis** ; Preview Vercel construite (statut GitHub de déploiement réussi). Migration SQL **non appliquée**. Comptes scolaires locaux et invitations **non activés**. Pas de fusion `main`, pas de déploiement de production.
 
 ## Décision métier validée
 
@@ -55,7 +55,7 @@ Important : les anciens modules administratifs utilisent `public.is_admin()` et 
 
 ### Tests restant obligatoires avant autorisation et activation
 
-1. Lint et compilation sur la branche GitHub ; recette de l'écran à 412 px, tablette et ordinateur.
+1. **Lint et compilation GitHub : réussis.** Recette navigateur de l'écran à 412 px, tablette et ordinateur encore à effectuer.
 2. Création d'un compte `school_admin` sans mot de passe communiqué en clair, activation réelle par lien unique.
 3. Lecture d'une école par son admin et refus d'accès à une autre école, par les trois autres rôles, et après révocation.
 4. Revue approfondie des RLS de **toutes** les tables historiques avant ouverture d'un espace de gestion scolaire à un administrateur local.
@@ -80,3 +80,10 @@ Aucun mot de passe ni jeton d'activation ne doit être conservé en clair dans l
 ## Restrictions maintenues
 
 Ne pas appliquer `supabase db push --remote` global : les migrations `20261110090000_school_year_rollover_controlled.sql` et `20261109140104_harden_assessment_legacy_rpcs.sql` restent en attente. La migration multi-établissements exige une autorisation séparée. `main` et Vercel production ne doivent pas être modifiés sans validation.
+
+### État de la revue GitHub
+
+- **PR #6** ouverte en brouillon, base `feature/schoolnet-notifications`, non fusionnée : https://github.com/ramon77777/schoolnet/pull/6.
+- **GitHub Actions lint/build : réussi** (exécution `42801891531`).
+- **Statut Vercel : success** sur le commit testé de la branche. L'accès direct à la Preview devra être confirmé avant recette navigateur.
+- **Après ROLLBACK :** 30 migrations, 4 demandes publiques, 2 inscriptions, 1 Super Administrateur historique ; aucun objet nouveau persistant.
