@@ -56,12 +56,34 @@ Important : les anciens modules administratifs utilisent `public.is_admin()` et 
 ### Tests restant obligatoires avant autorisation et activation
 
 1. **Lint et compilation GitHub : réussis.** Recette navigateur de l'écran à 412 px, tablette et ordinateur encore à effectuer.
-2. Création d'un compte `school_admin` sans mot de passe communiqué en clair, activation réelle par lien unique.
+2. Création réelle d'un compte `school_admin` par Edge Function, activation réelle par lien unique, reprise après panne et envoi manuel, en environnement de test autorisé.
 3. Lecture d'une école par son admin et refus d'accès à une autre école, par les trois autres rôles, et après révocation.
 4. Revue approfondie des RLS de **toutes** les tables historiques avant ouverture d'un espace de gestion scolaire à un administrateur local.
 5. Tests de robustesse en cas d'échec entre Supabase Auth et PostgreSQL (pas de faux compte actif ni de double invitation).
 
-## Phase 2 — Comptes et invitations assistées (à développer)
+## Phase 2 — Comptes et invitations assistées (développés sur la branche, non activés)
+
+**Livrables préparés :**
+- Edge Function \`supabase/functions/schoolnet-admin-invitation/index.ts\` (déclarée dans \`supabase/config.toml\`, **non déployée**). Vérification du JWT via \`auth.getUser\`, contrôle fort du rôle global \`profiles.role='admin'\`, contrôle de l'origine navigateur et de l'établissement actif.
+- Pour un **nouveau** responsable : recherche d'e-mail côté serveur, refus de tout compte existant, génération d'un lien Supabase \`auth.admin.generateLink(type:'invite')\` **sans SMTP**, attribution du rôle local puis rattachement atomique + suivi SQL. Un échec tente de supprimer uniquement le compte Auth créé pour cette opération ; les erreurs de reprise restent signalées.
+- Pour un **responsable déjà rattaché** : régénération par lien \`recovery\`, uniquement si son rôle est \`school_admin\` et son appartenance à l'école active. Un délai minimal d'une minute limite les renouvellements accidentels.
+- Dans la **même migration encore en attente**, ajout de la table \`schoolnet_school_admin_invitations\` (e-mail, date, compteur, déclaration d'envoi ; **pas de lien, OTP ni mot de passe**), RLS lecture Super Admin, RPC lookup Auth contrôlée, enregistrement transactionnel et déclaration d'envoi.
+- Écran \`src/features/admin/pages/AdminSchoolInvitations.tsx\` : formulaire, liste des invitations, copie du message et du lien, ouverture de l'application e-mail et déclaration manuelle de l'envoi.
+- Espace \`src/features/schools/pages/LocalSchoolDashboard.tsx\` et rôle \`school_admin\` reconnus dans Auth et les routes. **Pas d'accès aux anciennes pages globales** : l'espace local est strictement limité et en lecture seule.
+- URL d'activation par défaut \`https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite\`. À ajouter explicitement à la liste des URL de redirection autorisées Supabase si nécessaire ; variable serveur facultative \`SCHOOLNET_INVITE_REDIRECT_URL\` pour la remplacer, avec vérification HTTPS.
+- Variable serveur obligatoire pour toutes les origines navigables \`SCHOOLNET_ALLOWED_ORIGINS\` (liste HTTPS séparée par virgules). La clé service_role reste exclusivement dans la fonction serveur.
+
+**Vérification SQL (transaction réversible) :** extension de la migration installée et annulée, interrogation Auth par Super Admin réussie, accès Apprenant à la recherche et à la déclaration d'envoi refusé, visibilité inter-rôles bloquée. La création réelle d'un compte \`school_admin\`, la génération d'un lien Auth et le parcours d'activation **ne sont pas testables par la seule transaction SQL avec ROLLBACK** : ils nécessitent ensuite une recette fonctionnelle isolée et une autorisation de déploiement.
+
+**Points de sécurité encore à vérifier :** résistance à deux invitations concurrentes sur le même e-mail ; comportement du lien \`invite\` lors d'une collision Auth, durée d'expiration configurée dans Supabase, compensation Auth/SQL en cas de panne, récupération d'un lien expiré, bonne configuration des redirections Supabase et de la CORS Preview.
+
+### Fonctionnement prévu de l'envoi manuel
+
+Le Super Administrateur valide l'identité du responsable → SCHOOLNET prépare le compte \`school_admin\` et le rattachement → le lien temporaire est renvoyé uniquement dans la réponse de la fonction → l'interface préremplit l'e-mail (ou copie le message) → l'administrateur **envoie personnellement** → l'admin peut déclarer l'envoi → le destinataire utilise le lien, choisit son mot de passe et accède au tableau de bord limité de son école.
+
+Aucun mot de passe ni jeton d'activation ne doit être conservé dans la base ou dans les journaux. Le statut « envoi déclaré » ne prouve ni l'envoi effectif ni la réception ; l'utilisateur final est seul à activer son accès.
+
+
 
 Parcours recommandé : le Super Administrateur valide l'école et le responsable → SCHOOLNET identifie ou prépare le compte `school_admin` → associe le compte à l'établissement dans un traitement serveur contrôlé → prépare un lien d'activation temporaire via Supabase Admin `generateLink()` **sans envoi SMTP** → ouvre un brouillon d'e-mail pré-rempli ou copie une invitation → l'administrateur l'envoie depuis sa messagerie → le destinataire choisit son mot de passe.
 
