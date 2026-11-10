@@ -32,4 +32,7 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/schoolnet-live/index.ts"
 
-
+[functions.schoolnet-admin-invitation]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/schoolnet-admin-invitation/index.ts"
