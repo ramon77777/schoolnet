@@ -3,7 +3,12 @@ BEGIN TRANSACTION READ ONLY;
 SELECT
  (SELECT count(*) FROM supabase_migrations.schema_migrations) AS total_migrations,
  EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations
-  WHERE version='20261110103500') AS school_foundation_registered,
+  WHERE version='20261110111827' AND name='schoolnet_schools_security_foundation') AS school_foundation_registered,
+ EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations
+  WHERE version='20261110112106' AND name='school_admin_profile_role_check') AS profile_role_correction_registered,
+ EXISTS(SELECT 1 FROM pg_constraint c WHERE c.conrelid='public.profiles'::regclass
+  AND c.conname='profiles_role_check' AND c.convalidated
+  AND pg_get_constraintdef(c.oid) LIKE '%school_admin%') AS profile_check_allows_local_admin,
  to_regclass('public.schoolnet_schools') IS NOT NULL AS school_table_installed,
  to_regclass('public.schoolnet_school_memberships') IS NOT NULL AS memberships_installed,
  to_regclass('public.schoolnet_school_audit') IS NOT NULL AS audit_installed,
