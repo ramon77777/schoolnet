@@ -18,12 +18,16 @@ type School = { id: string; name: string; status: string };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const allowedOrigins = new Set(
-  (Deno.env.get("SCHOOLNET_ALLOWED_ORIGINS") ?? "https://schoolnet-snowy.vercel.app")
+// Exact origins only: the main site, this PR's preview, and configured extras.
+// A preview URL changes across branches; never use a *.vercel.app wildcard.
+const allowedOrigins = new Set([
+  "https://schoolnet-snowy.vercel.app",
+  "https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app",
+  ...(Deno.env.get("SCHOOLNET_ALLOWED_ORIGINS") ?? "")
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean),
-);
+]);
 
 const redirectTo = Deno.env.get("SCHOOLNET_INVITE_REDIRECT_URL") ??
   "https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite";
