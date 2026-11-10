@@ -25,6 +25,8 @@ BEGIN
      OR to_regclass('public.classes_school_unique_name_year_idx') IS NULL
      OR to_regprocedure('schoolnet_private.is_school_admin_for(uuid)') IS NULL
      OR to_regclass('public.schoolnet_school_audit') IS NULL
+     OR to_regprocedure('schoolnet_private.local_school_class_catalog(uuid)') IS NOT NULL
+     OR to_regprocedure('schoolnet_private.local_school_create_class(uuid,bigint,uuid,text)') IS NOT NULL
      OR to_regprocedure('public.schoolnet_school_class_catalog(uuid)') IS NOT NULL
      OR to_regprocedure('public.schoolnet_school_create_class(uuid,bigint,uuid,text)') IS NOT NULL
   THEN
@@ -64,7 +66,7 @@ ALTER TABLE public.schoolnet_school_audit
 -- Le role school_admin n'a pas de lecture directe de school_years
 -- a cause de la protection legacy. Ce RPC retourne uniquement les
 -- options publiques necessaires au formulaire, pour UNE ecole autorisee.
-CREATE FUNCTION public.schoolnet_school_class_catalog(p_school_id uuid)
+CREATE FUNCTION schoolnet_private.local_school_class_catalog(p_school_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -109,7 +111,7 @@ $catalog$;
 -- Creation atomique et journalisee d'une classe pour son ecole active.
 -- L'ID d'ecole transmis depuis React n'est JAMAIS considere comme une
 -- preuve d'autorisation. Aucun client n'insere directement dans classes.
-CREATE FUNCTION public.schoolnet_school_create_class(
+CREATE FUNCTION schoolnet_private.local_school_create_class(
   p_school_id uuid,
   p_level_id bigint,
   p_school_year_id uuid,
@@ -180,13 +182,50 @@ BEGIN
 END;
 $create$;
 
--- Supabase Data API: invocable seulement par des utilisateurs
--- authentifies, puis controle d'appartenance strict dans CHAQUE RPC.
+-- Façades SECURITE INVOKER dans public, opérations sensibles privées.
+-- Même si les facades sont appelées avec une clé publique, les aides privées
+-- vérifient auth.uid(), le profil school_admin et la relation active à l'école.
+CREATE FUNCTION public.schoolnet_school_class_catalog(p_school_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $wrapper$
+  SELECT schoolnet_private.local_school_class_catalog(p_school_id);
+$wrapper$;
+
+CREATE FUNCTION public.schoolnet_school_create_class(
+  p_school_id uuid,
+  p_level_id bigint,
+  p_school_year_id uuid,
+  p_name text
+)
+RETURNS uuid
+LANGUAGE sql
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $wrapper$
+  SELECT schoolnet_private.local_school_create_class(
+    p_school_id,p_level_id,p_school_year_id,p_name
+  );
+$wrapper$;
+
+-- Invocable seulement par les utilisateurs authentifiés. Le corps ayant
+-- les droits eleves n'est pas dans le schema public expose par l'API.
+REVOKE ALL ON FUNCTION schoolnet_private.local_school_class_catalog(uuid)
+  FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION schoolnet_private.local_school_create_class(uuid,bigint,uuid,text)
+  FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.schoolnet_school_class_catalog(uuid)
   FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.schoolnet_school_create_class(uuid,bigint,uuid,text)
   FROM PUBLIC, anon, authenticated;
 
+GRANT EXECUTE ON FUNCTION schoolnet_private.local_school_class_catalog(uuid)
+  TO authenticated;
+GRANT EXECUTE ON FUNCTION schoolnet_private.local_school_create_class(uuid,bigint,uuid,text)
+  TO authenticated;
 GRANT EXECUTE ON FUNCTION public.schoolnet_school_class_catalog(uuid)
   TO authenticated;
 GRANT EXECUTE ON FUNCTION public.schoolnet_school_create_class(uuid,bigint,uuid,text)
@@ -195,6 +234,12 @@ GRANT EXECUTE ON FUNCTION public.schoolnet_school_create_class(uuid,bigint,uuid,
 DO $verify_s2b$
 BEGIN
   IF pg_catalog.has_function_privilege(
+      'anon','schoolnet_private.local_school_class_catalog(uuid)','EXECUTE'
+    )
+    OR pg_catalog.has_function_privilege(
+      'anon','schoolnet_private.local_school_create_class(uuid,bigint,uuid,text)','EXECUTE'
+    )
+    OR pg_catalog.has_function_privilege(
       'anon','public.schoolnet_school_class_catalog(uuid)','EXECUTE'
     )
     OR pg_catalog.has_function_privilege(
@@ -205,6 +250,18 @@ BEGIN
     )
     OR NOT pg_catalog.has_function_privilege(
       'authenticated','public.schoolnet_school_create_class(uuid,bigint,uuid,text)','EXECUTE'
+    )
+    OR EXISTS (
+      SELECT 1 FROM pg_catalog.pg_proc
+      WHERE oid IN (
+        'public.schoolnet_school_class_catalog(uuid)'::pg_catalog.regprocedure,
+        'public.schoolnet_school_create_class(uuid,bigint,uuid,text)'::pg_catalog.regprocedure
+      ) AND prosecdef
+    )
+    OR NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_proc
+      WHERE oid='schoolnet_private.local_school_create_class(uuid,bigint,uuid,text)'::pg_catalog.regprocedure
+        AND prosecdef
     )
     OR NOT EXISTS(
       SELECT 1 FROM pg_catalog.pg_constraint
