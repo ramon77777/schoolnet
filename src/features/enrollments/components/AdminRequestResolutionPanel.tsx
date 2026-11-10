@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { getAdminEnrollments, type AdminEnrollment } from "@/features/enrollments/lib/adminEnrollmentsApi";
+import AdminEnrollmentRequestPreflight from "@/features/enrollments/components/AdminEnrollmentRequestPreflight";
 
 type RequestStatus = "new" | "contacted" | "processed" | "rejected";
 type RequestType = "student_enrollment" | "parent_access";
@@ -21,6 +22,8 @@ export type PublicRequestForResolution = {
   guardian_full_name: string;
   guardian_relationship: string;
   requested_level: string | null;
+  student_email: string | null;
+  guardian_email: string | null;
 };
 export type RequestResolution = {
   request_id: string;
@@ -98,9 +101,9 @@ export default function AdminRequestResolutionPanel({
       const userResult = await supabase.rpc("admin_list_users");
       if (userResult.error) throw userResult.error;
       if (cancelled()) return;
-      setUsers(((userResult.data ?? []) as UserChoice[]).filter(
-        (item) => item.role === "parent" || item.role === "student",
-      ));
+      // Conserver les autres rôles pour détecter un e-mail déjà occupé.
+      // Les listes de sélection Parent et Apprenant restent filtrées par rôle.
+      setUsers((userResult.data ?? []) as UserChoice[]);
       if (result.data) {
         setResolution(result.data as RequestResolution);
         return;
@@ -223,6 +226,9 @@ export default function AdminRequestResolutionPanel({
           Aucun compte ni dossier scolaire n'est créé par cette action.
         </p>
       </div>
+      {!disabled && !loading && !error && !resolution && request.status !== "rejected" && (
+        <AdminEnrollmentRequestPreflight request={request} users={users} />
+      )}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p>}
       {disabled ? (
