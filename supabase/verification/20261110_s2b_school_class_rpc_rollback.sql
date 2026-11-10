@@ -214,6 +214,62 @@ BEGIN
 END;$denied_super_admin$;
 RESET ROLE;
 
+-- Une affiliation revoquee doit supprimer IMMEDIATEMENT la lecture et les
+-- droits RPC. Ces changements sont annulés à la fin de cette transaction.
+UPDATE public.schoolnet_school_memberships
+SET status='revoked', revoked_at=now()
+WHERE school_id=current_setting('qa.b.school_a')::uuid
+  AND user_id=current_setting('qa.b.local')::uuid;
+
+DO $change_actor$ BEGIN
+ PERFORM set_config('request.jwt.claim.sub',current_setting('qa.b.local'),true);
+END;$change_actor$;
+SET LOCAL ROLE authenticated;
+DO $check_revoked$
+DECLARE blocked boolean:=false;
+BEGIN
+ BEGIN
+   PERFORM public.schoolnet_school_class_catalog(current_setting('qa.b.school_a')::uuid);
+ EXCEPTION WHEN insufficient_privilege THEN blocked:=true;
+ END;
+ IF NOT blocked OR EXISTS(
+   SELECT 1 FROM public.classes
+   WHERE id=current_setting('qa.b.new_class_id')::uuid
+ ) THEN
+   RAISE EXCEPTION 'Affiliation revoquee conserve les droits de lecture.';
+ END IF;
+END;$check_revoked$;
+RESET ROLE;
+
+UPDATE public.schoolnet_school_memberships
+SET status='active', revoked_at=NULL
+WHERE school_id=current_setting('qa.b.school_a')::uuid
+  AND user_id=current_setting('qa.b.local')::uuid;
+
+-- Une ecole suspendue doit refuser son catalogue ET l'insertion.
+UPDATE public.schoolnet_schools SET status='suspended'
+WHERE id=current_setting('qa.b.school_a')::uuid;
+
+SET LOCAL ROLE authenticated;
+DO $check_suspended$
+DECLARE blocked boolean:=false;
+BEGIN
+ BEGIN
+   PERFORM public.schoolnet_school_class_catalog(current_setting('qa.b.school_a')::uuid);
+ EXCEPTION WHEN insufficient_privilege THEN blocked:=true;
+ END;
+ IF NOT blocked OR EXISTS(
+   SELECT 1 FROM public.classes
+   WHERE id=current_setting('qa.b.new_class_id')::uuid
+ ) THEN
+   RAISE EXCEPTION 'Ecole suspendue conserve les droits de lecture.';
+ END IF;
+END;$check_suspended$;
+RESET ROLE;
+
+UPDATE public.schoolnet_schools SET status='active'
+WHERE id=current_setting('qa.b.school_a')::uuid;
+
 DO $final$
 BEGIN
  IF (SELECT count(*) FROM public.classes)
