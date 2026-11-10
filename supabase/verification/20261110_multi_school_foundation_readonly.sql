@@ -20,8 +20,8 @@ SELECT
   WHERE t.typname='user_role' AND e.enumlabel='school_admin') AS school_admin_role_installed,
  (SELECT count(*) FROM public.profiles WHERE role::text='admin') AS global_admin_profiles,
  (SELECT count(*) FROM cron.job WHERE jobname ILIKE '%live%') AS live_cron_jobs;
-SELECT table_name,policyname,cmd,roles,qual,with_check FROM pg_policies
+SELECT tablename,policyname,cmd,roles,qual,with_check FROM pg_policies
  WHERE schemaname='public' AND table_name IN
  ('schoolnet_schools','schoolnet_school_memberships','schoolnet_school_audit','schoolnet_school_admin_invitations')
- ORDER BY table_name,policyname;
+ ORDER BY tablename,policyname;
 COMMIT;
