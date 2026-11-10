@@ -35,7 +35,7 @@ REVOKE ALL ON SEQUENCE schoolnet_private.school_code_seq FROM PUBLIC, anon, auth
 DO $initialize$
 DECLARE v_max bigint;
 BEGIN
-  SELECT MAX(pg_catalog.substring(s.code FROM 5)::bigint)
+  SELECT MAX(pg_catalog.substr(s.code, 5)::bigint)
     INTO v_max
   FROM public.schoolnet_schools s
   WHERE s.code ~ '^SCH-[0-9]{6}$';
@@ -118,11 +118,11 @@ BEGIN
     OR NOT pg_catalog.has_function_privilege(
       'authenticated', 'public.schoolnet_admin_create_school(text,text,text)', 'EXECUTE'
     )
-    OR pg_catalog.position(
-      'schoolnet_private.school_code_seq' IN
+    OR pg_catalog.strpos(
       pg_catalog.pg_get_functiondef(
         'public.schoolnet_admin_create_school(text,text,text)'::pg_catalog.regprocedure
-      )
+      ),
+      'schoolnet_private.school_code_seq'
     ) = 0
   THEN
     RAISE EXCEPTION 'Generation automatique SCHOOLNET non conforme.';
