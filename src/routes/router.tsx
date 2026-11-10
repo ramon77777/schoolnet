@@ -19,6 +19,7 @@ import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
 import AdminSchools from "@/features/admin/pages/AdminSchools";
 import AdminSchoolInvitations from "@/features/admin/pages/AdminSchoolInvitations";
 import LocalSchoolDashboard from "@/features/schools/pages/LocalSchoolDashboard";
+import LocalSchoolClasses from "@/features/schools/pages/LocalSchoolClasses";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
@@ -378,6 +379,7 @@ export const router = createBrowserRouter([
             children: [
               { path: "school", element: <Navigate to="/app/school/dashboard" replace /> },
               { path: "school/dashboard", element: <LocalSchoolDashboard /> },
+              { path: "school/classes", element: <LocalSchoolClasses /> },
             ],
           },
 
