@@ -1,200 +1,389 @@
-# SCHOOLNET 2.0 — Workflow directeur rectifié
-## Automatiser l'inscription et les accès de la plateforme existante
+# SCHOOLNET — WORKFLOW COMPLET DE DÉVELOPPEMENT POST-V1
+## Édition consolidée V2.2 : inscriptions automatisées, établissements et continuité en local
 
-**Version V2.1 — 10 novembre 2026.** Remplace la V2.0 précédente, trop ambitieuse et éloignée du fonctionnement réellement souhaité. L'historique V2.0 reste accessible dans les commits GitHub.
-**Référence historique :** `Workflow_complet_SchoolNet_post_V1(6).pdf` (Lots 0 à 8).
-**Audit d'implémentation :** [Lot 5.C — Automatisation des comptes et accès : audit de l'existant](./lot-5-c-automatisation-comptes-acces-audit-existant.md).
+**Mise à jour : 10 novembre 2026.** **Statut : document directeur de pilotage.**  
+**Source métier originelle :** « Workflow_complet_SchoolNet_post_V1(7).pdf », édition d'octobre 2026, 19 pages, version V1.0.0. Ses **Lots 0 à 8, les dépendances et la méthode de recette sont préservés**.  
+**Sources techniques :** GitHub ramon77777/schoolnet, PR #5 et #6, audit du Lot 5.C, dossiers des établissements, sécurité S1, proposition S2 et passage d'année 5.D.  
+**Guide opératoire associé :** [Synchronisation GitHub, branche locale et tests sans Vercel](./guide-synchronisation-et-tests-local-schoolnet.md).
 
-> **Priorité unique :** SCHOOLNET fonctionne déjà comme plateforme d'apprentissage en ligne. Notre chantier consiste à **automatiser les opérations administratives après validation d'une demande d'inscription**. On ne reconstruit pas les cours, les classes, les enseignants, les évaluations, les visioconférences ni le suivi Parent.
-
----
-
-## 1. Fonctionnement de SCHOOLNET à préserver
-
-```text
-Apprenant ou parent -> demande d'inscription publique
-                       |
-                       v
-              Administration SCHOOLNET
-             vérifie et valide la demande
-                       |
-                       v
-         Préparation des comptes / accès
-                  [À AUTOMATISER]
-                       |
-                       v
-        Rattachement à une classe existante
-               et lien Parent/Enfant
-                  [À SIMPLIFIER]
-                       |
-                       v
-       Invitations préparées et envoyées
-                 par l'administrateur
-                  [À FACILITER]
-                       |
-                       v
-            L'apprenant se connecte
-      Cours + LIVE + devoirs + quiz + examens
-             + enseignant affecté
-                 [DÉJÀ FONCTIONNEL]
-```
-
-L'administration de SCHOOLNET continue à gérer l'activation des enseignants, les classes, les affectations et les ressources pédagogiques.
-
-**L'apprenant peut être inscrit par lui-même ou par un parent**, selon l'habilitation et le dispositif de contrôle adapté. Le formulaire actuel est orienté Parent/Tuteur ; le mode auto-inscription directe doit être aligné sur la sécurité existante avant ouverture, sans lancer un autre produit.
-
-Un même environnement pédagogique SCHOOLNET est partagé par les apprenants libres et les élèves suivis par un répétiteur. **Le répétiteur est un Enseignant SCHOOLNET**, avec son compte, ses élèves affectés et les fonctions existantes : cours à distance, visioconférence, exercices, devoirs et suivi. **Aucun module autonome « cours à domicile » n'est à développer pour le moment.**
+> **OBJECTIF.** SCHOOLNET est déjà une plateforme d'apprentissage en ligne fonctionnelle. **Nous n'en reconstruisons pas la pédagogie.** Nous achevons l'automatisation des inscriptions et des identifiants, puis étendons les outils existants aux établissements partenaires, avec une administration et des données isolées par école. Les répétiteurs à distance sont des **enseignants SCHOOLNET** qui utilisent les cours, LIVE, devoirs et évaluations existants. Aucun « nouveau module de cours à domicile » n'est ouvert.
 
 ---
 
-## 2. Avancement réel vérifié
+## 1. Positionnement de SCHOOLNET et périmètre fonctionnel
 
-| Élément | Réalité au 10/11/2026 | Action |
+### 1.1. Fonctionnement historique, à préserver
+
+Un apprenant ou son parent demande l'accès. L'Administration SCHOOLNET vérifie la demande, prépare les comptes et les identifiants, regroupe les apprenants **par niveau dans les classes existantes**, affecte les enseignants autorisés et ouvre l'accès aux cours, devoirs, évaluations, classes virtuelles, LIVE, résultats et suivi familial.
+
+**Problème réel à résoudre :** la phase **validation → préparation des comptes → rattachement Parent/Apprenant → invitation → première connexion** demande trop de manipulations manuelles. Le but est un **assistant administratif supervisé**, pas une nouvelle plateforme.
+
+### 1.2. Évolution : établissements scolaires partenaires
+
+SCHOOLNET conserve sa communauté d'**apprenants libres** et accueille en parallèle des écoles ayant leurs propres classes et leurs propres administrateurs. Le **Super Administrateur SCHOOLNET** conserve le pilotage global ; chaque **administrateur d'établissement** ne gère que les données de ses écoles autorisées.
+
+**Un seul moteur pédagogique** pour tous les parcours : comptes, cours, enseignements à distance, quiz, devoirs, examens et résultats sont réutilisés. Les écoles ajoutent un **contexte organisationnel vérifié**, pas une application supplémentaire.
+
+### 1.3. Répétiteurs et soutien à distance
+
+Les répétiteurs reçoivent un compte Enseignant après validation par l'administration, et leurs élèves sont inscrits comme apprenants SCHOOLNET puis affectés dans les classes ou cours autorisés. Ils peuvent enseigner à distance via les fonctions déjà présentes. Un éventuel catalogue commercial « cours à domicile » est **hors périmètre actuel**.
+
+### 1.4. Acteurs et frontières de sécurité
+
+| Acteur | Missions / accès | Limites |
 | --- | --- | --- |
-| Accueil, niveaux, bibliothèque, tarifs | Présents sur le site public | Préserver |
-| Espaces Administrateur, Apprenant, Enseignant, Parent | Présents dans les routes et la plateforme | Préserver |
-| Classes par niveau, élèves et enseignants affectés | Modules `AdminClasses`, `class_students` et `class_teachers` opérationnels | Réutiliser |
-| Cours, LIVE, activités et résultats | Fonctions pédagogiques développées et tests ciblés | Ne pas refaire |
-| Formulaire public | Demande `student_enrollment` ou `parent_access`, Cloudflare, références et suivi | Conserver, simplifier si besoin |
-| Création de comptes | `admin-create-user` existant, mais mot de passe temporaire demandé | Automatiser par invitations |
-| Vérification et finalisation 5.C | RPC `admin_finalize_public_enrollment_request` **appliquée** et vérifiée, mais comptes/dossier requis manuellement | Raccorder dans l'assistant |
-| Affectation classe | RPC `admin_assign_student_to_class` qui synchronise le dossier annuel | Réutiliser, pas de double insertion |
-| Invitations | `schoolnet-admin-invitation` : lien d'activation, copie, e-mail manuel, renouvellement, suivi | Reprendre la **méthode** pour les familles |
-| Multi-établissements | 2 écoles et 1 administrateur local avec invitation/activation testée | Reprendre **après** 5.C |
-| S2-A et S2-B | Code et tests préparés, protections SQL **non appliquées** | En attente |
-| 5.D passage d'année | Code et tests préparés, migration **non appliquée** | En attente |
+| Super Administrateur SCHOOLNET (role admin actuel) | Gouvernance, utilisateurs, demandes publiques, référentiels, création d'écoles et délégation locale | Validation humaine des demandes sensibles, audit |
+| Administrateur d'établissement (school_admin) | Informations, inscriptions, classes et personnel **de l'école autorisée**, progressivement selon les modules activés | Jamais de droits admin centraux, pas de lecture des autres écoles |
+| Enseignant | Classes / cours affectés, LIVE, devoirs, évaluations et corrections | Pas de droits sur une classe ou une école non affectée |
+| Apprenant | Cours, activités, progression et informations personnelles | Données de ses propres parcours et classes |
+| Parent / Tuteur | Inscrire ou demander accès, suivre ses enfants après lien familial vérifié | Ne voit pas les enfants d'un autre responsable |
 
-**État Supabase lu le 10/11/2026 :** 34 migrations, 4 demandes publiques, **0 demande finalisée** au sens de la résolution 5.C, 2 classes, 2 affectations apprenants, 2 affectations enseignants et 2 inscriptions annuelles. Ces compteurs sont un instantané de test, non des inscriptions à recréer.
-
-**GitHub :** PR #5 (110 commits, base `main`), PR #6 (74 commits supplémentaires, base PR #5), les deux en brouillon et non fusionnées. Derniers contrôles GitHub ESLint/build réussis ; Vercel connaît une limitation temporaire du nombre de déploiements.
+**Vérification obligatoire par RLS/serveur**, pas seulement par le menu React. Réutiliser les comptes Auth existants, sans recréer un compte par établissement.
 
 ---
 
-## 3. Lot 5.C — Notre seul chantier actif
+## 2. Socle SCHOOLNET déjà disponible — non-régression
 
-### 5.C-A — Reconnaissance des demandes (premier petit bloc)
+L'ancien workflow (pages 2–3) qualifie la V1 de fonctionnelle avec les quatre espaces **Administration, Enseignant, Parent/Tuteur et Apprenant**. Les développements post-V1 ont étendu ce socle.
 
-Dans **Administration → Demandes publiques**, remplacer la recherche dispersée par **un assistant intégré au dossier** :
-
-1. Afficher le contenu de la demande et ses coordonnées (sans les recopier).
-2. Rechercher les comptes Parent et Apprenant déjà présents dans les données autorisées à l'Admin ; distinguer **correspondance plausible** et **identité vérifiée**.
-3. Proposer les classes **déjà existantes** du niveau déclaré ; l'administrateur choisit et confirme la bonne classe.
-4. Ne rien écrire à cette étape : **audit, contrôle visuel et recette**.
-5. Si aucun e-mail apprenant n'est disponible, indiquer clairement le cas « accès enfant à définir », sans créer d'adresse fictive.
-
-**GO 5.C-A :** une demande test affiche les bonnes correspondances et classes, sans modifier comptes ni inscriptions.
-
-### 5.C-B — Création/réutilisation sécurisée des comptes
-
-1. L'administrateur confirme l'identité et la responsabilité familiale.
-2. SCHOOLNET réutilise les comptes authentifiés existants après contrôle et n'élève jamais un rôle automatiquement.
-3. Pour un compte manquant, une fonction serveur spécifique aux familles prépare une invitation (`generateLink`) : le destinataire définit son propre mot de passe.
-4. SCHOOLNET protège la préparation contre les doublons et permet de reprendre après un échec intermédiaire.
-5. L'enfant sans e-mail propre est traité selon une solution **validée séparément** : pas de compte Supabase fictif, pas de partage silencieux d'identifiants.
-
-**GO 5.C-B :** 1 parent et 1 apprenant fictifs obtiennent leurs accès sans mot de passe communiqué à l'administrateur ni doublon.
-
-### 5.C-C — Affecter et finaliser dans le même parcours
-
-1. Réutiliser le mécanisme existant `admin_assign_student_to_class` et son inscription annuelle technique, après validation de l'année et de la classe.
-2. Finaliser avec `admin_finalize_public_enrollment_request` uniquement après contrôle du lien familial et du dossier cohérent.
-3. Ne pas appeler deux RPC d'écriture à la suite sans gestion du cas « première étape réussie, seconde étape échouée » ; si une transaction unique est nécessaire, préparer une RPC dédiée et une migration testée, puis demander une **autorisation séparée**.
-4. Une demande `parent_access` rattache le Parent à l'enfant déjà présent **sans créer de dossier annuel supplémentaire**.
-5. Garder les statuts de demande et événements existants, sans inventer une nouvelle chaîne entière de statuts.
-
-**GO 5.C-C :** validation, compte, lien, classe et demande cohérents ; double clic sans doublon ; accès refusé aux rôles non autorisés.
-
-### 5.C-D — Invitations, transmission et première connexion
-
-- Générer séparément l'objet, le corps, le destinataire et le lien temporaire.
-- Conserver la méthode déjà testée pour l'admin local : **Copier**, **Ouvrir ma messagerie**, **Déclarer l'envoi**, **Régénérer un lien expiré**.
-- Aucun e-mail automatique ne sera promis sans fournisseur d'envoi validé.
-- Ne jamais enregistrer les liens temporaires ou mots de passe en clair, ni confondre « préparé », « envoyé déclaré » et « activé ».
-- Contrôler la vraie connexion Parent et Apprenant et la confidentialité de leurs espaces.
-
-**GO 5.C-D :** demande fictive aboutit à une première connexion, une bonne classe et le bon suivi parental, sans action manuelle dans Supabase Dashboard.
-
-### Conditions pour déclarer 5.C terminé
-
-**La procédure doit tenir dans une seule fiche administrative, ne pas recréer les profils existants et ne pas imposer de changement de module à chaque étape.** Vérifier le Parent déjà inscrit, le nouveau Parent, le nouvel Apprenant, la demande de Parent pour un enfant existant, le refus, l'échec/reprise et les homonymes.
-
-La création des accès doit être **semi-automatique et supervisée** : validation humaine obligatoire, exécution technique automatisée.
-
----
-
-## 4. Après le Lot 5.C : établissements et suite des lots
-
-### Bloc suivant : établissements scolaires (travail déjà avancé)
-
-- Conserver la création d'école, le code unique automatique, l'invitation d'administrateur local et son espace restreint.
-- Réutiliser la méthode d'inscription simplifiée **dans le périmètre autorisé de chaque établissement**, sans copier l'administration centrale.
-- Reprendre S2-A/S2-B (classes locales) **seulement après** recette de l'isolation des données des établissements.
-- Les enseignants utilisent les mêmes cours, LIVE, évaluations et ressources ; pas de second système pédagogique.
-
-### Puis : clôture des lots historiques post-V1
-
-| Lot | Sujet | Ordre |
-| --- | --- | --- |
-| 0 | Stabilisation transverse, sécurité, responsive, tests | Contrôle continu |
-| 1 | Présences et absences | Déjà développé, recette de non-régression après les changements |
-| 2 | Emploi du temps, salles | Déjà développé, reprise du contrôle multi-établissements ensuite |
-| 3 | Bulletins | Déjà développé, contrôle des données et des années scolaires |
-| 4 | Notifications et SCHOOLNET LIVE | Déjà développés, nouvelles notifications à vérifier lors des inscriptions |
-| **5** | **Inscriptions, comptes, liens, dossiers** | **Priorité : terminer 5.C-A à 5.C-D** puis reprendre 5.D |
-| 6 | Vie scolaire | Ensuite, selon le plan initial |
-| 7 | Scolarité/finances | Ensuite ; différencier tarifs publics et frais scolaires officiels |
-| 8 | Documents scolaires | Ensuite ; accès et archivage sécurisés |
-
-**Le passage d'année 5.D reste préparé, mais non activé** : une inscription historique active existe dans une année non courante. Ne pas corriger cette situation en même temps que les inscriptions courantes.
-
-**Cours à domicile :** aucun sous-lot supplémentaire pour l'instant. Les répétiteurs prennent le rôle Enseignant et utilisent la pédagogie en ligne existante.
-
----
-
-## 5. Règles de travail pour ne plus se disperser
-
-```text
-1 seul petit bloc actif
-  -> audit du code en place
-  -> modification ciblée sur branche GitHub
-  -> lint / build / revue sécurité
-  -> test en Preview avec comptes de test
-  -> vérification RLS et des doublons
-  -> accord utilisateur avant toute écriture SQL permanente
-  -> validation par capture / résultat
-  -> mise à jour du workflow et des commits
-  -> bloc suivant uniquement après GO
-```
-
-**Interdit sans validation explicite :** création de comptes réels, envoi d'e-mails, modification persistante des demandes, migration SQL, `supabase db push --remote` global, fusion vers `main` ou publication Vercel en production.
-
-**PR #6 / classes locales S2 restent sauvegardées et en pause ; aucun travail antérieur n'est supprimé.**
-
-### Tableau de pilotage au 10/11/2026
-
-| Champ | Valeur |
+| Périmètre | Fonctionnalités existantes à conserver |
 | --- | --- |
-| Phase active | **5.C-A : reconnaissance des comptes et proposition de classe dans Demandes publiques** |
-| Audit de l'existant | **Terminé** — document [audit 5.C](./lot-5-c-automatisation-comptes-acces-audit-existant.md) |
-| Prochain livrable | Petit assistant en lecture seule, intégré au détail d'une demande |
-| Ce qui est conservé | Toute la pédagogie SCHOOLNET, classes et affectations, fonctions Admin existantes |
-| En attente | Création de comptes par lien, finalisation intégrée, écoles S2, passage d'année 5.D |
-| Supabase | 34 migrations ; aucune modification durable dans cet audit |
-| GitHub | PR #5 et PR #6 ouvertes en brouillon, non fusionnées |
-| Production | `main` et le site principal inchangés |
+| Site public | Accueil, Bibliothèque, Niveaux, Tarifs, À propos, Contact, CMS, demandes publiques |
+| Apprenant | Connexion, cours, devoirs, quiz, examens, notes, moyennes, progression, messagerie, espace de classe |
+| Enseignant | Cours, classes et affectations, évaluations, corrections, moyennes, messagerie, espace de classe, LIVE |
+| Parent/Tuteur | Enfants liés, résultats, moyennes, présences, bulletins, messagerie, suivi |
+| Administration SCHOOLNET | Utilisateurs, classes, années scolaires, contenus, paramètres, inscriptions, notifications, plannings, bulletins |
+| Administration locale | Écoles, invitations et rôle local, tableau de bord et profil ; formulaire de classes S2-B préparé **mais non activé** |
 
-**Rituel après chaque étape :** état exact, fichiers modifiés, tests, nombre de migrations, SHA/branche, copie d'écran ciblée, seule prochaine action.
+**Interdictions de principe :** ne pas créer un second système de cours ou de notes ; ne pas migrer arbitrairement les classes historiques vers une école ; ne pas créer automatiquement des identités ou des liens familiaux non vérifiés.
 
 ---
 
-## 6. Références conservées
+## 3. Roadmap historique conservée : Lots 0 à 8
 
-- `docs/lot-5-c-cadrage-demandes-et-rattachement.md` — lot 5.C existant et protections appliquées.
-- `docs/lot-5-a-consultation-dossiers-scolaires.md` et `docs/lot-5-b-confidentialite-et-pieces-justificatives.md` — dossiers et confidentialité.
-- `docs/lot-5-d-reinscriptions-et-cloture-annee.md` — passage d'année non activé.
-- `docs/architecture-schoolnet-multi-etablissements-et-invitations.md` — établissements et invitation locale déjà testée.
-- `docs/lot-s2-b-formulaire-classes-et-rpc-securisees.md` — classes locales préparées, non activées.
-- `docs/roadmap-schoolnet-post-v1-lots-restants-et-salles.md` — historique.
-- `Workflow_complet_SchoolNet_post_V1(6).pdf` — ordre des lots 0–8.
+| Lot | Module original | Avancement constaté | Recette / suite |
+| --- | --- | --- | --- |
+| 0 | Stabilisation transverse | Socle en place et contrôles de sécurité successifs | RLS, cohérence des profils, mobile, CI, stockage |
+| 1 | Présences et Absences | Développé avec recettes ciblées | Contrôler Présent, Absent, Retard, Justifié, parents, enseignants et écoles |
+| 2 | Emploi du temps (et salles) | Développé, salles et codes automatiques travaillés | Conflits classe/enseignant/salle, vues des 4 rôles, contexte école |
+| 3 | Bulletins scolaires | Développé avec contrôles ciblés | Calculs, appréciations, publication, confidentialité, PDF |
+| 4 | Notifications enrichies | Développé et enrichi | Événements, préférences, absence de doublons, nouveaux flux d'inscription |
+| **5** | **Inscriptions et dossiers élèves** | **EN COURS : 5.C automatisation et 5.D préparé** | **Priorité immédiate : 5.C-A à 5.C-D ; 5.D attend** |
+| 6 | Vie scolaire | Prévu dans le workflow historique | Retards, observations, incidents, sanctions, encouragements, visibilité contrôlée |
+| 7 | Scolarité / Finances | Prévu dans le workflow historique | Frais, échéances, paiements, soldes, reçus, audit |
+| 8 | Documents scolaires | Prévu dans le workflow historique | Certificats, attestations, relevés, reçus, archives, droits d'accès |
 
-**Toute nouvelle action doit se référer à V2.1, et non aux projets supplémentaires imaginés dans l'ancienne V2.0.**
+### Gates métier héritées de l'ancien workflow
+
+- **Lot 1 :** appel complet, absent/retard/justification, traces, parent et élève autorisés.
+- **Lot 2 :** emploi du temps hebdomadaire, détection de conflit classe/enseignant/salle, vues par rôle.
+- **Lot 3 :** bulletin complet, note manquante, validation/publication, famille autorisée, PDF sans débordement.
+- **Lot 4 :** alerte note, absence, devoir, bulletin et changement d'emploi du temps ; préférences et dédoublonnage.
+- **Lot 5 :** demande, dossier, pièces éventuellement requises, décision, classe, accès et réinscription sans doublon.
+- **Lot 6 :** observation/incident, visibilité adaptée, validation et traçabilité des modifications.
+- **Lot 7 :** paiement partiel/complet, annulation contrôlée, soldes, reçu PDF et accès limité au parent.
+- **Lot 8 :** certificat, relevé, reçu, numérotation unique, archivage et accès fichiers sécurisé.
+
+**À retenir :** « développé » ne veut pas dire « production validée pour tous les établissements » ; les extensions seront recettées sur deux écoles distinctes avant ouverture des droits locaux.
+
+---
+
+## 4. Priorité active — Lot 5.C : automatiser les inscriptions existantes
+
+### 4.1. Parcours visé, sans rupture de SCHOOLNET
+
+~~~text
+Apprenant / Parent : remplit la demande publique
+  -> ADMIN SCHOOLNET : ouvre la demande, vérifie identité et autorité parentale
+  -> Assistant : retrouve ou prépare les comptes existants / manquants
+  -> Admin : valide le bon parent, apprenant, niveau et classe existante
+  -> SCHOOLNET : réutilise les fonctions de classe et dossier existantes
+  -> SCHOOLNET : rattache le parent après vérification et finalise la demande
+  -> SCHOOLNET : prépare les liens temporaires et messages personnalisés
+  -> Admin : envoie lui-même les invitations et déclare l'envoi réel
+  -> Parent / Apprenant : définit le mot de passe et se connecte
+  -> Cours / LIVE / devoirs / suivi : fonctionnement déjà en place
+~~~
+
+**L'administrateur décide ; SCHOOLNET exécute les opérations répétitives.** La vérification humaine reste obligatoire pour les liens familiaux et l'identité. Une correspondance de nom ou d'e-mail n'est pas une preuve.
+
+### 4.2. État technique de 5.C vérifié le 10 novembre 2026
+
+- Fonction publique de dépôt de demande et module **Demandes publiques** : existants.
+- RPC **admin_finalize_public_enrollment_request** : migration 5.C appliquée, tests SQL effectués, mais l'interface exige encore des comptes et un dossier préexistants.
+- Edge Function **admin-create-user** : création de comptes possible, mais saisie manuelle d'un mot de passe temporaire.
+- Edge Function **schoolnet-admin-invitation** : invitations sécurisées pour admin local **déjà testées en navigateur** ; réutiliser le **modèle** de lien sans mot de passe, pas les privilèges scolaires locaux.
+- RPC **admin_assign_student_to_class** : classe et dossier annuel sont déjà synchronisés ; ne pas écrire une seconde fois ces associations.
+- Dans Supabase au dernier contrôle : **34 migrations**, **4 demandes publiques**, **0 résolution finalisée**, **2 classes historiques**, **2 affectations apprenant**, **2 affectations enseignant** et **2 dossiers annuels** ; ce sont des chiffres de test datés, non des objectifs de création.
+
+### 4.3. Sous-lots d'automatisation (enchaînement obligatoire)
+
+| Étape | Livrable | Statut / gate |
+| --- | --- | --- |
+| **5.C-A — Reconnaissance** | Dans la fiche de demande, proposer comptes plausibles et classes existantes selon le niveau ; aucune écriture | **Code GitHub prêt, lint/build réussis ; recette navigateur à effectuer** |
+| **5.C-B — Comptes et identifiants** | Réutiliser les comptes ou préparer des invitations Parent/Apprenant sans mot de passe communiqué à l'admin, avec reprise anti-doublon | À développer après GO 5.C-A |
+| **5.C-C — Affectation et finalisation** | Choix de classe, réutilisation des RPC existantes, vérification lien familial, traitement idempotent | À développer et tester après GO 5.C-B |
+| **5.C-D — Transmission et activation** | Objet, corps, destinataire, lien temporaire, copier, ouvrir messagerie, déclarer l'envoi, renouveler, première connexion | À terminer puis recette complète Parent/Apprenant |
+
+### 4.4. Cas de recette obligatoires
+
+1. Compte Parent déjà présent ; compte Apprenant déjà présent ; deux personnes homonymes.
+2. Nouveau Parent et nouvel Apprenant ; e-mails distincts et réutilisation des comptes si déjà créés.
+3. Enfant sans e-mail personnel : **pas de fausse adresse ni de partage automatique du compte Parent** ; solution métier à valider.
+4. Accès Parent à un apprenant déjà inscrit : lien vérifié **sans créer une deuxième inscription**.
+5. Affectation dans une **classe déjà existante**, bonne année et enseignant autorisé.
+6. Double clic, expiration d'une invitation, erreur entre création Auth et enregistrement SQL, reprise sans doublon.
+7. Refus d'une demande, tentatives non autorisées, conservation des historiques, aucune divulgation Parent/Enfant.
+
+**GO final Lot 5.C :** le parcours peut être effectué dans une seule fiche sans naviguer manuellement entre plusieurs modules, le responsable et l'apprenant accèdent aux bons espaces et aucune donnée d'un autre compte n'est divulguée.
+
+---
+
+## 5. Gestion des établissements scolaires — extension structurée de SCHOOLNET
+
+**Ce chantier est intégré au workflow global, sans effacer les lots historiques et sans ouvrir une seconde application pédagogique.** Il reprend directement le développement déjà enregistré dans la PR #6.
+
+### 5.1. Modèle organisationnel
+
+~~~text
+                        SUPER ADMIN SCHOOLNET
+                      Référentiels / supervision
+                                 |
+              +------------------+------------------+
+              |                                     |
+     École A : administrateur local         École B : administrateur local
+              |                                     |
+   Classes A / enseignants A / élèves A   Classes B / enseignants B / élèves B
+              |                                     |
+       Cours, LIVE, notes, bulletins : fonctionnalités SCHOOLNET communes
+                                 |
+             Communauté SCHOOLNET des apprenants libres
+                  Classes/groupes historiques distincts
+~~~
+
+Les **apprenants libres** ne sont pas déplacés automatiquement dans une école. Une « 6e A » de l'école A et une « 6e A » de l'école B sont distinctes, même pour la même année.
+
+### 5.2. Avancement par sous-étapes ÉTABLISSEMENTS
+
+| Sous-lot | Contenu | Statut / ordre |
+| --- | --- | --- |
+| **E1 — Organisation et accès locaux** | Création établissement, code SCH automatique, rôle school_admin, invitation sécurisée, première connexion, audit | **Développé ; migrations S0/S1 appliquées, recette ciblée réussie** |
+| **E2 — Cloisonnement de sécurité** | Protection RLS, école active, appartenance active, suspension/révocation, interdiction d'accès aux autres écoles | **Première phase S1 appliquée ; protections métier complètes à poursuivre** |
+| **E3 — Classes officielles par école** | Fiche classes, niveau/année, unicité par école, consultation locale, création sécurisée | **S2-A/S2-B codés et testés en ROLLBACK ; SQL non activé** |
+| **E4 — Enseignants et élèves de l'école** | Affectations, liens classe/cours, demandes et invitations de familles, comptes existants réutilisés | **À construire par extension contrôlée des modules existants après 5.C** |
+| **E5 — Pédagogie et vie scolaire de l'école** | Cours, LIVE, devoirs, présences, emploi du temps, notes, bulletins, messages et notifications, avec filtrage de l'école | **Moteur existant ; isolation et recettes inter-écoles à terminer** |
+| **E6 — Années, documents et finances par école** | Réinscriptions, passage d'année, documents et paiements dans le contexte de l'école | **Après les gates 5.C / 5.D et Lots 6 à 8** |
+
+### 5.3. Parcours du Super Administrateur
+
+1. Vérifie l'établissement et son responsable légal ; crée la fiche école.
+2. SCHOOLNET attribue un **code permanent automatique** de type SCH-000001.
+3. Prépare l'invitation d'un responsable local avec un lien personnel temporaire ; **le Super Admin envoie l'e-mail manuellement** depuis sa messagerie.
+4. Suit l'activation et contrôle la disponibilité de l'école et les droits d'accès.
+5. Peut suspendre l'établissement ou révoquer son responsable ; la visibilité des données est immédiatement restreinte selon les règles en base.
+6. Supervise les écoles depuis le centre, sans confondre une administration locale avec des privilèges globaux.
+
+### 5.4. Parcours de l'Administrateur d'établissement
+
+Après activation de ses droits : consulte **uniquement ses établissements actifs**, crée et organise leurs classes, gère les enseignants/élèves autorisés, vérifie les demandes et prépare les invitations, puis supervise les cours, présences, évaluations et bulletins **grâce aux modules SCHOOLNET existants**.
+
+**Limite actuelle importante :** l'espace local, le profil et le catalogue des établissements sont testés ; **les fonctions complètes de gestion des classes et des affectations ne sont pas encore activées en base**. Ne pas annoncer aux écoles qu'elles peuvent déjà tout administrer.
+
+### 5.5. Critères de recette de l'extension établissements
+
+- Deux écoles A et B, chacune avec une classe de même nom ; aucun doublon intra-école.
+- Un responsable de A ne voit **aucun** compte, classe, évaluation, message ni document privé de B.
+- Une école suspendue ou une affiliation révoquée perd immédiatement les droits correspondants.
+- Le Super Admin conserve les droits centraux ; le responsable local n'hérite jamais du rôle admin global.
+- Les **classes historiques** et les apprenants libres restent accessibles aux acteurs historiquement autorisés et ne sont pas déplacés arbitrairement.
+- Le lien Parent/Enfant reste vérifié et l'affectation à l'école/année/classe reste explicite.
+- Les photos, justificatifs, bulletins et documents exigent aussi une isolation côté Storage.
+- Les migrations SQL S2 ne sont appliquées **qu'après autorisation explicite** et test en transaction ROLLBACK.
+
+**Ordre recommandé :** terminer 5.C, puis reprendre **E3**, ensuite E4/E5. Conserver E1/E2 acquis sans les recommencer.
+
+---
+
+## 6. Lot 5.D et Lots 6, 7, 8 — dépendances préservées
+
+### 6.1. Lot 5.D — Réinscriptions et passage d'année
+
+Le code et la proposition SQL du passage d'année existent, **sans activation SQL durable**. L'année en cours et certaines inscriptions de test présentent une incohérence connue ; aucun correctif automatique n'est autorisé.
+
+Gate avant activation : année cible valide, décisions de réinscription/redoublement/départ, prévisualisation, absence de doublon, historique conservé, RLS, audit et recette sur la communauté SCHOOLNET puis sur les écoles concernées. L'année scolaire d'une école et la notion de « période globale » devront être rapprochées sans perte de données.
+
+### 6.2. Lot 6 — Vie scolaire
+
+Retards, incidents, observations, sanctions et encouragements, avec création par acteur autorisé, validation selon catégorie, visibilité Parent/Apprenant et traçabilité. Réutiliser présences, classes, notifications et messagerie.
+
+### 6.3. Lot 7 — Scolarité et finances
+
+Définition des frais applicables, échéanciers, paiements, soldes et reçus. Les **tarifs pédagogiques du site public** ne sont pas, par défaut, les frais de scolarité d'une école. Les transactions financières exigent audit, annulation contrôlée, calcul fiable côté données et isolation par école.
+
+### 6.4. Lot 8 — Documents scolaires
+
+Certificats, relevés, attestations, reçus et archives à numéro unique, données figées après publication et contrôle d'accès aux fichiers. Réutiliser les notes, bulletins, inscriptions et finances existants ; ne pas dupliquer les référentiels.
+
+---
+
+## 7. Architecture des dépendances — pas de fonctionnalités isolées
+
+~~~text
+Profils / Auth / liens familiaux / organisations
+                      |
+        Classes existantes / niveaux / années
+                      |
+        +-------------+--------------+
+        |                            |
+Cours + enseignants + évaluations    Inscriptions + dossiers
+        |                            |
+Notes -> moyennes -> bulletins        Pièces / année / documents
+        |                            |
+        +------- Notifications -------+
+                      |
+  Présences / emploi du temps / vie scolaire
+                      |
+     Écoles = contrôle de périmètre
+       et administration locale
+~~~
+
+**Modèle de données :** privilégier les relations vers les tables existantes, plutôt que créer une deuxième table de notes, une deuxième table de profils ou un deuxième système de cours.
+
+**Alerte de sécurité :** l'isolation multi-écoles n'est pas acquise du seul fait que la barre latérale ne montre pas certains modules. Les politiques RLS, fonctions serveur, relations classe/cours et autorisations Storage doivent être vérifiées séparément.
+
+---
+
+## 8. Continuer le développement malgré une limitation Vercel
+
+### 8.1. Deux voies de test pour le même code GitHub
+
+| Situation | Vérification | Décision |
+| --- | --- | --- |
+| **Preview Vercel disponible au bon commit** | GitHub CI réussi, déploiement Ready, **SHA identique** à celle testée, URL Preview | Recette navigateur sur Preview ; pas de publication Production |
+| **Preview bloquée, limitée ou sur ancien commit** | GitHub CI réussi, branche locale **synchronisée avec GitHub**, npm run lint, npm run build | **Recette fonctionnelle sur localhost:5173** ; poursuivre les petits lots sans attendre Vercel |
+| **Code local différent du remote** | git status, diff, historique, git fetch et comparaison des SHA | **STOP :** préserver le travail local, ne pas forcer la synchronisation |
+| **Besoin d'une migration ou d'une création de comptes** | Vérifier l'environnement Supabase et le caractère réel des données | Autorisation distincte ; localhost **n'est pas** une base isolée |
+
+### 8.2. Procédure locale sur Windows 11 — résumé opérationnel
+
+Depuis la racine du dépôt SCHOOLNET dans PowerShell, **contrôler avant d'agir** :
+
+~~~powershell
+git status --short
+git branch --show-current
+git remote -v
+git log -1 --oneline
+git fetch origin --prune
+~~~
+
+Si **aucune modification locale** n'est à conserver sans traitement et si la branche existe sur le PC :
+
+~~~powershell
+git switch feature/schoolnet-multi-etablissements
+git pull --ff-only origin feature/schoolnet-multi-etablissements
+git rev-parse HEAD
+git rev-parse origin/feature/schoolnet-multi-etablissements
+~~~
+
+Si la branche **n'existe pas** localement : après git fetch, exécuter **git switch --track origin/feature/schoolnet-multi-etablissements**. Les deux commandes git rev-parse doivent fournir **exactement la même SHA**. Ne jamais exécuter git reset --hard, un push forcé ou un rebase aveugle pour « réparer » une divergence.
+
+Puis :
+
+~~~powershell
+npm ci
+npm run lint
+npm run build
+npm run dev -- --host localhost --port 5173 --strictPort
+~~~
+
+Ouvrir **http://localhost:5173**. Conserver les variables d'environnement locales **hors de Git** ; seules l'URL Supabase et la clé publique/anon du projet autorisé peuvent être exposées à Vite, jamais une service-role key.
+
+**Attention :** le frontend local peut appeler les **Edge Functions et la base Supabase distante**. Pour le test 5.C-A, ouvrir une demande fictive et **ne faire que des lectures** ; n'inviter, ne valider, ne rattacher et ne créer aucun compte réel sans procédure de test approuvée.
+
+La procédure détaillée, y compris la gestion des changements locaux non enregistrés et les limites Cloudflare/Supabase Auth, se trouve dans le [guide de synchronisation et tests locaux](./guide-synchronisation-et-tests-local-schoolnet.md).
+
+### 8.3. Passage du test local à la Preview, puis à la production
+
+1. Versionner le petit lot dans la branche **feature/schoolnet-multi-etablissements**, avec un commit descriptif.
+2. Vérifier le build GitHub. Si Vercel est bloqué, **conserver le résultat des tests locaux** et ne pas relancer des déploiements de façon répétitive.
+3. Dès qu'une Preview correspondant **au commit testé** est Ready, reproduire les scénarios concernés sur ce déploiement.
+4. Appliquer les migrations nécessaires seulement après accord explicite et recette RLS ; ne jamais utiliser un **supabase db push --remote global** pour activer toutes les migrations en attente.
+5. Fusionner vers main et déployer en Production **uniquement après GO explicite** et recette de non-régression.
+
+**État observé le 10/11/2026 :** PR #6 à la SHA applicative 563149e, lint/build GitHub réussis, statut Vercel en échec pour **limite de fréquence de build**. Le code de 5.C-A est donc prêt **pour test local**, mais **pas encore validé en navigateur** au dernier commit.
+
+---
+
+## 9. Méthode de livraison et sécurité — héritage du document initial
+
+La méthode de la page 5 du workflow d'octobre 2026 reste obligatoire :
+
+~~~text
+Cadrage validé -> audit du modèle -> proposition SQL si nécessaire
+-> RLS / sécurité -> services de données -> interface par rôle
+-> test ciblé -> responsive mobile/tablette/desktop
+-> lint et build -> recette locale ou Preview au bon SHA
+-> commit GitHub -> vérification du déploiement
+-> GO utilisateur -> lot suivant
+~~~
+
+**Avant les écritures durables :** revue des différences SQL, tests transactionnels en ROLLBACK, consentement explicite pour la migration ciblée, contrôles des cinq rôles et des deux écoles si concernés.
+
+**Règles générales :** pas de duplication de comptes, pas de fusion sur le nom, mot de passe jamais transmis à l'administrateur, jetons jamais sauvegardés en clair, pièces protégées par RLS et Storage, mobile à 412 px minimum, aucun secret dans GitHub ou les logs, jamais d'activation globale d'une migration « en attente ».
+
+### Règle de non-régression
+
+Chaque modification des inscriptions et des écoles doit être testée sans casser : connexion Parent/Apprenant/Enseignant/Admin, accès aux cours et classes existants, affectation, notes/bulletins publiés, messages, présences, emploi du temps et notifications.
+
+---
+
+## 10. GitHub, branches et sauvegardes
+
+~~~text
+main                                      -> Production (référence stable)
+  └─ feature/schoolnet-notifications       -> PR #5, brouillon (lots 4/5)
+       └─ feature/schoolnet-multi-etablissements
+                                           -> PR #6, brouillon (écoles, 5.C-A et docs)
+                 ↕ synchronisation Git
+         branche du PC Windows             -> npm ci, lint, build, localhost
+~~~
+
+**Le PC local ne se synchronise pas tout seul** à partir d'une modification GitHub. Exécuter la procédure du guide, contrôler les SHA et préserver toute modification locale non enregistrée. Le test local n'autorise jamais un push vers main.
+
+Ne pas créer de nouveau dépôt pour résoudre un problème Vercel : la branche GitHub existante demeure la sauvegarde partagée.
+
+---
+
+## 11. Tableau de pilotage — état de référence au 10 novembre 2026
+
+| Sujet | État / prochaine décision |
+| --- | --- |
+| **Lot actif** | **5.C-A** : assistant de reconnaissance en lecture seule dans les demandes publiques |
+| **Code 5.C-A** | GitHub prêt, CI lint/build OK, **recette navigateur au bon SHA non encore effectuée** |
+| **Prochaine action unique** | **Synchroniser la branche GitHub sur le PC et tester 5.C-A sur http://localhost:5173** tant que Vercel bloque |
+| **Étapes suivantes** | 5.C-B : invitations et comptes ; 5.C-C : affectation/finalisation ; 5.C-D : transmission et première connexion |
+| **Établissements** | E1/E2 partiellement activés ; E3=S2 préparé mais non activé ; E4/E5 après 5.C |
+| **Passage d'année 5.D** | Code préparé, migration non appliquée |
+| **Supabase (dernier contrôle)** | 34 migrations ; 2 établissements ; 1 admin local ; 2 classes historiques ; 4 demandes ; 0 résolution |
+| **GitHub** | PR #5 + PR #6 en brouillon, aucun merge main |
+| **Vercel** | Dernier SHA applicatif 563149e : rate-limit ; fallback local |
+| **Règle de clôture** | Un seul petit bloc, test concret, accord avant toute écriture durable ou production |
+
+**En fin de séance, enregistrer :** branche et SHA, fichiers modifiés, statut git, tests lint/build, capture de recette, migrations réellement appliquées ou non, anomalies et **seule prochaine action**. Actualiser ce tableau immédiatement.
+
+---
+
+## 12. Références et documents conservés
+
+- **Workflow de référence d'octobre 2026 :** « Workflow_complet_SchoolNet_post_V1(7).pdf » ; V1.0.0, 19 pages, positionnement, Lots 0–8, dépendances, critères de qualité, GitHub/Vercel et pilotage.
+- [Audit du Lot 5.C — Inscription et comptes](./lot-5-c-automatisation-comptes-acces-audit-existant.md).
+- [Cadrage et sécurité du Lot 5.C](./lot-5-c-cadrage-demandes-et-rattachement.md).
+- [Gestion des écoles et invitations](./architecture-schoolnet-multi-etablissements-et-invitations.md).
+- [Audit de sécurité inter-écoles S1](./audit-isolation-multi-etablissements-phase-1.md).
+- [Schéma des classes E3 / S2-A](./lot-s2-classes-multi-etablissements-conception-et-recette.md).
+- [Formulaire et RPC E3 / S2-B](./lot-s2-b-formulaire-classes-et-rpc-securisees.md).
+- [Réinscriptions et année scolaire 5.D](./lot-5-d-reinscriptions-et-cloture-annee.md).
+- [Synchronisation GitHub et tests sur PC](./guide-synchronisation-et-tests-local-schoolnet.md).
+- [Ancienne roadmap conservée comme historique](./roadmap-schoolnet-post-v1-lots-restants-et-salles.md).
+
+**Cette édition V2.2 remplace les versions V2.0 et V2.1 comme référence active de pilotage, sans supprimer les anciens commits ni leurs documents.**
