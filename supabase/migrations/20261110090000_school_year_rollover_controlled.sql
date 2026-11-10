@@ -108,7 +108,7 @@ BEGIN
   THEN
     RAISE EXCEPTION 'Choix de reinscription invalide.';
   END IF;
-  v_clean_note := pg_catalog.nullif(pg_catalog.btrim(p_note),'');
+  v_clean_note := NULLIF(pg_catalog.btrim(p_note),'');
   IF pg_catalog.char_length(COALESCE(v_clean_note,''))>1000 THEN
     RAISE EXCEPTION 'La note est limitee a 1000 caracteres.';
   END IF;
