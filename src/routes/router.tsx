@@ -23,6 +23,7 @@ import AdminTimetable from "@/features/admin/pages/AdminTimetable";
 import AdminRooms from "@/features/admin/pages/AdminRooms";
 import AdminReportCards from "@/features/admin/pages/AdminReportCards";
 import AdminEnrollments from "@/features/admin/pages/AdminEnrollments";
+import AdminYearRollover from "@/features/admin/pages/AdminYearRollover";
 import EnrollmentRecordsPage from "@/features/enrollments/pages/EnrollmentRecordsPage";
 import AdminEnrollmentRequests from "@/features/admin/pages/AdminEnrollmentRequests";
 
@@ -378,6 +379,7 @@ export const router = createBrowserRouter([
               { path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/live", element: <LiveSessionsPage />,},
               { path: "admin/enrollments", element: <AdminEnrollments />,},
+              { path: "admin/year-rollover", element: <AdminYearRollover />,},
               { path: "admin/enrollment-requests", element: <AdminEnrollmentRequests /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
               { path: "admin/timetable",  element: <AdminTimetable />, },
