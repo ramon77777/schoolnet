@@ -2,36 +2,38 @@
 
 **Date :** 10/11/2026  
 **Branche :** `feature/schoolnet-notifications` — PR #5 en brouillon  
-**Statut au 10/11/2026 :** première implémentation SQL + interface Admin **préparées sur la branche** ; migration 5.D **non appliquée** (Supabase reste à 30 migrations). Essais SQL transactionnels avec ROLLBACK réussis ; validation lint/build et recette navigateur en attente.
+**Statut au 10/11/2026 :** première implémentation SQL + interface Admin **préparées sur la branche** ; migration 5.D **non appliquée** (Supabase reste à 30 migrations). Essais SQL transactionnels avec ROLLBACK réussis ; CI GitHub lint/build réussie. Recette navigateur et autorisation SQL 5.D encore en attente.
 
 ## Avancement technique du 10/11/2026 — sans activation de la migration
 
 ### Livrables enregistrés sur la branche
 
-- SQL : \`supabase/migrations/20261110090000_school_year_rollover_controlled.sql\`. Tables \`school_year_rollover_decisions\` (décisions réversibles) et \`school_year_rollover_runs\` (preuve de bascule), politiques RLS Admin en lecture, écritures uniquement via RPC.
-- RPC \`admin_save_school_year_rollover_decision\` : enregistrement d'une décision (\`pending\`, \`re_enroll\`, \`repeat\`, \`leave\`), vérification de l'année active, de la classe cible et du niveau en cas de redoublement. Pas de dossier créé avant la finalisation.
-- RPC \`admin_finalize_school_year_rollover\` : exclusivité transactionnelle, précontrôles, clôture des inscriptions sources, activation de l'année cible, réutilisation de la RPC existante pour les dossiers réinscrits, synchronisation des classes et historique d'exécution ; relance identique sans doublon.
-- L'ancien accès \`admin_set_current_school_year\` et les modifications directes du drapeau \`is_current\` reçoivent une protection supplémentaire lorsque des dossiers existent, afin d'éviter un changement d'année sans clôture.
-- Frontend : \`src/features/admin/pages/AdminYearRollover.tsx\` et \`src/features/enrollments/lib/schoolYearRolloverApi.ts\`, route protégée \`/app/admin/year-rollover\`, liens dans la navigation Admin et sur la page Inscriptions.
+- SQL : `supabase/migrations/20261110090000_school_year_rollover_controlled.sql`. Tables `school_year_rollover_decisions` (décisions réversibles) et `school_year_rollover_runs` (preuve de bascule), politiques RLS Admin en lecture, écritures uniquement via RPC.
+- RPC `admin_save_school_year_rollover_decision` : enregistrement d'une décision (`pending`, `re_enroll`, `repeat`, `leave`), vérification de l'année active, de la classe cible et du niveau en cas de redoublement. Pas de dossier créé avant la finalisation.
+- RPC `admin_finalize_school_year_rollover` : exclusivité transactionnelle, précontrôles, clôture des inscriptions sources, activation de l'année cible, réutilisation de la RPC existante pour les dossiers réinscrits, synchronisation des classes et historique d'exécution ; relance identique sans doublon.
+- L'ancien accès `admin_set_current_school_year` et les modifications directes du drapeau `is_current` reçoivent une protection supplémentaire lorsque des dossiers existent, afin d'éviter un changement d'année sans clôture.
+- Frontend : `src/features/admin/pages/AdminYearRollover.tsx` et `src/features/enrollments/lib/schoolYearRolloverApi.ts`, route protégée `/app/admin/year-rollover`, liens dans la navigation Admin et sur la page Inscriptions.
 - Sécurité de déploiement : en l'absence de la migration 5.D, la page signale explicitement « Activation Supabase en attente » et n'autorise aucune écriture.
-- Vérification lecture seule : \`supabase/verification/20261110_year_rollover_5d_readonly.sql\`.
+- Vérification lecture seule : `supabase/verification/20261110_year_rollover_5d_readonly.sql`.
 
 ### Tests déjà effectués avec ROLLBACK
 
 1. La migration se crée dans une transaction puis s'annule sans persistance.
-2. Les décisions \`pending\` et \`re_enroll\` s'enregistrent sur un couple d'années et un dossier actif sans doublon.
+2. Les décisions `pending` et `re_enroll` s'enregistrent sur un couple d'années et un dossier actif sans doublon.
 3. La RPC historique refuse désormais la bascule directe lorsqu'il existe des dossiers.
-4. Un dossier déjà \`active\` dans une année cible non courante est détecté et bloque la finalisation.
-5. Scénario positif entièrement simulé : dossier cible temporairement préparé à \`draft\`, clôture \`completed\` du dossier source, activation d'une seule année cible, activation du dossier de réinscription et synchronisation de \`profiles.class_name\`.
-6. Le second appel identique renvoie \`already_finalized=true\` sans écriture supplémentaire.
-7. Tous les changements de test sont annulés. Pour préserver la séquence réelle des numéros, le scénario positif réutilise un dossier cible dans la transaction plutôt que d'en créer un nouveau.
+4. Un dossier déjà `active` dans une année cible non courante est détecté et bloque la finalisation.
+5. Scénario positif entièrement simulé : dossier cible temporairement préparé à `draft`, clôture `completed` du dossier source, activation d'une seule année cible, activation du dossier de réinscription et synchronisation de `profiles.class_name`.
+6. Le second appel identique renvoie `already_finalized=true` sans écriture supplémentaire.
+7. Parcours Départ / non-réinscription testé : aucun dossier cible ajouté, dossier source clôturé et ancienne classe courante effacée.
+8. RLS testée avec un compte Apprenant : lecture des décisions administratives refusée et RPC d'enregistrement inaccessible.
+9. Tous les changements de test sont annulés. Pour préserver la séquence réelle des numéros, le scénario positif réutilise un dossier cible dans la transaction plutôt que d'en créer un nouveau.
 
 ### Points de vigilance avant autorisation SQL et recette navigateur
 
 - **Anomalie historique non corrigée :** un dossier actif existe dans une année non courante (2026–2027). La migration projetée bloquera volontairement la bascule tant que l'administration n'aura pas décidé du traitement de ce dossier.
 - Les scénarios de vraie création d'un nouveau numéro d'inscription, de redoublement, de départ, de concurrence et de droits par chaque profil devront être couverts dans la recette ciblée ou un environnement isolé. Ne pas consommer les séquences de production pour tester les cas de création de dossier annulés.
 - Vérifier lint/build GitHub et navigation en Preview. La recette navigateur du Lot 5.C reste également en attente.
-- Nouvelle **autorisation explicite indispensable** avant toute application réelle de la migration 5.D. La migration de sécurité des corrections \`20261109140104_harden_assessment_legacy_rpcs.sql\` reste non autorisée : ne pas lancer de \`supabase db push --remote\` global. Ne pas fusionner \`main\` ni déployer Vercel production sans accord.
+- Nouvelle **autorisation explicite indispensable** avant toute application réelle de la migration 5.D. La migration de sécurité des corrections `20261109140104_harden_assessment_legacy_rpcs.sql` reste non autorisée : ne pas lancer de `supabase db push --remote` global. Ne pas fusionner `main` ni déployer Vercel production sans accord.
 
 ---
 
