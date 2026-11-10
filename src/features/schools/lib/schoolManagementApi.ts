@@ -57,12 +57,13 @@ export async function getActiveSchoolAdmins(): Promise<SchoolMembership[]> {
 
 export async function createAdminSchool(input: {
   name: string;
-  code: string;
   contactEmail: string;
 }): Promise<string> {
   const { data, error } = await supabase.rpc("schoolnet_admin_create_school", {
     p_name: input.name.trim(),
-    p_code: input.code.trim().toUpperCase(),
+    // Paramètre historique conservé côté SQL, mais entièrement ignoré.
+    // Le code SCH-000001... est maintenant attribué atomiquement par PostgreSQL.
+    p_code: null,
     p_contact_email: input.contactEmail.trim() || null,
   });
   if (error) throw error;
