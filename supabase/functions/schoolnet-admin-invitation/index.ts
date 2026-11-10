@@ -29,7 +29,15 @@ const allowedOrigins = new Set([
     .filter(Boolean),
 ]);
 
-const redirectTo = Deno.env.get("SCHOOLNET_INVITE_REDIRECT_URL") ??
+// Un lien genere depuis la Preview doit y revenir pour que school_admin
+// puisse acceder au nouvel espace encore absent du site principal.
+// La destination n'est JAMAIS fournie par le navigateur : seules
+// les origines exactes connues ici determinent la redirection.
+const previewOrigin =
+  "https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app";
+const previewRedirectTo =
+  previewOrigin + "/auth/reset-password?mode=school-invite";
+const defaultRedirectTo = Deno.env.get("SCHOOLNET_INVITE_REDIRECT_URL") ??
   "https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite";
 
 function response(req: Request, body: Record<string, unknown>, status = 200) {
@@ -80,6 +88,9 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceKey || !publicKey) {
     return rejected(req, 503, "Service d'invitation non configure.");
   }
+  // Les invitations emises depuis la Preview PR #6 retournent vers la
+  // Preview. Depuis le site principal, la cible existante est conservee.
+  const redirectTo = origin === previewOrigin ? previewRedirectTo : defaultRedirectTo;
   let redirect: URL;
   try {
     redirect = new URL(redirectTo);
