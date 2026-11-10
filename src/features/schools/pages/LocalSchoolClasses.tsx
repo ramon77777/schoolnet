@@ -68,7 +68,6 @@ export default function LocalSchoolClasses() {
     setCatalog(null);
     setClasses([]);
     setFormError(null);
-    setSuccess(null);
     setLevelId("");
     setSchoolYearId("");
     if (authLoading || !user?.id || isDemo || !selectedSchoolId) {
@@ -189,7 +188,11 @@ export default function LocalSchoolClasses() {
             className="sn-input w-full md:max-w-lg"
             value={selectedSchoolId}
             disabled={saving || isDemo || schools.length === 0}
-            onChange={(event) => setSelectedSchoolId(event.target.value)}
+            onChange={(event) => {
+              setSelectedSchoolId(event.target.value);
+              setClassName("");
+              setSuccess(null);
+            }}
           >
             {schools.length === 0 && <option value="">Aucun établissement actif autorisé</option>}
             {schools.map((item) => (
