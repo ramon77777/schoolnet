@@ -82,9 +82,10 @@ BEGIN
    WHERE c.id=v_class AND c.school_id=v_a
      AND c.learning_context='school'
      AND c.name='5e A QA S2B'
- ) OR (SELECT count(*) FROM public.classes c
-   WHERE c.learning_context='legacy_unclassified')<>
-       current_setting('qa.b.classes_before')::integer
+ ) OR EXISTS (
+   SELECT 1 FROM public.classes c
+   WHERE c.learning_context='legacy_unclassified'
+ )
  THEN
    RAISE EXCEPTION 'Classe de test non creee ou donnees legacy modifiees.';
  END IF;
