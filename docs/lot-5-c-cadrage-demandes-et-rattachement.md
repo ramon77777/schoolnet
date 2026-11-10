@@ -2,9 +2,21 @@
 
 **Date :** 09/11/2026  
 **Branche :** `feature/schoolnet-notifications` — PR #5 en brouillon  
-**État :** workflow validé, migration et interface **développées sur la branche**, **non appliquées à Supabase** ; la base `schoolnet_2.0` reste à **29 migrations**.
+**État au 10/11/2026 :** migration 5.C **appliquée et enregistrée** dans Supabase `schoolnet_2.0` (30 migrations) ; tests SQL transactionnels avec `ROLLBACK` **réussis** ; recette navigateur sur la branche **à réaliser**. Aucune fusion dans `main`.
 
-## Implémentation 5.C préparée après validation du workflow
+## Mise à jour du 10/11/2026 — Activation et recette transactionnelle
+
+- Migration appliquée individuellement après autorisation explicite, enregistrée sous la version exacte `20261109170500`. Le texte SQL historisé correspond au fichier GitHub (15 637 caractères), sans application de la migration indépendante `20261109140104_harden_assessment_legacy_rpcs.sql`.
+- Comptages après installation puis après recette réversible : **30 migrations**, **3 demandes publiques historiques**, **2 inscriptions annuelles**, **1 lien familial**, **1 événement historique de demande**, **0 résolution durable**, aucun enregistrement fictif persistant. Cron LIVE toujours présent.
+- Vérification Admin en contexte `authenticated` et deux parcours simulés (`parent_access` et `student_enrollment`) réussis dans une transaction réversible. Tests positifs : création du lien parent-enfant, synchronisation `profiles.child_ids`, changement de statut, résolution et historique, répétition sans doublon.
+- Tests négatifs réussis : absence d'attestation, passage direct à `processed` sans résolution, dossier lié à un autre apprenant, rattachement contradictoire après finalisation, double utilisation d'un même dossier scolaire. Tous les changements de test ont été annulés via `ROLLBACK`.
+- Les droits RLS, la politique de lecture Admin, l'interdiction `TRUNCATE` aux clients et le contrôle d'appel RPC Administrateur ont été vérifiés. L'accès par un compte Apprenant à la RPC Admin a été refusé.
+- **Encore à valider :** vraie recette navigateur depuis l'interface de la branche : sélection Parent/Apprenant, dossier cohérent, saisie de note/attestation, finalisation, rafraîchissement et consultations familiales autorisées ; vérifier aussi les messages d'erreur et l'absence de doublon sur un clic répété. Un déploiement Preview ou un environnement local sur cette branche est nécessaire : `main` ne contient pas encore le panneau.
+- **Restrictions maintenues :** aucune demande réelle à modifier pour la recette, pas de migration globale Supabase, pas de fusion `main`, pas de déploiement Vercel production.
+
+---
+
+## Historique : implémentation 5.C préparée le 09/11/2026
 
 Le cadrage d'origine reste documenté dans les sections suivantes. Le nouvel
 état du développement est précisé ici.
@@ -47,8 +59,8 @@ Le cadrage d'origine reste documenté dans les sections suivantes. Le nouvel
   exécuté avec succès. État actuel : 29 migrations, table/RPC 5.C absentes,
   3 demandes publiques préservées. Aucun test DDL appliqué.
 
-**Avant la recette du nouveau workflow :** autorisation explicite requise
-pour la migration 5.C. La migration `20261109140104` sur les corrections
+**Historique au 09/11/2026 :** une autorisation explicite était alors requise
+pour la migration 5.C. Cette autorisation a depuis été reçue et la migration a été appliquée le 10/11/2026. La migration `20261109140104` sur les corrections
 reste non autorisée : **ne pas faire de `supabase db push --remote` global**.
 Aucune fusion `main` ni déploiement Vercel n'a eu lieu.
 
