@@ -35,7 +35,7 @@ Toutes les nouvelles tables ont RLS activée, des politiques de lecture appropri
 
 ## Fonction Edge — activée
 
-`supabase/functions/schoolnet-admin-invitation/index.ts` est déployée dans le projet sous le nom `schoolnet-admin-invitation`, **version 1 / ACTIVE**. Son fichier déployé a été comparé au contenu de la branche et correspond exactement.
+`supabase/functions/schoolnet-admin-invitation/index.ts` est déployée dans le projet sous le nom `schoolnet-admin-invitation`, **version 2 / ACTIVE**. Son fichier déployé a été comparé au contenu de la branche et correspond exactement.
 
 - `verify_jwt=false` au niveau du gateway **par choix de configuration**, mais la fonction exige un Bearer JWT valide via `auth.getUser`, vérifie le rôle `admin` dans `profiles`, l'origine navigateur autorisée et la validité de l'école ; elle refuse les requêtes anonymes.
 - Les secrets `SUPABASE_SERVICE_ROLE_KEY` et `SUPABASE_ANON_KEY` ne sont lus que côté Edge et ne doivent jamais figurer dans le frontend.
@@ -48,10 +48,10 @@ Toutes les nouvelles tables ont RLS activée, des politiques de lecture appropri
 
 ### Configuration à contrôler avant la recette réelle
 
-- Secret Edge `SCHOOLNET_ALLOWED_ORIGINS` : liste des domaines autorisés, avec protocoles HTTPS, séparés par des virgules. Inclure l'adresse Vercel **Preview utilisée pour les essais**, en conservant l'adresse principale et les autres origines autorisées.
+- Origines Edge : l'adresse principale et **l'origine exacte de la Preview PR #6** sont explicitement autorisées dans la fonction, et la liste `SCHOOLNET_ALLOWED_ORIGINS` permet de conserver d'autres origines configurées. Aucun joker `*.vercel.app` n'est accepté. Preview PR #6 : `https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app`.
 - Optionnel : `SCHOOLNET_INVITE_REDIRECT_URL`, par défaut `https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite`.
 - Dans **Supabase → Authentication → URL Configuration**, vérifier que l'URL d'activation/redirection est bien autorisée. L'URL du site principal peut être conservée.
-- Le navigateur doit utiliser la **PR #6 Preview**, pas `schoolnet-snowy.vercel.app`, tant que `main` n'a pas été fusionnée.
+- Le navigateur doit utiliser la **[Preview PR #6](https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app)**, pas `schoolnet-snowy.vercel.app`, tant que `main` n'a pas été fusionnée.
 
 ## Interface déjà développée (branche uniquement)
 
@@ -75,7 +75,7 @@ Le lien d'activation n'est conservé que dans l'état temporaire de l'interface.
 
 ## Recette navigateur demandée ensuite
 
-1. Ouvrir la Preview Vercel liée à la PR #6 avec le compte Super Admin et vérifier `/app/admin/schools`.
+1. Ouvrir `https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app` avec le Super Admin et vérifier `/app/admin/schools`.
 2. Créer un établissement de **test** avec un code non réel.
 3. Dans `/app/admin/school-invitations`, créer un responsable avec une **adresse e-mail de test à laquelle vous avez accès**, différente de tous les comptes SCHOOLNET existants.
 4. Copier l'invitation ou ouvrir sa messagerie, vérifier le destinataire et **envoyer soi-même le message**.
