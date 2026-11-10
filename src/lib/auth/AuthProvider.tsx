@@ -44,9 +44,12 @@ async function fetchProfileSafe(userId: string): Promise<{ role: UserRole; full_
     const { data, error } = await withTimeout(req, 6000, "profiles.select");
     if (error) throw error;
 
+    if (!data?.role || !["student", "parent", "teacher", "admin", "school_admin"].includes(data.role)) {
+      throw new Error("Profil utilisateur non habilité ou rôle manquant.");
+    }
     return {
-      role: (data?.role as UserRole) ?? "student",
-      full_name: data?.full_name ?? null,
+      role: data.role as UserRole,
+      full_name: data.full_name ?? null,
     };
   } catch (e) {
       console.error("[AuthProvider] profile fetch failed:", e);
@@ -99,6 +102,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // si session réelle => on coupe le démo
         writeDemoRole(null);
+      } catch (e) {
+        console.error("[AuthProvider] chargement du profil impossible :", e);
+        if (mountedRef.current) setUser(null);
       } finally {
         // ✅ QUOI QU’IL ARRIVE on sort de loading
         if (mountedRef.current) setLoading(false);
