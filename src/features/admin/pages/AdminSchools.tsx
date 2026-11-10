@@ -125,7 +125,10 @@ export default function AdminSchools() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to="/app/admin/dashboard" className="sn-btn-ghost">← Tableau de bord</Link>
+            <div className="flex flex-wrap gap-2">
+              <Link to="/app/admin/dashboard" className="sn-btn-ghost">← Tableau de bord</Link>
+              <Link to="/app/admin/school-invitations" className="sn-btn-primary">✉ Inviter un responsable</Link>
+            </div>
             <button type="button" className="sn-btn-ghost" disabled={loading || saving || isDemo}
               onClick={reload}>↻ Actualiser</button>
           </div>
