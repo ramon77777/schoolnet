@@ -206,9 +206,6 @@ BEGIN
     OR NOT pg_catalog.has_function_privilege(
       'authenticated','public.schoolnet_school_create_class(uuid,bigint,uuid,text)','EXECUTE'
     )
-    OR pg_catalog.has_function_privilege(
-      'authenticated','schoolnet_private.is_school_admin_for(uuid)','EXECUTE'
-    )
     OR NOT EXISTS(
       SELECT 1 FROM pg_catalog.pg_constraint
       WHERE conrelid='public.schoolnet_school_audit'::pg_catalog.regclass
