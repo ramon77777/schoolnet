@@ -536,6 +536,7 @@ export default function DashboardLayout() {
               Administration de l’établissement
             </div>
             <NavLink className={navItem} to="/app/school/dashboard">🏫 Mon établissement</NavLink>
+            <NavLink className={navItem} to="/app/school/classes">🏫 Classes</NavLink>
           </>
         )}
 
