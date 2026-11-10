@@ -70,7 +70,8 @@ CREATE TABLE public.schoolnet_school_audit (
   id uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
   school_id uuid NOT NULL REFERENCES public.schoolnet_schools(id) ON DELETE RESTRICT,
   action text NOT NULL CHECK (action IN (
-    'school_created','school_admin_assigned','school_admin_reactivated'
+    'school_created','school_admin_assigned','school_admin_reactivated',
+    'school_admin_invitation_prepared','school_admin_invitation_sent_declared'
   )),
   actor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
   target_user_id uuid REFERENCES public.profiles(id) ON DELETE RESTRICT,
@@ -296,3 +297,178 @@ BEGIN
   THEN RAISE EXCEPTION 'SCHOOLNET multi-etablissements: controles RLS/GRANT non conformes.'; END IF;
 END;
 $postcheck$;
+
+
+-- PHASE 2 : suivi des invitations ENVOYEES MANUELLEMENT.
+-- Aucun mot de passe, lien de validation, OTP ni jeton stocke en base.
+CREATE TABLE public.schoolnet_school_admin_invitations (
+  school_id uuid NOT NULL REFERENCES public.schoolnet_schools(id) ON DELETE RESTRICT,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  email text NOT NULL CHECK (pg_catalog.char_length(email) BETWEEN 3 AND 254),
+  first_prepared_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  last_prepared_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  generation_count integer NOT NULL DEFAULT 1 CHECK (generation_count >= 1),
+  sent_declared_at timestamptz,
+  prepared_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  sent_declared_by uuid REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  PRIMARY KEY(school_id,user_id)
+);
+ALTER TABLE public.schoolnet_school_admin_invitations ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.schoolnet_school_admin_invitations
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.schoolnet_school_admin_invitations TO authenticated;
+CREATE POLICY schoolnet_school_admin_invitations_super_read
+  ON public.schoolnet_school_admin_invitations FOR SELECT TO authenticated
+  USING (public.is_admin());
+
+-- Recherche de compte autorisee uniquement au super-admin, sans exposer
+-- auth.users dans l'API publique. Le role local n'herite jamais de 'admin'.
+CREATE FUNCTION public.schoolnet_admin_lookup_auth_email(p_email text)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path=pg_catalog
+AS $lookup$
+DECLARE v_user uuid; v_role text; v_confirmed boolean; v_email text;
+BEGIN
+  IF auth.uid() IS NULL OR public.is_admin() IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Action reservee au Super Administrateur SCHOOLNET.'
+      USING ERRCODE='42501';
+  END IF;
+  v_email:=pg_catalog.lower(pg_catalog.btrim(COALESCE(p_email,'')));
+  IF v_email !~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$'
+    OR pg_catalog.char_length(v_email)>254
+  THEN RAISE EXCEPTION 'Adresse email invalide.'; END IF;
+  SELECT u.id,p.role::text,(u.email_confirmed_at IS NOT NULL)
+  INTO v_user,v_role,v_confirmed
+  FROM auth.users u
+  LEFT JOIN public.profiles p ON p.id=u.id
+  WHERE pg_catalog.lower(u.email)=v_email
+  ORDER BY u.created_at DESC
+  LIMIT 1;
+  RETURN pg_catalog.jsonb_build_object(
+    'exists',v_user IS NOT NULL,
+    'user_id',v_user,
+    'role',v_role,
+    'email_confirmed',COALESCE(v_confirmed,false)
+  );
+END;
+$lookup$;
+REVOKE ALL ON FUNCTION public.schoolnet_admin_lookup_auth_email(text)
+  FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.schoolnet_admin_lookup_auth_email(text)
+  TO authenticated;
+
+-- Appartenance et preuve de preparation sont enregistrees dans UNE SEULE
+-- transaction SQL. Le secret du lien est renvoye uniquement par Edge Function.
+CREATE FUNCTION public.schoolnet_admin_record_school_invitation(
+  p_school_id uuid,p_user_id uuid
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog
+AS $record$
+DECLARE v_result jsonb; v_email text; v_count integer;
+BEGIN
+  IF auth.uid() IS NULL OR public.is_admin() IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Action reservee au Super Administrateur SCHOOLNET.'
+      USING ERRCODE='42501';
+  END IF;
+  SELECT pg_catalog.lower(u.email) INTO v_email
+  FROM auth.users u JOIN public.profiles p ON p.id=u.id
+  WHERE u.id=p_user_id AND p.role::text='school_admin'
+    AND u.email IS NOT NULL;
+  IF v_email IS NULL THEN
+    RAISE EXCEPTION 'Compte school_admin introuvable ou email absent.';
+  END IF;
+  v_result:=public.schoolnet_admin_assign_school_admin(p_school_id,p_user_id);
+  INSERT INTO public.schoolnet_school_admin_invitations AS i
+    (school_id,user_id,email,prepared_by)
+  VALUES(p_school_id,p_user_id,v_email,auth.uid())
+  ON CONFLICT(school_id,user_id) DO UPDATE SET
+    email=EXCLUDED.email,
+    last_prepared_at=pg_catalog.now(),
+    generation_count=i.generation_count+1,
+    sent_declared_at=NULL,
+    sent_declared_by=NULL,
+    prepared_by=auth.uid()
+  RETURNING generation_count INTO v_count;
+  INSERT INTO public.schoolnet_school_audit
+    (school_id,action,actor_id,target_user_id)
+  VALUES(p_school_id,'school_admin_invitation_prepared',auth.uid(),p_user_id);
+  RETURN pg_catalog.jsonb_build_object(
+    'school_id',p_school_id,'user_id',p_user_id,
+    'generation_count',v_count,
+    'already_assigned',v_result->'already_assigned'
+  );
+END;
+$record$;
+REVOKE ALL ON FUNCTION public.schoolnet_admin_record_school_invitation(uuid,uuid)
+  FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.schoolnet_admin_record_school_invitation(uuid,uuid)
+  TO authenticated;
+
+-- L'admin declare l'envoi, SCHOOLNET ne pretend pas prouver
+-- une livraison SMTP qu'il n'a pas lui-meme effectuee.
+CREATE FUNCTION public.schoolnet_admin_mark_school_invitation_sent(
+  p_school_id uuid,p_user_id uuid
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog
+AS $mark$
+DECLARE v_sent timestamptz; v_new boolean;
+BEGIN
+  IF auth.uid() IS NULL OR public.is_admin() IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Action reservee au Super Administrateur SCHOOLNET.'
+      USING ERRCODE='42501';
+  END IF;
+  UPDATE public.schoolnet_school_admin_invitations i
+  SET sent_declared_at=pg_catalog.now(),sent_declared_by=auth.uid()
+  WHERE i.school_id=p_school_id AND i.user_id=p_user_id
+    AND i.sent_declared_at IS NULL
+    AND EXISTS(
+      SELECT 1 FROM public.schoolnet_school_memberships m
+      JOIN public.schoolnet_schools s ON s.id=m.school_id
+      WHERE m.school_id=i.school_id AND m.user_id=i.user_id
+        AND m.member_role='school_admin' AND m.status='active'
+        AND s.status='active'
+    )
+  RETURNING sent_declared_at INTO v_sent;
+  v_new:=v_sent IS NOT NULL;
+  IF NOT v_new THEN
+    SELECT i.sent_declared_at INTO v_sent
+    FROM public.schoolnet_school_admin_invitations i
+    WHERE i.school_id=p_school_id AND i.user_id=p_user_id;
+    IF v_sent IS NULL THEN
+      RAISE EXCEPTION 'Invitation absente ou appartenance non active.';
+    END IF;
+  ELSE
+    INSERT INTO public.schoolnet_school_audit
+      (school_id,action,actor_id,target_user_id)
+    VALUES(p_school_id,'school_admin_invitation_sent_declared',auth.uid(),p_user_id);
+  END IF;
+  RETURN pg_catalog.jsonb_build_object(
+    'school_id',p_school_id,'user_id',p_user_id,
+    'sent_declared_at',v_sent,'already_declared',NOT v_new
+  );
+END;
+$mark$;
+REVOKE ALL ON FUNCTION public.schoolnet_admin_mark_school_invitation_sent(uuid,uuid)
+  FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.schoolnet_admin_mark_school_invitation_sent(uuid,uuid)
+  TO authenticated;
+
+DO $invite_checks$
+BEGIN
+  IF NOT (SELECT relrowsecurity FROM pg_catalog.pg_class
+          WHERE oid='public.schoolnet_school_admin_invitations'::regclass)
+     OR pg_catalog.has_table_privilege('authenticated',
+       'public.schoolnet_school_admin_invitations','INSERT')
+     OR pg_catalog.has_table_privilege('anon',
+       'public.schoolnet_school_admin_invitations','SELECT')
+     OR pg_catalog.has_function_privilege('anon',
+       'public.schoolnet_admin_lookup_auth_email(text)','EXECUTE')
+     OR pg_catalog.has_function_privilege('anon',
+       'public.schoolnet_admin_record_school_invitation(uuid,uuid)','EXECUTE')
+     OR pg_catalog.has_function_privilege('anon',
+       'public.schoolnet_admin_mark_school_invitation_sent(uuid,uuid)','EXECUTE')
+  THEN RAISE EXCEPTION 'SCHOOLNET invitations: verification de securite non conforme.'; END IF;
+END;
+$invite_checks$;
