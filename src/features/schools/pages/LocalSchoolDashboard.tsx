@@ -73,9 +73,14 @@ export default function LocalSchoolDashboard() {
           activée progressivement, après vérification de l'isolation des données
           entre établissements. Aucun accès global n'est attribué à ce compte.
         </p>
-        <Link to="/app/profile" className="sn-btn-ghost inline-flex">
-          Consulter mon profil
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/app/school/classes" className="sn-btn-ghost inline-flex">
+            Préparer mes classes
+          </Link>
+          <Link to="/app/profile" className="sn-btn-ghost inline-flex">
+            Consulter mon profil
+          </Link>
+        </div>
       </section>
     </main>
   );
