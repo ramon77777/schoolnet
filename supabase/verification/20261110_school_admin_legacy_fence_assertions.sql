@@ -1,12 +1,12 @@
--- SCHOOLNET | Assertions de recette de la proposition RLS phase 1.
--- Ce fichier ne doit pas etre execute seul : utiliser dans une
--- transaction BEGIN avec la proposition SQL, puis terminer ROLLBACK.
--- Exemple de concat :
--- BEGIN;
--- <contenu de supabase/proposals/school_admin_legacy_read_fence_phase1.sql>
--- <contenu de CE FICHIER>
--- ROLLBACK;
--- Ne pas utiliser COMMIT pour cette recette.
+-- SCHOOLNET | Assertions de recette RLS phase 1 : 5 roles.
+-- Avant activation : BEGIN + SQL de la proposition + assertions + ROLLBACK.
+-- Apres activation permanente 20261110141631 :
+-- BEGIN READ ONLY; assertions de ce fichier; ROLLBACK;
+-- Aucune creation ni modification de donnees : seulement des lectures.
+-- Les valeurs de base historiques (2 classes, 3 annees, 2 salles)
+-- restent des reperes de recette du 10 novembre 2026 ; les actualiser
+-- dans un test de non-regression futur si le jeu de donnees evolue.
+-- Ne jamais utiliser COMMIT dans le script de test.
 
 DO $setup$
 DECLARE v_local uuid;v_admin uuid;v_teacher uuid;v_student uuid;v_parent uuid;
