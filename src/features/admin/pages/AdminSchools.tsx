@@ -248,9 +248,9 @@ export default function AdminSchools() {
       <section className="sn-card p-5 md:p-6">
         <h2 className="text-lg font-bold text-slate-950">3. Accès locaux et invitations</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">
-          Prochaine étape du chantier : préparer les comptes administrateurs locaux, les rattacher
-          exclusivement à leur établissement et faciliter l'envoi manuel des invitations par e-mail.
-          Aucun mot de passe ne sera affiché ou envoyé en clair par ce module.
+          L'assistant d'invitation SCHOOLNET est accessible depuis le bouton « Inviter un responsable ».
+          Après activation des protections SQL et de la fonction serveur, il préparera le compte,
+          le rattachement à l'école et un lien temporaire à envoyer manuellement, sans mot de passe en clair.
         </p>
         <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
           Les nouveaux administrateurs d'établissement n'obtiendront jamais automatiquement
