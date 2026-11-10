@@ -95,3 +95,19 @@ Ne jamais utiliser de données sensibles réelles dans ces premiers essais.
 ## Restrictions maintenues
 
 **Ne pas lancer `supabase db push --remote` global** : `20261110090000_school_year_rollover_controlled.sql` (Lot 5.D) et `20261109140104_harden_assessment_legacy_rpcs.sql` restent en attente. Ne pas modifier `main` ni déployer Vercel Production sans autorisation explicite. **PR #6 reste en brouillon.**
+
+## Amélioration validée — Code établissement généré automatiquement
+
+**Activation contrôlée du 10 novembre 2026.**
+
+- Migration appliquée : `20261110120532_schoolnet_school_codes_auto.sql`, version Supabase **`20261110120532`** (33 migrations au total).
+- La séquence PostgreSQL privée `schoolnet_private.school_code_seq` attribue un identifiant `SCH-000001`, puis `SCH-000002` etc. Les appels concurrents utilisent `nextval()`, évitant les doublons ; les numéros peuvent avoir des trous en cas d'échec ou d'annulation.
+- La séquence n'est pas directement accessible aux rôles `anon` ou `authenticated`, et la création reste réservée au Super Administrateur via `public.schoolnet_admin_create_school`.
+- Pour conserver la compatibilité avec les anciens clients, le paramètre historique `p_code` est toujours présent dans la signature SQL, mais **ignoré**. Le frontend lui transmet `null` et ne propose plus de champ de saisie du code.
+- L'interface `AdminSchools.tsx` affiche le nouveau code après le rafraîchissement du répertoire, avec un bouton **Copier** à côté de tous les codes d'établissements.
+- **Aucune renumérotation** : l'école de test existante conserve `ECOLE-TEST-01`. Le compteur commence à 1 car aucun code `SCH-xxxxxx` ne préexistait.
+- Tests SQL `BEGIN ... ROLLBACK` réussis avant l'application : deux codes distincts, saisie manuelle ignorée, création refusée à un apprenant, séquence inaccessible directement, audit de création conservé et code historique inchangé.
+- Après activation : état vérifié avec 33 migrations, 1 établissement, 0 code SCH attribué, compteur à 1 et `is_called=false`. **Le premier véritable nouvel établissement obtiendra `SCH-000001`** tant qu'aucune autre création ne survient.
+- Prochaine recette navigateur : créer un **deuxième établissement fictif** depuis la Preview PR #6, vérifier le code affiché et son bouton Copier ; puis reprendre la validation des invitations locales.
+
+`main`, les autres migrations en attente et la production Vercel restent inchangés.
