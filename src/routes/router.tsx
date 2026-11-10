@@ -17,6 +17,8 @@ import AdminContent from "../features/admin/pages/AdminContent";
 import AdminSettings from "../features/admin/pages/AdminSettings";
 import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
 import AdminSchools from "@/features/admin/pages/AdminSchools";
+import AdminSchoolInvitations from "@/features/admin/pages/AdminSchoolInvitations";
+import LocalSchoolDashboard from "@/features/schools/pages/LocalSchoolDashboard";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
@@ -372,12 +374,21 @@ export const router = createBrowserRouter([
           },
 
           {
+            element: <RoleGate allowed={["school_admin"]} />,
+            children: [
+              { path: "school", element: <Navigate to="/app/school/dashboard" replace /> },
+              { path: "school/dashboard", element: <LocalSchoolDashboard /> },
+            ],
+          },
+
+          {
             element: <RoleGate allowed={["admin"]} />,
             children: [
               { path: "admin", element: <Navigate to="/app/admin/dashboard" replace /> },
               { path: "admin/dashboard", element: <AdminDashboard /> },
               { path: "admin/users", element: <AdminUsers /> },
               { path: "admin/schools", element: <AdminSchools /> },
+              { path: "admin/school-invitations", element: <AdminSchoolInvitations /> },
               { path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/live", element: <LiveSessionsPage />,},
               { path: "admin/enrollments", element: <AdminEnrollments />,},
