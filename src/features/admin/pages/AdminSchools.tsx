@@ -171,7 +171,7 @@ export default function AdminSchools() {
             </div>
           )}
         </div>
-      )
+      )}
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Indicateurs établissements">
         {[
