@@ -35,7 +35,7 @@ Toutes les nouvelles tables ont RLS activée, des politiques de lecture appropri
 
 ## Fonction Edge — activée
 
-`supabase/functions/schoolnet-admin-invitation/index.ts` est déployée dans le projet sous le nom `schoolnet-admin-invitation`, **version 2 / ACTIVE**. Son fichier déployé a été comparé au contenu de la branche et correspond exactement.
+`supabase/functions/schoolnet-admin-invitation/index.ts` est déployée dans le projet sous le nom `schoolnet-admin-invitation`, **version 3 / ACTIVE**. Son fichier déployé a été comparé au contenu de la branche et correspond exactement.
 
 - `verify_jwt=false` au niveau du gateway **par choix de configuration**, mais la fonction exige un Bearer JWT valide via `auth.getUser`, vérifie le rôle `admin` dans `profiles`, l'origine navigateur autorisée et la validité de l'école ; elle refuse les requêtes anonymes.
 - Les secrets `SUPABASE_SERVICE_ROLE_KEY` et `SUPABASE_ANON_KEY` ne sont lus que côté Edge et ne doivent jamais figurer dans le frontend.
@@ -111,3 +111,11 @@ Ne jamais utiliser de données sensibles réelles dans ces premiers essais.
 - Prochaine recette navigateur : créer un **deuxième établissement fictif** depuis la Preview PR #6, vérifier le code affiché et son bouton Copier ; puis reprendre la validation des invitations locales.
 
 `main`, les autres migrations en attente et la production Vercel restent inchangés.
+
+## Redirection des invitations — configuration pour recette PR #6
+
+- **Supabase Authentication → URL Configuration** : le Site URL est désormais `https://schoolnet-snowy.vercel.app`, selon la capture transmise. Quatre Redirect URLs sont affichées, dont l'URL exacte de notre Preview avec `?mode=school-invite` ; les anciennes URL ont été conservées.
+- **Edge Function `schoolnet-admin-invitation` v3 ACTIVE** : le serveur choisit l'URL de redirection à partir de l'en-tête `Origin`, préalablement vérifié dans la liste autorisée. Pour **l'origine exacte PR #6**, il renvoie à `https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app/auth/reset-password?mode=school-invite`. Pour l'origine principale, il conserve `https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite`. Les autres domaines permis par secret n'obtiennent pas automatiquement de redirection vers eux.
+- Le navigateur ne peut pas fournir une destination arbitraire dans le corps de la requête ; le serveur conserve la validation HTTPS et `/auth/reset-password` ainsi que la vérification de JWT et de rôle Super Administrateur.
+- Le fichier GitHub `supabase/functions/schoolnet-admin-invitation/index.ts` correspond exactement au fichier Supabase v3. **Aucun e-mail ni compte n'a été généré** pendant cette adaptation ; 33 migrations, deux établissements, aucun administrateur local ni invitation préparée.
+- **Reste à valider depuis le navigateur** : création réelle d'un compte de test avec adresse contrôlée, génération sans SMTP, envoi manuel, ouverture du lien en fenêtre privée, définition du mot de passe, connexion à l'espace local. Ne jamais communiquer le lien d'activation dans une capture.
