@@ -2,6 +2,7 @@
 // SCHOOLNET | Lot 5 - Inscriptions et dossiers des apprenants
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import AdminEnrollmentDocuments from "@/features/enrollments/components/AdminEnrollmentDocuments";
 import {
@@ -478,6 +479,7 @@ export default function AdminEnrollments() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link className="sn-btn-ghost" to="/app/admin/year-rollover">📆 Passage d’année</Link>
             <button
               type="button"
               className="sn-btn-ghost sn-press"
