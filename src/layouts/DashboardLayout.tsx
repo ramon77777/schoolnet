@@ -545,6 +545,7 @@ export default function DashboardLayout() {
               </span>
             </NavLink>
             <NavLink className={navItem} to="/app/admin/enrollments"> 📝 Inscriptions</NavLink>
+            <NavLink className={navItem} to="/app/admin/year-rollover">📆 Passage d’année</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
             <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
             <NavLink className={navItem} to="/app/admin/rooms">🚪 Salles de classe</NavLink>
