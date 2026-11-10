@@ -11,8 +11,8 @@ import {
   type SchoolRecord,
 } from "@/features/schools/lib/schoolManagementApi";
 
-type FormValues = { name: string; code: string; contactEmail: string };
-const EMPTY_FORM: FormValues = { name: "", code: "", contactEmail: "" };
+type FormValues = { name: string; contactEmail: string };
+const EMPTY_FORM: FormValues = { name: "", contactEmail: "" };
 
 export default function AdminSchools() {
   const { user, loading: authLoading } = useAuth();
@@ -26,6 +26,8 @@ export default function AdminSchools() {
   const [migrationPending, setMigrationPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [createdSchoolId, setCreatedSchoolId] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const reload = useCallback(() => setRevision((value) => value + 1), []);
 
@@ -74,19 +76,24 @@ export default function AdminSchools() {
     return counts;
   }, [memberships]);
   const activeCount = schools.filter((row) => row.status === "active").length;
+  const createdSchool = schools.find((row) => row.id === createdSchoolId);
+
+  async function copySchoolCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+    } catch {
+      setError("Impossible de copier automatiquement le code. Sélectionnez-le manuellement.");
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving || loading || migrationPending || isDemo || !user?.id) return;
     const name = form.name.trim();
-    const code = form.code.trim().toUpperCase();
     const contactEmail = form.contactEmail.trim();
     if (name.length < 3 || name.length > 160) {
       setError("Le nom de l'établissement doit contenir entre 3 et 160 caractères.");
-      return;
-    }
-    if (!/^[A-Z0-9-]{3,24}$/.test(code)) {
-      setError("Le code doit contenir 3 à 24 lettres majuscules, chiffres ou tirets.");
       return;
     }
     if (contactEmail && (contactEmail.length > 254 ||
@@ -98,9 +105,11 @@ export default function AdminSchools() {
       setSaving(true);
       setError(null);
       setSuccess(null);
-      await createAdminSchool({ name, code, contactEmail });
+      const id = await createAdminSchool({ name, contactEmail });
       setForm(EMPTY_FORM);
-      setSuccess("Établissement enregistré. Aucun apprenant ni compte n'a été créé automatiquement.");
+      setCreatedSchoolId(id);
+      setCopiedCode(null);
+      setSuccess("Établissement enregistré. Le code unique a été généré automatiquement.");
       reload();
     } catch (cause) {
       setError(schoolManagementError(cause));
@@ -149,7 +158,20 @@ export default function AdminSchools() {
         </p>
       )}
       {error && <p role="alert" className="sn-card border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
-      {success && <p role="status" className="sn-card border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{success}</p>}
+      {success && (
+        <div role="status" className="sn-card space-y-2 border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <p>{success}</p>
+          {createdSchool && (
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-semibold">Code attribué : <span className="font-mono">{createdSchool.code}</span></span>
+              <button type="button" className="rounded-lg border border-emerald-300 bg-white px-3 py-1 font-semibold"
+                onClick={() => void copySchoolCode(createdSchool.code)}>
+                {copiedCode === createdSchool.code ? "✓ Copié" : "Copier le code"}
+              </button>
+            </div>
+          )}
+        </div>
+      )
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Indicateurs établissements">
         {[
@@ -177,15 +199,13 @@ export default function AdminSchools() {
               disabled={saving || loading || migrationPending || isDemo}
               onChange={(event) => setForm((old) => ({ ...old, name: event.target.value }))} />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-slate-700">Code unique *</span>
-            <input className="sn-input w-full" required minLength={3} maxLength={24}
-              value={form.code} placeholder="Ex. : COL-HORIZON"
-              disabled={saving || loading || migrationPending || isDemo}
-              onChange={(event) => setForm((old) => ({ ...old,
-                code: event.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "") }))} />
-            <span className="mt-1 block text-xs text-slate-500">Lettres, chiffres et tirets ; le code ne sert pas de mot de passe.</span>
-          </label>
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+            <p className="font-semibold">✨ Code unique attribué automatiquement</p>
+            <p className="mt-1 text-xs leading-5 text-indigo-700">
+              SCHOOLNET génère un identifiant permanent lors de la création (ex. SCH-000001).
+              Vous n'avez aucun code à saisir.
+            </p>
+          </div>
           <label className="block">
             <span className="mb-1 block text-sm font-semibold text-slate-700">E-mail de contact (facultatif)</span>
             <input className="sn-input w-full" type="email" maxLength={254}
@@ -224,7 +244,15 @@ export default function AdminSchools() {
                   <article key={school.id} className="flex flex-wrap items-center justify-between gap-3 p-5">
                     <div className="min-w-0">
                       <h3 className="font-bold text-slate-900">{school.name}</h3>
-                      <p className="mt-1 font-mono text-xs text-slate-500">{school.code}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-slate-600">{school.code}</span>
+                        <button type="button"
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50"
+                          onClick={() => void copySchoolCode(school.code)}
+                          aria-label={"Copier le code de " + school.name}>
+                          {copiedCode === school.code ? "✓ Copié" : "Copier"}
+                        </button>
+                      </div>
                       {school.contact_email && <p className="mt-1 break-all text-xs text-slate-500">
                         {school.contact_email}</p>}
                     </div>
