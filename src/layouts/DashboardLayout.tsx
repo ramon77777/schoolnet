@@ -529,6 +529,7 @@ export default function DashboardLayout() {
             </div>
             <NavLink className={navItem} to="/app/admin/dashboard">📊 Tableau de bord</NavLink>
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
+            <NavLink className={navItem} to="/app/admin/schools">🏫 Établissements</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
             <NavLink className={navItem} to="/app/admin/live" > 🎥 Cours en direct</NavLink>
             <NavLink className={navItem} to="/app/admin/enrollment-requests">
