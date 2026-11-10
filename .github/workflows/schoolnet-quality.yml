@@ -2,7 +2,9 @@ name: SCHOOLNET — Vérifications du code
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/schoolnet-notifications]
+  push:
+    branches: [feature/schoolnet-multi-etablissements]
   workflow_dispatch:
 
 # Ce workflow vérifie uniquement le code : aucun accès à Supabase,
