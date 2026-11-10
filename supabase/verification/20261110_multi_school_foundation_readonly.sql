@@ -21,7 +21,7 @@ SELECT
  (SELECT count(*) FROM public.profiles WHERE role::text='admin') AS global_admin_profiles,
  (SELECT count(*) FROM cron.job WHERE jobname ILIKE '%live%') AS live_cron_jobs;
 SELECT tablename,policyname,cmd,roles,qual,with_check FROM pg_policies
- WHERE schemaname='public' AND table_name IN
+ WHERE schemaname='public' AND tablename IN
  ('schoolnet_schools','schoolnet_school_memberships','schoolnet_school_audit','schoolnet_school_admin_invitations')
  ORDER BY tablename,policyname;
 COMMIT;
