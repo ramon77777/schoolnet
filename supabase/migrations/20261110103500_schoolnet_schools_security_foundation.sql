@@ -96,7 +96,7 @@ CREATE FUNCTION schoolnet_private.is_active_school_member(p_school_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=pg_catalog
 AS $member$
-  SELECT pg_catalog.coalesce(
+  SELECT COALESCE(
     EXISTS(
       SELECT 1 FROM public.schoolnet_school_memberships m
       JOIN public.schoolnet_schools s ON s.id=m.school_id
@@ -111,7 +111,7 @@ CREATE FUNCTION schoolnet_private.is_school_admin_for(p_school_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=pg_catalog
 AS $school_admin$
-  SELECT pg_catalog.coalesce(
+  SELECT COALESCE(
     EXISTS(
       SELECT 1 FROM public.schoolnet_school_memberships m
       JOIN public.schoolnet_schools s ON s.id=m.school_id
@@ -173,7 +173,7 @@ CREATE FUNCTION public.schoolnet_is_super_admin()
 RETURNS boolean LANGUAGE sql STABLE SECURITY INVOKER
 SET search_path=pg_catalog
 AS $super$
-  SELECT pg_catalog.coalesce(public.is_admin(),false);
+  SELECT COALESCE(public.is_admin(),false);
 $super$;
 REVOKE ALL ON FUNCTION public.schoolnet_is_super_admin()
  FROM PUBLIC,anon,authenticated;
