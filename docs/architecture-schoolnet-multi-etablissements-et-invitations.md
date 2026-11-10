@@ -1,111 +1,97 @@
-# SCHOOLNET 2.0 — Administration multi-établissements et accès assistés
+# SCHOOLNET 2.0 — Multi-établissements et invitations manuelles
 
-**Date de cadrage et développement initial :** 10 novembre 2026  
-**Branche :** `feature/schoolnet-multi-etablissements` (créée depuis `feature/schoolnet-notifications`, PR #5 toujours en brouillon)  
-**État :** fondation SQL + écran central préparés ; tests SQL réversibles, ESLint et compilation **réussis** ; Preview Vercel construite (statut GitHub de déploiement réussi). Migration SQL **non appliquée**. Comptes scolaires locaux et invitations **non activés**. Pas de fusion `main`, pas de déploiement de production.
+**Mise à jour :** 10 novembre 2026  
+**Branche :** `feature/schoolnet-multi-etablissements`  
+**PR :** [#6 (brouillon)](https://github.com/ramon77777/schoolnet/pull/6), base `feature/schoolnet-notifications` (PR #5). **Ne pas fusionner sans recette et approbation.**
 
-## Décision métier validée
+## Décision métier
 
-SCHOOLNET conserve trois publics :
-1. **Apprenants libres**, pris en charge directement par SCHOOLNET et répartis en groupes pédagogiques.
-2. **Établissements**, chacun ayant son administration et ses classes scolaires, distinctes des groupes pédagogiques libres.
-3. **Cours à domicile**, pouvant compléter l'apprentissage libre ou la scolarité dans un établissement.
+SCHOOLNET sert (1) les **apprenants libres**, (2) les **établissements scolaires** et (3) les **cours à domicile**. Un même apprenant possède un seul compte, éventuellement rattaché à plusieurs contextes d'apprentissage. Les classes officielles d'un établissement ne sont pas les groupes pédagogiques des apprenants libres. Les liens parent-enfant restent soumis à vérification d'habilitation.
 
-Un apprenant conserve un **compte unique** même s'il suit plusieurs offres. Les liens parent-enfant restent vérifiés et ne sont jamais déduits uniquement des noms.
+Le `profiles.role='admin'` historique reste réservé au **Super Administrateur SCHOOLNET**. Le nouveau `profiles.role='school_admin'` identifie un **administrateur local**, dont les droits dépendent d'une appartenance active à un établissement actif. Il ne peut pas utiliser les fonctionnalités administratives globales historiques.
 
-## Hiérarchie et séparation de responsabilités
+## État réel Supabase — activé avec autorisation
 
-- **Super Administrateur SCHOOLNET :** correspond au `profiles.role = 'admin'` déjà existant. Il supervise les établissements et les parcours centraux.
-- **Administrateur local :** nouveau `profiles.role = 'school_admin'` ; une appartenance active `schoolnet_school_memberships` à un établissement actif est requise pour qu'il soit reconnu localement.
-- **Enseignant / Apprenant / Parent :** rôles historiques inchangés. Les appartenances à l'établissement sont des affectations distinctes des liens familiaux.
-- **Aucun administrateur local ne doit recevoir le rôle global `admin`**.
+Projet `schoolnet_2.0` : `anttmbhaphkhmkoqsofd`.
 
-Important : les anciens modules administratifs utilisent `public.is_admin()` et ne distinguent **pas encore** les établissements. La première migration introduit seulement les institutions et leurs appartenances, **sans accorder d'accès aux classes, bulletins, évaluations, documents, messagerie ou comptes d'autrui**. Avant de donner accès à un `school_admin`, chaque flux sensible devra être audité et isolé par établissement (RLS, SQL, Edge Functions et écran).
+| Version Supabase réelle | Migration sur GitHub | État |
+|---|---|---|
+| `20261110111827` | `supabase/migrations/20261110111827_schoolnet_schools_security_foundation.sql` | Appliquée |
+| `20261110112106` | `supabase/migrations/20261110112106_school_admin_profile_role_check.sql` | Appliquée — correction nécessaire du CHECK `profiles.role` |
 
-## Livrables de la phase 1
+Supabase a attribué automatiquement ces versions lors des deux applications ciblées. Les fichiers GitHub ont été renommés **sans modifier leur contenu SQL** pour conserver la correspondance exacte avec `supabase_migrations.schema_migrations`. **32 migrations** sont désormais enregistrées.
 
-| Fichier | Fonction |
-|---|---|
-| `supabase/migrations/20261110103500_schoolnet_schools_security_foundation.sql` | Nouveau rôle non global, tables établissements, appartenances et audit, policies RLS, RPC centralisées |
-| `src/features/schools/lib/schoolManagementApi.ts` | API de lecture et création sécurisée |
-| `src/features/admin/pages/AdminSchools.tsx` | Gestion centrale depuis la navigation Admin, blocage affiché tant que SQL absent |
-| `src/routes/router.tsx`, `src/layouts/DashboardLayout.tsx` | Route centrale `/app/admin/schools`, réservée au rôle global `admin` |
-| `supabase/verification/20261110_multi_school_foundation_readonly.sql` | Audit non mutatif de la future activation |
+La première migration crée :
+- le rôle `school_admin`, distinct de `admin` ;
+- `schoolnet_schools` (établissements) ;
+- `schoolnet_school_memberships` (appartenances et droits locaux) ;
+- `schoolnet_school_audit` (journal des opérations sensibles) ;
+- `schoolnet_school_admin_invitations` (adresse, dates, compteur, déclaration d'envoi, mais **aucun secret**) ;
+- RPC `schoolnet_admin_create_school`, `schoolnet_admin_assign_school_admin`, `schoolnet_admin_lookup_auth_email`, `schoolnet_admin_record_school_invitation`, `schoolnet_admin_mark_school_invitation_sent`.
 
-### Sécurité de la fondation
+La deuxième migration corrige **uniquement** la contrainte historique `profiles_role_check` qui interdisait encore le nouveau rôle malgré son ajout dans l'enum. Elle n'affecte pas les profils existants ni leurs permissions.
 
-- `schoolnet_schools`, `schoolnet_school_memberships` et `schoolnet_school_audit` ont le RLS actif.
-- Aucun droit d'INSERT/UPDATE/DELETE sur ces tables n'est accordé aux clients `anon` et `authenticated`.
-- La fonction `schoolnet_admin_create_school` exige un JWT utilisateur `admin` existant et historise la création.
-- La fonction `schoolnet_admin_assign_school_admin` exige également le super-administrateur et vérifie que le profil cible possède vraiment le rôle `school_admin`. Elle refuse les rôles incompatibles et les affectations contradictoires.
-- Les membres ne peuvent lire que leur appartenance ; seul un administrateur local habilité peut accéder à la liste d'appartenance à **son** établissement.
-- L'ajout d'une école ne crée aucun compte, classe, dossier ni lien familial.
-- Les fonctions privilégiées disposent d'un `search_path` fixé et les droits d'exécution anonymes sont révoqués.
+Toutes les nouvelles tables ont RLS activée, des politiques de lecture appropriées et aucune écriture directe accordée à `anon` ou `authenticated`. Les écritures passent par des RPC avec vérification `auth.uid()` et `public.is_admin()` pour les opérations centrales.
 
-### Tests exécutés — tous en transaction avec `ROLLBACK`
+## Fonction Edge — activée
 
-- Création structurelle de trois tables, trois policies, fonctions et trigger : **OK**.
-- Création fictive de deux établissements par l'admin global : **OK**.
-- Journal d'audit des deux créations : **OK**.
-- Création d'un établissement avec un code déjà utilisé : **refusée**.
-- Affectation du rôle local à un compte Enseignant : **refusée**.
-- Tentative de lecture d'établissements non attribués par un Apprenant : **aucune donnée retournée**.
-- Tentative d'utiliser les RPC de création/affectation par un Apprenant : **refusée**.
-- Après annulation : les **30 migrations** et le rôle enum restent inchangés, aucune nouvelle table persistante.
+`supabase/functions/schoolnet-admin-invitation/index.ts` est déployée dans le projet sous le nom `schoolnet-admin-invitation`, **version 1 / ACTIVE**. Son fichier déployé a été comparé au contenu de la branche et correspond exactement.
 
-### Tests restant obligatoires avant autorisation et activation
+- `verify_jwt=false` au niveau du gateway **par choix de configuration**, mais la fonction exige un Bearer JWT valide via `auth.getUser`, vérifie le rôle `admin` dans `profiles`, l'origine navigateur autorisée et la validité de l'école ; elle refuse les requêtes anonymes.
+- Les secrets `SUPABASE_SERVICE_ROLE_KEY` et `SUPABASE_ANON_KEY` ne sont lus que côté Edge et ne doivent jamais figurer dans le frontend.
+- Un e-mail déjà attribué à un compte existant est refusé pour une **nouvelle invitation**. Aucune promotion automatique d'un autre rôle.
+- `generateLink(type:'invite')` prépare un compte et un lien sans envoi SMTP. Le compte est associé à l'école par RPC, puis l'URL secrète est renvoyée une fois en réponse au Super Admin, sans archivage.
+- Un administrateur local déjà rattaché peut recevoir un lien de renouvellement `recovery` préparé par le Super Admin (délai minimal d'une minute).
+- Si l'étape SQL échoue après création Auth, la fonction tente de supprimer seulement le compte provisoire ; en cas d'échec de compensation, elle demande un contrôle manuel.
 
-1. **Lint et compilation GitHub : réussis.** Recette navigateur de l'écran à 412 px, tablette et ordinateur encore à effectuer.
-2. Création réelle d'un compte `school_admin` par Edge Function, activation réelle par lien unique, reprise après panne et envoi manuel, en environnement de test autorisé.
-3. Lecture d'une école par son admin et refus d'accès à une autre école, par les trois autres rôles, et après révocation.
-4. Revue approfondie des RLS de **toutes** les tables historiques avant ouverture d'un espace de gestion scolaire à un administrateur local.
-5. Tests de robustesse en cas d'échec entre Supabase Auth et PostgreSQL (pas de faux compte actif ni de double invitation).
+**Attention :** les créations Supabase Auth et les transactions SQL ne sont pas atomiques entre elles. Les tests d'invitations concurrentes, de liens expirés et de reprise après panne restent nécessaires avant une mise à disposition générale.
 
-## Phase 2 — Comptes et invitations assistées (développés sur la branche, non activés)
+### Configuration à contrôler avant la recette réelle
 
-**Livrables préparés :**
-- Edge Function \`supabase/functions/schoolnet-admin-invitation/index.ts\` (déclarée dans \`supabase/config.toml\`, **non déployée**). Vérification du JWT via \`auth.getUser\`, contrôle fort du rôle global \`profiles.role='admin'\`, contrôle de l'origine navigateur et de l'établissement actif.
-- Pour un **nouveau** responsable : recherche d'e-mail côté serveur, refus de tout compte existant, génération d'un lien Supabase \`auth.admin.generateLink(type:'invite')\` **sans SMTP**, attribution du rôle local puis rattachement atomique + suivi SQL. Un échec tente de supprimer uniquement le compte Auth créé pour cette opération ; les erreurs de reprise restent signalées.
-- Pour un **responsable déjà rattaché** : régénération par lien \`recovery\`, uniquement si son rôle est \`school_admin\` et son appartenance à l'école active. Un délai minimal d'une minute limite les renouvellements accidentels.
-- Dans la **même migration encore en attente**, ajout de la table \`schoolnet_school_admin_invitations\` (e-mail, date, compteur, déclaration d'envoi ; **pas de lien, OTP ni mot de passe**), RLS lecture Super Admin, RPC lookup Auth contrôlée, enregistrement transactionnel et déclaration d'envoi.
-- Écran \`src/features/admin/pages/AdminSchoolInvitations.tsx\` : formulaire, liste des invitations, copie du message et du lien, ouverture de l'application e-mail et déclaration manuelle de l'envoi.
-- Espace \`src/features/schools/pages/LocalSchoolDashboard.tsx\` et rôle \`school_admin\` reconnus dans Auth et les routes. **Pas d'accès aux anciennes pages globales** : l'espace local est strictement limité et en lecture seule.
-- URL d'activation par défaut \`https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite\`. À ajouter explicitement à la liste des URL de redirection autorisées Supabase si nécessaire ; variable serveur facultative \`SCHOOLNET_INVITE_REDIRECT_URL\` pour la remplacer, avec vérification HTTPS.
-- Variable serveur obligatoire pour toutes les origines navigables \`SCHOOLNET_ALLOWED_ORIGINS\` (liste HTTPS séparée par virgules). La clé service_role reste exclusivement dans la fonction serveur.
+- Secret Edge `SCHOOLNET_ALLOWED_ORIGINS` : liste des domaines autorisés, avec protocoles HTTPS, séparés par des virgules. Inclure l'adresse Vercel **Preview utilisée pour les essais**, en conservant l'adresse principale et les autres origines autorisées.
+- Optionnel : `SCHOOLNET_INVITE_REDIRECT_URL`, par défaut `https://schoolnet-snowy.vercel.app/auth/reset-password?mode=school-invite`.
+- Dans **Supabase → Authentication → URL Configuration**, vérifier que l'URL d'activation/redirection est bien autorisée. L'URL du site principal peut être conservée.
+- Le navigateur doit utiliser la **PR #6 Preview**, pas `schoolnet-snowy.vercel.app`, tant que `main` n'a pas été fusionnée.
 
-**Vérification SQL (transaction réversible) :** extension de la migration installée et annulée, interrogation Auth par Super Admin réussie, accès Apprenant à la recherche et à la déclaration d'envoi refusé, visibilité inter-rôles bloquée. La création réelle d'un compte \`school_admin\`, la génération d'un lien Auth et le parcours d'activation **ne sont pas testables par la seule transaction SQL avec ROLLBACK** : ils nécessitent ensuite une recette fonctionnelle isolée et une autorisation de déploiement.
+## Interface déjà développée (branche uniquement)
 
-**Points de sécurité encore à vérifier :** résistance à deux invitations concurrentes sur le même e-mail ; comportement du lien \`invite\` lors d'une collision Auth, durée d'expiration configurée dans Supabase, compensation Auth/SQL en cas de panne, récupération d'un lien expiré, bonne configuration des redirections Supabase et de la CORS Preview.
+| Route | Qui | Fonction |
+|---|---|---|
+| `/app/admin/schools` | Super Admin `admin` | Créer et répertorier les établissements |
+| `/app/admin/school-invitations` | Super Admin `admin` | Préparer l'invitation, copier le message, ouvrir le client e-mail, déclarer l'envoi |
+| `/app/school/dashboard` | Admin local `school_admin` | Afficher **uniquement** les écoles autorisées ; pas de gestion scolaire globale |
 
-### Fonctionnement prévu de l'envoi manuel
+Le lien d'activation n'est conservé que dans l'état temporaire de l'interface. L'envoi est **manuel** et une déclaration d'envoi ne prouve ni l'expédition SMTP ni la réception du message.
 
-Le Super Administrateur valide l'identité du responsable → SCHOOLNET prépare le compte \`school_admin\` et le rattachement → le lien temporaire est renvoyé uniquement dans la réponse de la fonction → l'interface préremplit l'e-mail (ou copie le message) → l'administrateur **envoie personnellement** → l'admin peut déclarer l'envoi → le destinataire utilise le lien, choisit son mot de passe et accède au tableau de bord limité de son école.
+## Tests techniques réalisés
 
-Aucun mot de passe ni jeton d'activation ne doit être conservé dans la base ou dans les journaux. Le statut « envoi déclaré » ne prouve ni l'envoi effectif ni la réception ; l'utilisateur final est seul à activer son accès.
+**Avant la première migration :** DDL, droits RPC, lecture RLS, création fictive de deux écoles, refus des doublons, refus de promotion abusive d'un enseignant, tentatives d'accès par un apprenant : **réussis dans BEGIN/ROLLBACK**.
 
+**Après activation :** l'essai a d'abord détecté le CHECK historique incompatible ; il a été corrigé par la migration ciblée `20261110112106`.
 
+**Après correction :** création de deux écoles fictives par Super Admin, affectation d'un profil temporairement converti au rôle local, préparation d'invitation, renouvellement, déclaration d'envoi idempotente, visibilité uniquement de l'école A pour son admin, interdiction d'accès à l'école B, invitation invisible à l'admin local, impossibilité de créer une école ou interroger Auth en tant qu'admin local ou apprenant : **réussis**, transaction annulée (`ROLLBACK`). Aucun compte ni établissement fictif n'a été conservé.
 
-Parcours recommandé : le Super Administrateur valide l'école et le responsable → SCHOOLNET identifie ou prépare le compte `school_admin` → associe le compte à l'établissement dans un traitement serveur contrôlé → prépare un lien d'activation temporaire via Supabase Admin `generateLink()` **sans envoi SMTP** → ouvre un brouillon d'e-mail pré-rempli ou copie une invitation → l'administrateur l'envoie depuis sa messagerie → le destinataire choisit son mot de passe.
+**Compilation frontend :** ESLint et build TypeScript/Vite réussis sur PR #6 avant l'activation SQL ; suivre à nouveau les checks après renommage des migrations. L'appel HTTP direct à la fonction n'a pas pu être vérifié depuis l'environnement d'exécution (DNS sortant indisponible). Le vrai parcours **invitation → e-mail envoyé manuellement → activation du compte → connexion locale** doit donc être testé depuis le navigateur.
 
-Aucun mot de passe ni jeton d'activation ne doit être conservé en clair dans les données ou logs. Les liens restent temporaires ; chaque nouvelle génération rend invalide l'ancien selon la politique de Supabase Auth. Les statuts « préparé », « envoi déclaré » et « activé » doivent être distingués : sans connecteur e-mail, l'application ne peut pas prouver l'envoi/l'arrivée du message.
+## Recette navigateur demandée ensuite
 
-**Attention :** `auth.admin.generateLink()` nécessite un secret service côté serveur. Il ne doit jamais être exécuté depuis le navigateur. Une opération Auth et une écriture SQL ne constituent pas une transaction unique ; prévoir idempotence, journal d'audit et reprise/compensation.
+1. Ouvrir la Preview Vercel liée à la PR #6 avec le compte Super Admin et vérifier `/app/admin/schools`.
+2. Créer un établissement de **test** avec un code non réel.
+3. Dans `/app/admin/school-invitations`, créer un responsable avec une **adresse e-mail de test à laquelle vous avez accès**, différente de tous les comptes SCHOOLNET existants.
+4. Copier l'invitation ou ouvrir sa messagerie, vérifier le destinataire et **envoyer soi-même le message**.
+5. Ouvrir le lien depuis une session privée, définir le mot de passe, se connecter au tableau de bord local.
+6. Vérifier qu'un administrateur local ne peut pas ouvrir `/app/admin/users`, qu'il ne voit aucune école non autorisée et qu'il n'accède à aucun élève/enseignant d'une autre école.
+7. Régénérer un lien si nécessaire, tester refus des doublons, expiration et déclaration d'envoi.
 
-## Phase 3 — Multi-tenant métier et parcours d'apprentissage
+Ne jamais utiliser de données sensibles réelles dans ces premiers essais.
 
-- Ajouter le rattachement scolaire à l'organisation et contrôler chaque accès en SQL/RLS.
-- Séparer les **classes officielles des établissements** des **groupes pédagogiques des apprenants libres**.
-- Gérer les cours à domicile avec affectations et séances distinctes.
-- Réutiliser les modules existants (cours, classes, résultats, documents) sans copier les comptes et sans révéler les données d'autres établissements.
-- Reprendre ensuite le Lot 5.D (réinscriptions) puis les Lots 6, 7 et 8 selon le workflow.
+## Points restant à traiter
+
+- Le module scolaire historique (classes, notes, bulletins, cours, présences, documents, messagerie, finance) **n'est pas encore isolé par établissement** ; les administrateurs locaux ne reçoivent aucun droit sur ces modules.
+- Les flux apprenants libres et cours à domicile seront adaptés ensuite.
+- L'intégration de l'e-mail automatique restera facultative ; aucune exigence d'achat d'un domaine pour utiliser l'envoi manuel.
+- Le bilan Supabase Security Advisor comporte des avertissements **préexistants** hors de ce lot, notamment des RPC historiques à réviser ; les nouvelles RPC du module ne donnent pas le droit d'exécution à `anon`. Audit de durcissement séparé à programmer.
 
 ## Restrictions maintenues
 
-Ne pas appliquer `supabase db push --remote` global : les migrations `20261110090000_school_year_rollover_controlled.sql` et `20261109140104_harden_assessment_legacy_rpcs.sql` restent en attente. La migration multi-établissements exige une autorisation séparée. `main` et Vercel production ne doivent pas être modifiés sans validation.
-
-### État de la revue GitHub
-
-- **PR #6** ouverte en brouillon, base `feature/schoolnet-notifications`, non fusionnée : https://github.com/ramon77777/schoolnet/pull/6.
-- **GitHub Actions lint/build : réussi** (exécution `42801891531`).
-- **Statut Vercel : success** sur le commit testé de la branche. L'accès direct à la Preview devra être confirmé avant recette navigateur.
-- **Après ROLLBACK :** 30 migrations, 4 demandes publiques, 2 inscriptions, 1 Super Administrateur historique ; aucun objet nouveau persistant.
+**Ne pas lancer `supabase db push --remote` global** : `20261110090000_school_year_rollover_controlled.sql` (Lot 5.D) et `20261109140104_harden_assessment_legacy_rpcs.sql` restent en attente. Ne pas modifier `main` ni déployer Vercel Production sans autorisation explicite. **PR #6 reste en brouillon.**
