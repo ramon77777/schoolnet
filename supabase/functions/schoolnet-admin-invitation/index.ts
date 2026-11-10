@@ -146,21 +146,39 @@ Deno.serve(async (req) => {
     }
     // L'invitation Supabase cree un compte sans envoyer d'e-mail.
     // Le trigger Auth cree un profil provisoire 'student' qu'on remplacera.
+    const startedAt = Date.now();
     const { data: generatedLink, error: linkError } =
       await service.auth.admin.generateLink({
         type: "invite",
         email,
         options: { redirectTo: redirect.toString() },
       });
-    if (linkError || !generatedLink.user ||
-        generatedLink.user.email?.toLowerCase() !== email ||
-        !generatedLink.properties?.action_link) {
-      return rejected(req, 502, "Generation du lien impossible. Verifiez l'email et reessayez.");
+    if (linkError || !generatedLink?.user) {
+      return rejected(req, 502,
+        "Generation du lien impossible. Verifiez l'email et reessayez.");
     }
-    userId = generatedLink.user.id;
-    link = generatedLink.properties.action_link;
+    const candidate = generatedLink.user;
+    const createdAt = Date.parse(candidate.created_at ?? "");
+    // Securite anti-concurrence: ne JAMAIS promouvoir/supprimer un compte
+    // preexistant, meme si la recherche initiale n'avait rien trouve.
+    if (candidate.email?.toLowerCase() !== email ||
+        !Number.isFinite(createdAt) ||
+        createdAt < startedAt - 15_000 ||
+        Boolean(candidate.last_sign_in_at) ||
+        Boolean(candidate.email_confirmed_at)) {
+      return rejected(req, 409,
+        "Le compte existe deja ou a change pendant l'operation. Verification manuelle necessaire.");
+    }
+    userId = candidate.id;
     newlyCreated = true;
     generated = true;
+    if (!generatedLink.properties?.action_link) {
+      const { error: cleanupError } = await service.auth.admin.deleteUser(userId);
+      return rejected(req, cleanupError ? 500 : 502, cleanupError
+        ? "Compte provisoire a verifier manuellement avant de recommencer."
+        : "Lien d'invitation non genere. Aucun compte n'a ete conserve.");
+    }
+    link = generatedLink.properties.action_link;
   } else {
     if (!found?.exists || !found.user_id || found.role !== "school_admin") {
       return rejected(req, 409,
@@ -211,6 +229,11 @@ Deno.serve(async (req) => {
   // En cas d'echec SQL, supprimer UNIQUEMENT un compte Auth tout juste cree.
   try {
     if (newlyCreated) {
+      const { data: provisional, error: provisionalError } = await service
+        .from("profiles").select("role,full_name").eq("id", userId).maybeSingle();
+      if (provisionalError || provisional?.role !== "student" || provisional?.full_name) {
+        throw new Error("PROFILE_PREEXISTING_OR_INCOMPATIBLE");
+      }
       const { data: profile, error: profileError } = await service
         .from("profiles")
         .update({ role: "school_admin", full_name: name })
