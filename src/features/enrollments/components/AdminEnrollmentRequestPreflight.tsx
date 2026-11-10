@@ -167,7 +167,6 @@ export default function AdminEnrollmentRequestPreflight({
   useEffect(() => {
     if (request.request_type !== "student_enrollment") return;
     let cancelled = false;
-    setCatalog({ status: "loading" });
 
     void (async () => {
       const [levels, classes, years] = await Promise.all([
