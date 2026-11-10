@@ -62,16 +62,8 @@ export default function AdminSchoolInvitations() {
   const selectedInvites = invitations.filter((invite) => invite.school_id === schoolId);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user?.id || isDemo) {
-      setLoading(false);
-      setSchools([]);
-      setInvitations([]);
-      return;
-    }
+    if (authLoading || !user?.id || isDemo) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     void (async () => {
       try {
         const [nextSchools, nextInvites] = await Promise.all([
