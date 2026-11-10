@@ -48,7 +48,7 @@ BEGIN
     OR (
       SELECT COUNT(*) FROM pg_policies
       WHERE schemaname='public' AND tablename='classes'
-    ) <> 4
+    ) <> 3
  THEN
     RAISE EXCEPTION 'Les policies de lecture des classes ont change depuis l audit.';
  END IF;
@@ -157,7 +157,7 @@ BEGIN
  IF (SELECT COUNT(*) FROM public.classes
      WHERE learning_context<>'legacy_unclassified' OR school_id IS NOT NULL)<>0
     OR (SELECT COUNT(*) FROM pg_policies WHERE tablename='classes'
-        AND schemaname='public')<>5
+        AND schemaname='public')<>4
     OR to_regclass('public.classes_school_unique_name_year_idx') IS NULL
     OR to_regclass('public.classes_legacy_level_name_year_idx') IS NULL
     OR to_regclass('public.classes_legacy_name_year_id_idx') IS NULL
