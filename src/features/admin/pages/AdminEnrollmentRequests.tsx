@@ -226,7 +226,7 @@ export default function AdminEnrollmentRequests() {
       </div>
 
       {selected && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving && !resolving) closeRequest(); }}>
-        <section role="dialog" aria-modal="true" aria-label="Examen de la demande" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        <section role="dialog" aria-modal="true" aria-label="Examen de la demande" className="max-h-[94dvh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6 lg:p-7">
           <div className="flex items-start justify-between gap-4">
             <div><div className="text-xs font-bold tracking-wide text-blue-600">{selected.reference}</div>
               <p className="mt-2 text-xs font-bold text-indigo-700">{selected.request_type === 'parent_access' ? 'Demande de compte parent / tuteur' : 'Demande inscription apprenant'}</p>
@@ -235,19 +235,39 @@ export default function AdminEnrollmentRequests() {
             </div>
             <button onClick={closeRequest} disabled={saving || resolving} aria-label="Fermer" className="rounded-lg bg-slate-100 px-3 py-2">&#10005;</button>
           </div>
-          <div className="mt-6 grid gap-4 rounded-2xl bg-slate-50 p-5 text-sm sm:grid-cols-2">
+          <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+            <div className="min-w-0 space-y-4">
+          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
             <div><div className="text-slate-500">Responsable</div><strong>{selected.guardian_full_name}</strong></div>
             <div><div className="text-slate-500">Lien</div><strong>{selected.guardian_relationship === 'father' ? 'Pere' : selected.guardian_relationship === 'mother' ? 'Mere' : 'Tuteur'}</strong></div>
             <div><div className="text-slate-500">Telephone</div><a className="font-bold text-blue-700 underline" href={`tel:${selected.guardian_phone.replace(/[^+\d]/g, '')}`}>{selected.guardian_phone}</a></div>
-            <div><div className="text-slate-500">E-mail parent / tuteur</div>{selected.guardian_email || 'Non renseigne (ancien dossier)'}</div>
+            <div><div className="text-slate-500">E-mail parent / tuteur</div><div className="break-all">{selected.guardian_email || 'Non renseigne (ancien dossier)'}</div></div>
             {selected.request_type === 'student_enrollment' && <div className="sm:col-span-2"><div className="text-slate-500">E-mail de l'apprenant</div>{selected.student_email || 'Non renseigne (facultatif)'}</div>}
             <div className="sm:col-span-2"><div className="text-slate-500">Observations</div>{selected.message || 'Aucune'}</div>
           </div>
-          <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-            Une demande publique n'est pas un compte. Verifiez le lien familial et utilisez uniquement l'adresse e-mail fournie par le responsable.
-            {' '}<Link className="font-bold underline" to="/app/admin/users">Utilisateurs</Link> : creez ou identifiez le compte parent, puis rattachez-le a l'enfant apres verification.
-            {selected.request_type === 'student_enrollment' && <> Finalisez ensuite le dossier dans <Link className="font-bold underline" to="/app/admin/enrollments">Inscriptions</Link>.</>}
-          </div>
+          <p className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">
+            La demande ne crée pas encore de compte. La vérification du lien familial
+            reste obligatoire avant tout rattachement.{" "}
+            <Link className="font-semibold underline" to="/app/admin/users">Utilisateurs</Link>
+            {selected.request_type === 'student_enrollment' && (
+              <> et <Link className="font-semibold underline" to="/app/admin/enrollments">Inscriptions</Link></>
+            )} restent disponibles pour les démarches manuelles.
+          </p>
+
+              <details className="rounded-xl border border-slate-200 bg-white">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-800">
+                  Note de suivi (facultatif) · Afficher / masquer
+                </summary>
+                <div className="border-t border-slate-100 px-4 pb-4 pt-3">
+          <label className="block text-sm font-semibold text-slate-700">Note interne (facultatif)
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000}
+              className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
+          </label>
+
+                </div>
+              </details>
+            </div>
+            <div className="min-w-0">
           <AdminRequestResolutionPanel
             key={selected.id}
             request={selected}
@@ -255,10 +275,9 @@ export default function AdminEnrollmentRequests() {
             onFinalized={handleFinalized}
             onBusyChange={setResolving}
           />
-          <label className="mt-6 block text-sm font-semibold text-slate-700">Note interne (facultatif)
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000}
-              className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
-          </label>
+
+            </div>
+          </div>
           <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
             <button onClick={closeRequest} disabled={saving || resolving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
             {selected.status !== 'processed' && <>
