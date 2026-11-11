@@ -1,3 +1,21 @@
+## Actualisation du 11 novembre 2026 — déploiement technique en lecture seule
+
+**Fonction `schoolnet-family-invitation` déployée sur Supabase `schoolnet_2.0` (version 1, ACTIVE, `verify_jwt=true`).** Ce déploiement était autorisé pour la recette `inspect` uniquement, sans activation des écritures.
+
+- Double verrou : `READ_ONLY_DEPLOYMENT = true` dans la fonction effectivement déployée ; le flag `SCHOOLNET_FAMILY_INVITES_ENABLED` ne peut donc pas activer les écritures même s'il était configuré par erreur.
+- Le navigateur `http://localhost:5173` est autorisé pour `inspect` exclusivement ; les autres actions y reçoivent HTTP 403. Les origines Vercel autorisées restent configurées, mais **aucune action d'écriture n'est possible sur ce déploiement**.
+- Un panneau « Recette serveur 5.C-B.2 — inspection sans écriture » a été ajouté à `AdminEnrollmentRequestPreflight.tsx` (Parent / Apprenant). Il utilise uniquement la méthode `inspectFamilyInvitation` ; aucun bouton d'écriture n'est raccordé.
+- Contrôle après déploiement : **7 Edge Functions, 35 migrations, 0 invitation enregistrée, 0 événement familial, 10 utilisateurs Auth**. Aucune modification de schéma ni de comptes pendant l'intervention.
+- Commits GitHub du chantier : `78cef306` (verrou serveur et localhost) et `e51fb5e` (UI locale de recette).
+- La fonction a été relue sur Supabase après déploiement : version 1 ACTIVE, `verify_jwt=true`, code contenant les deux verrous. **Les réponses HTTP en navigateur Super Admin ne sont pas encore recettées** ; un déploiement réussi ne remplace pas ce test.
+- **GO Vercel non donné** : d'abord `git status --short`, `git fetch origin --prune`, `git switch feature/schoolnet-multi-etablissements`, `git pull --ff-only` seulement si la copie locale est propre, puis `npm ci`, `npm run lint`, `npm run build`, `npm run dev -- --host localhost --port 5173 --strictPort`.
+- Test manuel : ouvrir **Super Administration → Demandes publiques → demande fictive**, développer « Recette serveur 5.C-B.2 », cliquer « Inspecter le parent » puis « Inspecter l'apprenant » si e-mail distinct ; constater la décision et « aucune écriture ». Ne pas cliquer sur Finaliser et rattacher.
+- Contrôles à effectuer ensuite avec la session Super Admin : JWT présent et valide, refus sans session, refus d'un autre rôle, erreurs CORS et base inchangée. Ne jamais publier les e-mails personnels, tokens JWT ou liens dans les captures.
+
+**Périmètre inchangé :** aucun merge de PR #6 vers `main`, aucune activation de S2/5.D, aucun envoi d'e-mail, aucune activation du service de création Auth. La prochaine étape après la recette locale réclame un GO explicite.
+
+---
+
 # SCHOOLNET 2.0 — Lot 5.C-B.2 : invitations familiales et reprise sécurisée
 
 **État au 11 novembre 2026 : registre SQL appliqué et contrôlé dans Supabase ; Edge Function familiale non déployée, flag d'écriture non activé.**  
