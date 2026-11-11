@@ -48,4 +48,4 @@ jobs:
           deno-version: v2.x
 
       - name: Verifier le code de l'Edge Function familiale
-        run: deno check supabase/functions/schoolnet-family-invitation/index.ts
+        run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
