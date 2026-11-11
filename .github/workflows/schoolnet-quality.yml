@@ -40,3 +40,12 @@ jobs:
 
       - name: Compilation TypeScript et Vite
         run: npm run build
+      
+      # Validation statique de la fonction Edge sans deployment ni connexion Supabase.
+      - name: Preparer Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verifier le code de l'Edge Function familiale
+        run: deno check supabase/functions/schoolnet-family-invitation/index.ts
