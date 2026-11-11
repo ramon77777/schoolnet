@@ -5,7 +5,7 @@
 // Le service-role ne doit jamais etre expose au navigateur.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type Action = "inspect" | "prepare";
+type Action = "inspect" | "prepare" | "resume" | "renew";
 type Recipient = "parent" | "student";
 type RequestRow = {
   id: string;
@@ -23,6 +23,24 @@ type Lookup = {
   user_id: string | null;
   role: string | null;
   email_confirmed?: boolean;
+};
+type InvitationRecord = {
+  request_id: string;
+  recipient: Recipient;
+  expected_role: string;
+  email: string;
+  user_id: string | null;
+  status: string;
+  generation_count: number;
+  first_prepared_at: string;
+  last_prepared_at: string;
+  updated_at: string;
+};
+type AuthUser = {
+  id: string;
+  email?: string;
+  email_confirmed_at?: string | null;
+  last_sign_in_at?: string | null;
 };
 type Body = {
   action?: unknown;
@@ -143,7 +161,7 @@ Deno.serve(async (req) => {
   const action = clean(body.action) as Action;
   const requestId = clean(body.request_id);
   const recipient = clean(body.recipient) as Recipient;
-  if ((action !== "inspect" && action !== "prepare") ||
+  if (!["inspect", "prepare", "resume", "renew"].includes(action) ||
     !uuidPattern.test(requestId) ||
     (recipient !== "parent" && recipient !== "student")) {
     return reject(req, 400, "Demande ou destinataire invalide.");
@@ -186,22 +204,39 @@ Deno.serve(async (req) => {
     .rpc("schoolnet_admin_lookup_auth_email", { p_email: email });
   if (lookupError) return reject(req, 503, "Recherche des comptes indisponible.");
   const found = foundData as Lookup | null;
+
+  // Registre en lecture seule : seul le service-role serveur peut y acceder.
+  // Le registre n'est PAS installe avant autorisation de la migration.
+  const { data: existingRecord, error: recordError } = await service
+    .from("schoolnet_family_invitation_records")
+    .select("request_id,recipient,expected_role,email,user_id,status,generation_count,first_prepared_at,last_prepared_at,updated_at")
+    .eq("request_id", requestId).eq("recipient", recipient).maybeSingle();
+  if (recordError) {
+    return reject(req, 503, "Registre familial non active. Migration a valider.");
+  }
+  const previous = existingRecord as InvitationRecord | null;
+
   if (action === "inspect") {
-    return send(req, {
-      success: true,
-      request_id: requestId,
-      reference: row.reference,
-      recipient,
-      role: expectedRole,
-      email,
-      full_name: name,
-      decision: found?.exists
+    const decision = previous
+      ? previous.status === "activated" ? "already_activated"
+        : previous.status === "prepared" || previous.status === "sent_declared"
+          ? "already_prepared" : "manual_review"
+      : found?.exists
         ? found.role === expectedRole ? "reuse_after_verification" : "manual_review"
-        : "new_invitation_possible",
+        : "new_invitation_possible";
+    return send(req, {
+      success: true, request_id: requestId, reference: row.reference,
+      recipient, role: expectedRole, email, full_name: name,
+      decision, invitation_status: previous?.status ?? null,
+      can_resume: Boolean(previous?.user_id) &&
+        ["auth_created", "profile_ready", "renewing", "requires_review"].includes(previous?.status ?? ""),
+      can_renew: Boolean(previous?.user_id) &&
+        ["prepared", "sent_declared"].includes(previous?.status ?? ""),
       no_write: true,
     });
   }
 
+  // Activation impossible sans accord, registre, recette et flag serveur.
   if (!enabled) {
     return reject(req, 503, "Les invitations familiales ne sont pas encore activees.");
   }
@@ -210,108 +245,239 @@ Deno.serve(async (req) => {
   }
   const verificationNote = clean(body.verification_note);
   if (verificationNote.length < 10 || verificationNote.length > 1000) {
-    return reject(req, 422, "Ajoutez une note de verification de 10 a 1000 caracteres.");
-  }
-  if (found?.exists) {
-    return reject(req, 409,
-      found.role === expectedRole
-        ? "Ce compte existe deja. Reutilisez-le apres verification, sans lui envoyer une invitation de creation."
-        : "Cet e-mail appartient a un autre role : controle manuel obligatoire.");
+    return reject(req, 422, "Justification de verification requise (10 a 1000 caracteres).");
   }
   const redirectTo = destination(origin);
   if (!redirectTo) return reject(req, 503, "Redirection d'activation non autorisee.");
 
-  // Reserve d'abord la demande dans un registre unique (request_id, recipient)
-  // pour bloquer doubles clics et executions paralleles.
-  // Cette table n'existe pas encore : elle necessite une migration APPROUVEE.
-  const { data: reservation, error: reserveError } = await service
-    .from("schoolnet_family_invitation_records")
-    .insert({
-      request_id: requestId,
-      recipient,
-      expected_role: expectedRole,
-      email,
-      verification_note: verificationNote,
-      prepared_by: callerId,
-      status: "preparing",
-      generation_count: 0,
-    })
-    .select("request_id,recipient,status").single();
-  if (reserveError || !reservation) {
-    const isMissing = reserveError?.code === "42P01" || reserveError?.code === "PGRST205";
-    return reject(req, isMissing ? 503 : 409, isMissing
-      ? "Registre d'invitations non active : migration a valider."
-      : "Une preparation existe deja ou le registre est indisponible. Verifiez l'historique avant de recommencer.");
+  // Mises a jour atomiques via CAS (request_id + recipient + status).
+  // Ni les identifiants ni les liens d'activation ne sont journalises.
+  async function advance(
+    fromStatus: string,
+    nextStatus: string,
+    patch: Record<string, unknown> = {},
+  ): Promise<boolean> {
+    const { data, error } = await service.from("schoolnet_family_invitation_records")
+      .update({
+        ...patch, status: nextStatus, last_action_by: callerId,
+      })
+      .eq("request_id", requestId).eq("recipient", recipient).eq("status", fromStatus)
+      .select("status").maybeSingle();
+    return !error && data?.status === nextStatus;
   }
 
-  // Aucune creation de mot de passe en clair. Un compte Auth provisoire
-  // est cree par generateLink(invite) et le destinataire choisit son secret.
-  const startedAt = Date.now();
-  const { data: invite, error: inviteError } = await service.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: { redirectTo },
-  });
-  const candidate = invite?.user;
-  const createdAt = Date.parse(candidate?.created_at ?? "");
-  if (inviteError || !candidate || candidate.email?.toLowerCase() !== email ||
-    !Number.isFinite(createdAt) || createdAt < startedAt - 15_000 ||
-    Boolean(candidate.last_sign_in_at) || Boolean(candidate.email_confirmed_at) ||
-    !invite.properties?.action_link) {
-    // Jamais de suppression automatique : une personne pourrait deja utiliser
-    // ce compte. Le registre "preparing" bloque la reprise aveugle.
+  async function markReview(fromStatus: string, errorCode: string): Promise<void> {
+    // Une revue humaine bloque toute creation aleatoire et conserve l'historique.
+    await advance(fromStatus, "requires_review", { last_error_code: errorCode });
+  }
+
+  function linkResult(userId: string, link: string, generationCount: number) {
+    return send(req, {
+      success: true, status: "prepared",
+      request_id: requestId, recipient, user_id: userId, email, full_name: name,
+      role: expectedRole, link, generation_count: generationCount,
+      no_email_sent: true,
+    });
+  }
+
+  if (action === "prepare") {
+    if (previous) {
+      return reject(req, 409,
+        "Preparation deja reservee. Consultez son statut : aucun nouveau compte ne sera cree.");
+    }
+    if (found?.exists) {
+      return reject(req, 409,
+        found.role === expectedRole
+          ? "Ce compte existe deja : verifiez-le puis reutilisez-le."
+          : "Adresse utilisee par un autre role : examen manuel obligatoire.");
+    }
+
+    // Reservation unique AVANT toute action sur Auth (anti-doublon SQL).
+    const { data: reserved, error: reserveError } = await service
+      .from("schoolnet_family_invitation_records")
+      .insert({
+        request_id: requestId, recipient, expected_role: expectedRole,
+        email, verification_note: verificationNote, prepared_by: callerId,
+        last_action_by: callerId, status: "preparing", generation_count: 0,
+      })
+      .select("request_id,status").maybeSingle();
+    if (reserveError || !reserved) {
+      return reject(req, reserveError?.code === "42P01" || reserveError?.code === "PGRST205"
+        ? 503 : 409,
+      "Impossible de reserver la preparation. Verifiez les invitations existantes.");
+    }
+
+    // createUser(email_confirm: false) cree un compte SANS mot de passe.
+    // Contrairement a generateLink(invite), la creation Auth est ici explicite.
+    // En cas de course avec un signup externe, l'unicite Auth refuse le doublon.
+    const { data: creation, error: createError } =
+      await service.auth.admin.createUser({ email, email_confirm: false });
+    const created = creation?.user;
+    if (createError || !created || created.email?.toLowerCase() !== email ||
+      Boolean(created.last_sign_in_at) || Boolean(created.email_confirmed_at)) {
+      await markReview("preparing", "AUTH_CREATION_UNCERTAIN");
+      return reject(req, 409,
+        "Creation Auth non confirmee. Intervention requise, ne recommencez pas.");
+    }
+
+    // Lier le compte Auth au registre immediatement ; aucun lien n'a encore
+    // ete genere. Si cette ecriture echoue, le compte est conserve pour revue.
+    const linked = await advance("preparing", "auth_created", {
+      user_id: created.id, last_error_code: null,
+    });
+    if (!linked) {
+      await markReview("preparing", "AUTH_LINK_FAILED");
+      return reject(req, 503,
+        "Compte cree, mais association interrompue. Controle manuel necessaire.");
+    }
+
+    const { data: provisional, error: provisionalError } = await service
+      .from("profiles").select("id,role,full_name").eq("id", created.id).maybeSingle();
+    if (provisionalError || !provisional ||
+      provisional.role !== "student" || Boolean(provisional.full_name)) {
+      await markReview("auth_created", "PROVISIONAL_PROFILE_INVALID");
+      return reject(req, 409,
+        "Profil provisoire inattendu. Ne transmettez aucun lien.");
+    }
+    const profilePatch: Record<string, unknown> = {
+      role: expectedRole, full_name: name,
+    };
+    if (recipient === "student" &&
+      ["male", "female"].includes(row.student_gender ?? "")) {
+      profilePatch.gender = row.student_gender;
+    }
+    const { data: updatedProfile, error: profileError } = await service
+      .from("profiles").update(profilePatch).eq("id", created.id)
+      .eq("role", "student").select("id,role,full_name").maybeSingle();
+    if (profileError || !updatedProfile || updatedProfile.role !== expectedRole ||
+      updatedProfile.full_name !== name) {
+      await markReview("auth_created", "PROFILE_UPDATE_FAILED");
+      return reject(req, 503,
+        "Profil non valide. Reprise supervisee requise.");
+    }
+    if (!await advance("auth_created", "profile_ready")) {
+      await markReview("auth_created", "PROFILE_STAGE_FAILED");
+      return reject(req, 503, "Sauvegarde du profil interrompue.");
+    }
+
+    // recovery sur le compte deja cree : aucun envoi d'email automatique.
+    const { data: preparedLink, error: linkError } =
+      await service.auth.admin.generateLink({
+        type: "recovery", email, options: { redirectTo },
+      });
+    if (linkError || !preparedLink?.properties?.action_link ||
+      preparedLink.user?.id !== created.id) {
+      await markReview("profile_ready", "LINK_GENERATION_FAILED");
+      return reject(req, 503, "Lien non genere. Reprise supervisee requise.");
+    }
+    if (!await advance("profile_ready", "prepared", {
+      generation_count: 1, last_prepared_at: new Date().toISOString(),
+      last_error_code: null,
+    })) {
+      await markReview("profile_ready", "LINK_STAGE_FAILED");
+      return reject(req, 503,
+        "Lien non confirme dans le registre. Ne le transmettez pas.");
+    }
+    return linkResult(created.id, preparedLink.properties.action_link, 1);
+  }
+
+  // Reprise ou renouvellement exclusivement d'un compte DEJA lie au registre.
+  // Un etat preparing / requires_review sans user_id ne peut jamais se recreer
+  // automatiquement : la creation Auth pourrait avoir reussi en parallele.
+  if (!previous || !previous.user_id || previous.email !== email ||
+    previous.expected_role !== expectedRole) {
     return reject(req, 409,
-      "Preparation interrompue : verifiez le compte Auth provisoire avant toute nouvelle tentative.");
+      "Compte lie absent ou incoherent : revue manuelle requise.");
   }
-
-  const { data: provisional, error: provisionalError } = await service.from("profiles")
-    .select("id,role,full_name").eq("id", candidate.id).maybeSingle();
-  if (provisionalError || !provisional || provisional.role !== "student" ||
-    Boolean(provisional.full_name)) {
+  const allowedStates = action === "resume"
+    ? ["auth_created", "profile_ready", "renewing", "requires_review"]
+    : ["prepared", "sent_declared"];
+  if (!allowedStates.includes(previous.status)) {
+    return reject(req, 409, "Etat non eligible pour cette operation.");
+  }
+  const lastUpdated = new Date(previous.updated_at).getTime();
+  const lastPrepared = new Date(previous.last_prepared_at).getTime();
+  const cooldownMs = action === "resume" ? 120_000 : 60_000;
+  const referenceTime = action === "resume" ? lastUpdated : lastPrepared;
+  if (!Number.isFinite(referenceTime) || Date.now() - referenceTime < cooldownMs) {
+    return reject(req, 429,
+      "Operation recente ou en cours : attendre avant toute reprise.");
+  }
+  if (previous.generation_count >= 5) {
+    return reject(req, 409, "Limite de regenerations atteinte : revue manuelle.");
+  }
+  const { data: existingAuth, error: authError } =
+    await service.auth.admin.getUserById(previous.user_id);
+  const authUser = existingAuth.user as AuthUser | null;
+  if (authError || !authUser || authUser.id !== previous.user_id ||
+    authUser.email?.toLowerCase() !== email ||
+    Boolean(authUser.last_sign_in_at) || Boolean(authUser.email_confirmed_at)) {
     return reject(req, 409,
-      "Profil provisoire incoherent : controle manuel necessaire avant toute invitation.");
+      "Compte deja active, utilise ou incoherent : intervention manuelle.");
   }
-  const nextProfile: Record<string, unknown> = {
-    role: expectedRole, full_name: name,
-  };
-  if (recipient === "student" && (row.student_gender === "male" || row.student_gender === "female")) {
-    nextProfile.gender = row.student_gender;
+  if (!found?.exists || found.user_id !== previous.user_id) {
+    return reject(req, 409,
+      "Identite Auth non coherente avec le registre : reprise interdite.");
   }
-  const { data: updatedProfile, error: updateError } = await service.from("profiles")
-    .update(nextProfile).eq("id", candidate.id).eq("role", "student")
-    .select("id,role").single();
-  if (updateError || !updatedProfile || updatedProfile.role !== expectedRole) {
-    return reject(req, 503,
-      "Compte provisoire non finalise. Controle technique requis avant transmission.");
+  const { data: profile, error: profileError } = await service
+    .from("profiles").select("role,full_name").eq("id", previous.user_id)
+    .maybeSingle();
+  if (profileError || !profile) {
+    return reject(req, 409, "Profil introuvable : reprise interdite.");
+  }
+  const isExpectedProfile = profile.role === expectedRole && profile.full_name === name;
+  const isProvisional = action === "resume" && profile.role === "student" &&
+    !profile.full_name;
+  if (!isExpectedProfile && !isProvisional) {
+    return reject(req, 409,
+      "Le role ou l'identite du profil a change : revue manuelle.");
   }
 
-  const { data: saved, error: saveError } = await service.from("schoolnet_family_invitation_records")
-    .update({
-      user_id: candidate.id,
-      status: "prepared",
-      generation_count: 1,
-      last_prepared_at: new Date().toISOString(),
-    })
-    .eq("request_id", requestId)
-    .eq("recipient", recipient)
-    .eq("status", "preparing")
-    .eq("prepared_by", callerId)
-    .select("user_id,status").single();
-  if (saveError || saved?.user_id !== candidate.id || saved.status !== "prepared") {
-    return reject(req, 503,
-      "Invitation non finalisee. Ne transmettez aucun lien ; intervention requise.");
-  }
-  // Lien sensible renvoye UNE SEULE FOIS ; jamais de stockage SQL ou journal.
-  return send(req, {
-    success: true,
-    status: "prepared",
-    request_id: requestId,
-    recipient,
-    user_id: candidate.id,
-    email,
-    full_name: name,
-    role: expectedRole,
-    link: invite.properties.action_link,
-    no_email_sent: true,
+  // Compare-and-swap : un seul operateur peut obtenir l'etat renewing.
+  const locked = await advance(previous.status, "renewing", {
+    recovery_note: verificationNote, last_error_code: null,
+    sent_declared_at: null, sent_declared_by: null,
   });
+  if (!locked) {
+    return reject(req, 409,
+      "Une autre operation a modifie l'invitation. Actualisez l'historique.");
+  }
+
+  if (isProvisional) {
+    const patch: Record<string, unknown> = { role: expectedRole, full_name: name };
+    if (recipient === "student" &&
+      ["male", "female"].includes(row.student_gender ?? "")) {
+      patch.gender = row.student_gender;
+    }
+    const { data: fixedProfile, error: fixedError } = await service
+      .from("profiles").update(patch).eq("id", previous.user_id)
+      .eq("role", "student").is("full_name", null)
+      .select("role,full_name").maybeSingle();
+    if (fixedError || !fixedProfile ||
+      fixedProfile.role !== expectedRole || fixedProfile.full_name !== name) {
+      await markReview("renewing", "RECOVERY_PROFILE_FAILED");
+      return reject(req, 503, "Le profil ne peut pas etre repris automatiquement.");
+    }
+  }
+
+  const { data: recoveryLink, error: recoveryError } =
+    await service.auth.admin.generateLink({
+      type: "recovery", email, options: { redirectTo },
+    });
+  if (recoveryError || !recoveryLink?.properties?.action_link ||
+    recoveryLink.user?.id !== previous.user_id) {
+    await markReview("renewing", "RECOVERY_LINK_FAILED");
+    return reject(req, 503, "Renouvellement interrompu : suivi manuel necessaire.");
+  }
+
+  const nextCount = previous.generation_count + 1;
+  if (!await advance("renewing", "prepared", {
+    generation_count: nextCount, last_prepared_at: new Date().toISOString(),
+    last_error_code: null,
+  })) {
+    await markReview("renewing", "RECOVERY_STAGE_FAILED");
+    return reject(req, 503,
+      "Lien genere mais non confirme. Ne le transmettez pas.");
+  }
+  return linkResult(previous.user_id, recoveryLink.properties.action_link, nextCount);
 });
