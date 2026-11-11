@@ -1,6 +1,6 @@
 # SCHOOLNET 2.0 — Lot 5.C-B.2 : invitations familiales et reprise sécurisée
 
-**État au 11 novembre 2026 : code et SQL de conception sauvegardés sur GitHub, aucune migration appliquée et aucune fonction Edge déployée.**  
+**État au 11 novembre 2026 : registre SQL appliqué et contrôlé dans Supabase ; Edge Function familiale non déployée, flag d'écriture non activé.**  
 **Branche :** `feature/schoolnet-multi-etablissements`, PR #6 (brouillon).  
 **Référence :** [Workflow directeur SCHOOLNET V2.2](./WORKFLOW_DIRECTEUR_SCHOOLNET_2_0_2026-11-10.md).
 
@@ -40,7 +40,8 @@ Cette séparation évite de confondre une création Auth et la génération de l
 
 ## 3. Registre SQL et historique d'audit
 
-**Brouillon SQL (NON appliqué) :** [registre, états et permissions](./sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql).
+**Migration officielle APPLIQUÉE :** [20261111101351_schoolnet_family_invitation_registry.sql](../supabase/migrations/20261111101351_schoolnet_family_invitation_registry.sql).  
+**Brouillon SQL historique :** [registre initial et étude](./sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql).
 
 **Script de recette reproductible :** [tests SQL avec ROLLBACK](./sql/lot_5_c_b2_family_invitation_registry_TEST_ROLLBACK.sql).
 
@@ -102,13 +103,30 @@ Méthode : SQL exact du registre + script de tests exécutés dans **une même t
 - Permissions : les utilisateurs anonymes et authentifiés ne lisent pas le registre ; `service_role` ne possède pas DELETE ; les événements ne sont pas modifiables.
 - Deux tables protégées par RLS et FORCE RLS.
 
-**Contrôle après ROLLBACK :** les deux tables sont absentes de Supabase ; **34 migrations appliquées, nombre inchangé**.
+**Contrôle avant application, après ROLLBACK :** les deux tables de test étaient absentes de Supabase ; **34 migrations appliquées, nombre inchangé à cet instant**. La migration a ensuite été autorisée et appliquée (voir § 5.1).
 
 **Un premier test a détecté des privilèges DELETE accordés par défaut à `service_role`** : le brouillon les révoque explicitement. Un second contrôle a testé la vraie unicité des comptes et des transitions. Les assertions sont enregistrées sur GitHub pour la recette suivante.
 
+### 5.1 Application durable approuvée et vérifiée — 11 novembre 2026
+
+L'utilisateur a explicitement autorisé **uniquement** la création du registre et de son historique dans Supabase. La migration ciblée a été exécutée avec l'action `apply_migration` sur le projet `schoolnet_2.0`, qui a enregistré la version **`20261111101351`** dans son historique.
+
+**Résultats du contrôle après application :**
+- **35 migrations appliquées** (contre 34 avant l'opération), avec une seule nouvelle entrée : `schoolnet_family_invitation_registry`.
+- Tables **`public.schoolnet_family_invitation_records`** et **`public.schoolnet_family_invitation_events`** présentes et vides (**0** réservation, **0** événement).
+- RLS et `FORCE ROW LEVEL SECURITY` activés sur les deux tables.
+- Deux déclencheurs sur le registre : contrôle des transitions et ajout à l'historique.
+- Aucune permission directe de lecture pour `anon` et `authenticated` ; rôle `service_role` limité à `SELECT/INSERT/UPDATE` sur le registre ; `DELETE` interdit ; historique non modifiable par ce rôle.
+- Analyse Supabase Advisors : les deux tables apparaissent en **INFO** « RLS Enabled No Policy » ; c'est volontaire : elles n'ont aucune politique ouverte aux utilisateurs ordinaires, le service privilégié restant l'unique interface autorisée.
+- Aucun compte Auth ou lien d'activation créé ; aucune fonction Edge déployée et aucun flag d'activation changé.
+
+**Trace GitHub :** [migration appliquée, version exacte de Supabase](../supabase/migrations/20261111101351_schoolnet_family_invitation_registry.sql).
+
+**Attention aux autres migrations en attente :** ne pas lancer `supabase db push` globalement ; la branche contient des migrations 5.D, S2 et de sécurité indépendantes non toutes autorisées. Toute nouvelle application doit faire l'objet d'un périmètre ciblé et d'une validation distincte.
+
 ## 6. Ce qui reste avant une activation durable
 
-1. Revue/autorisation **séparée** de la migration ciblée : produire la migration officielle avec la CLI, sans appliquer 5.D ni les migrations S2 en attente.
+1. **Réalisé :** migration SQL familiale ciblée appliquée après autorisation, version `20261111101351`, sauvegardée sous `supabase/migrations/`. **Aucune migration 5.D ni S2 en attente n'a été appliquée.**
 2. Après application autorisée du registre : déployer **la seule** Edge Function dédiée, avec le flag d'écriture encore **désactivé** ; vérifier JWT, CORS et les scénarios `inspect`.
 3. Sur environnement d'essai ou comptes fictifs explicitement autorisés : activer temporairement les écritures sous supervision, tester une invitation Parent ou Apprenant e-mail propre, puis deux appels simultanés et des pannes simulées.
 4. Vérifier effectivement le lien de récupération, la première définition de mot de passe, la session, le rôle `parent`/`student` et l'absence d'accès aux dossiers d'autres familles.
@@ -117,10 +135,10 @@ Méthode : SQL exact du registre + script de tests exécutés dans **une même t
 
 **Redirections :** la fonction n'accepte que les destinations HTTPS explicitement autorisées. La Preview SCHOOLNET doit être au bon SHA et son URL déclarée dans Supabase Auth. `localhost:5173` est un navigateur local qui peut malgré tout utiliser la base distante ; aucune activation réelle n'est prévue sur ce domaine avant approbation technique.
 
-**Aucune migration, Edge Function, clé de production, compte ou e-mail n'a été modifié lors de cette préparation.**
+**Après approbation explicite, UNE migration SQL a été appliquée et archivée dans GitHub.** Aucune Edge Function n'a été déployée, aucune clé de production n'a été modifiée, aucun compte ni e-mail n'a été créé par cette intervention.
 
 ## 7. Prochaine décision
 
-Présenter la migration du **registre familial uniquement** et recueillir l'accord explicite pour son application durable ; puis procéder à une recette ciblée de la fonction avec le flag d'écriture désactivé.
+**Prochaine autorisation à solliciter :** déploiement ciblé de la seule Edge Function `schoolnet-family-invitation`, avec `SCHOOLNET_FAMILY_INVITES_ENABLED` non activé, pour une recette de lecture seule (`inspect`). Aucun test de création Auth avant validation séparée.
 
 **Ne pas fusionner vers `main`, pousser toutes les migrations ou activer les créations de comptes par anticipation.**
