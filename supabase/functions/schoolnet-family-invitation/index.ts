@@ -5,7 +5,7 @@
 // Le service-role ne doit jamais etre expose au navigateur.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type Action = "inspect" | "prepare" | "resume" | "renew";
+type Action = "inspect" | "prepare" | "resume" | "renew" | "flag_review";
 type Recipient = "parent" | "student";
 type RequestRow = {
   id: string;
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
   const action = clean(body.action) as Action;
   const requestId = clean(body.request_id);
   const recipient = clean(body.recipient) as Recipient;
-  if (!["inspect", "prepare", "resume", "renew"].includes(action) ||
+  if (!["inspect", "prepare", "resume", "renew", "flag_review"].includes(action) ||
     !uuidPattern.test(requestId) ||
     (recipient !== "parent" && recipient !== "student")) {
     return reject(req, 400, "Demande ou destinataire invalide.");
@@ -232,6 +232,10 @@ Deno.serve(async (req) => {
         ["auth_created", "profile_ready", "requires_review"].includes(previous?.status ?? ""),
       can_renew: Boolean(previous?.user_id) &&
         ["prepared", "sent_declared"].includes(previous?.status ?? ""),
+      can_flag_review: Boolean(previous) &&
+        ["preparing", "auth_created", "profile_ready", "renewing"].includes(previous?.status ?? "") &&
+        Number.isFinite(Date.parse(previous?.updated_at ?? "")) &&
+        Date.now() - Date.parse(previous?.updated_at ?? "") >= 120_000,
       no_write: true,
     });
   }
@@ -277,6 +281,30 @@ Deno.serve(async (req) => {
       request_id: requestId, recipient, user_id: userId, email, full_name: name,
       role: expectedRole, link, generation_count: generationCount,
       no_email_sent: true,
+    });
+  }
+
+  // Requalification manuelle d'une operation bloquee depuis au moins 2 min.
+  // Aucun compte Auth ni jeton n'est cree ici. Les etats incertains sans user_id
+  // restent bloques apres revue : pas de recreation automatique.
+  if (action === "flag_review") {
+    if (!previous || !["preparing", "auth_created", "profile_ready", "renewing"]
+      .includes(previous.status)) {
+      return reject(req, 409, "Aucune operation interrompue a examiner.");
+    }
+    const updatedMs = Date.parse(previous.updated_at);
+    if (!Number.isFinite(updatedMs) || Date.now() - updatedMs < 120_000) {
+      return reject(req, 429, "Preparation recente : ne pas interrompre l'operation en cours.");
+    }
+    if (!await advance(previous.status, "requires_review", {
+      recovery_note: verificationNote,
+      last_error_code: "OPERATION_INTERRUPTED",
+    })) {
+      return reject(req, 409, "Etat modifie entre-temps. Actualisez avant de recommencer.");
+    }
+    return send(req, {
+      success: true, status: "requires_review", request_id: requestId,
+      recipient, has_bound_auth_user: Boolean(previous.user_id), no_write_auth: true,
     });
   }
 
