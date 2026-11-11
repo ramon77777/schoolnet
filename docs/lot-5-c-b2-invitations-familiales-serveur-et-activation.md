@@ -61,7 +61,53 @@ Contraintes de sécurité requises : RLS activé ; aucun accès direct anon/auth
 
 Objet prévu : **SCHOOLNET — Activation de votre accès Parent / Tuteur** ou **SCHOOLNET — Activation de votre accès Apprenant**. L'administrateur continue à envoyer l'e-mail via sa messagerie. Rien n'est expédié automatiquement.
 
-## 5. Ce qui reste à développer avant l'ouverture
+## 5. Projet de migration SQL et recette réversible — 11 novembre 2026
+
+**Fichier GitHub :** [docs/sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql](./sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql).
+
+**Ce fichier est un BROUILLON :** volontairement placé dans `docs/sql/`, et **non** dans `supabase/migrations/`. Il ne peut pas être activé par inadvertance lors d'un déploiement global. La migration finale sera créée via `supabase migration new` sur une machine disposant de la CLI, uniquement après approbation.
+
+### Recette SQL sur le projet Supabase distant
+
+**Procédure réellement utilisée :** `BEGIN;` + SQL exact du brouillon + assertions SQL `DO` + `ROLLBACK;`, puis vérification de `to_regclass` et de l'historique des migrations.
+
+| Contrôle | Résultat |
+| --- | --- |
+| Une réservation valide peut être créée dans la transaction | PASS |
+| Deux réservations pour un même dossier / même destinataire | Bloquées (clé primaire composite) |
+| Deux demandes utilisant le même e-mail | Bloquées (index unique normalisé) |
+| Destinataire et rôle incompatibles | Bloqués par CHECK |
+| E-mail non normalisé | Bloqué par CHECK |
+| Statut prepared sans compte Auth | Bloqué par CHECK |
+| Modification de l'adresse réservée | Bloquée par trigger |
+| Compteur de génération négatif | Bloqué |
+| Passage preparing vers requires_review | Autorisé |
+| Retour automatique de requires_review vers preparing | Bloqué (revue humaine requise) |
+| Lecture / insertion directe par anon ou authenticated | Interdites via ACL + RLS |
+| Service-role : SELECT / INSERT / UPDATE | Accordés |
+| Service-role : DELETE | **Explicitement retiré** |
+| RLS + FORCE ROW LEVEL SECURITY | Activés dans le brouillon |
+| `ROLLBACK` puis `to_regclass` | **NULL — aucune table conservée** |
+| Nombre de migrations après test | **34, inchangé** |
+
+**Correctif découvert par les tests :** Supabase accorde un droit DELETE par défaut à `service_role` sur une nouvelle table. Le brouillon révoque désormais explicitement les droits de `service_role` avant de lui réattribuer uniquement SELECT/INSERT/UPDATE. Le second passage de tous les tests est **réussi**.
+
+**Limites de la recette :** les assertions de clé unique valident la contrainte anti-concurrence, mais ne remplacent pas un test réel à deux requêtes simultanées. Elles ne valident pas non plus le code Edge, les invitations Auth ou le workflow navigateur : tout reste désactivé. Aucun compte Auth n'a été créé et aucun e-mail n'a été envoyé.
+
+### Reprise et idempotence : décision restant à finaliser
+
+Le registre bloque dès la première réservation `preparing`. Si la génération Auth s'interrompt ensuite, le dossier reste bloqué et ne peut pas être relancé sans intervention. **C'est plus sûr que créer un doublon, mais insuffisant pour la livraison.**
+
+Avant activation :
+1. Concevoir un traitement administratif des lignes `preparing` ou `requires_review` : inspection Auth et profil, résolution de la réservation, traçabilité et reprise sans suppression aveugle.
+2. Vérifier un second appel de préparation : l'API doit retourner « déjà préparée » sans générer un nouveau compte et sans exposer l'ancien jeton.
+3. Définir un parcours distinct pour régénérer un lien expiré et déclarer l'envoi réel, avec limites de fréquence.
+4. Réaliser les tests simultanés et les tests de panne entre Auth et SQL **sur un environnement autorisé**.
+5. Vérifier les statuts `activated` et `sent_declared` sans assimiler la déclaration d'envoi à une preuve de réception.
+
+**Aucune autorisation d'application durable de la migration n'a encore été donnée.**
+
+## 6. Ce qui reste à développer avant l'ouverture
 
 - Préparer et faire valider une migration dédiée : RLS, index de concurrence, statut et journal des invitations ;
 - compléter le traitement des opérations interrompues en statut preparing ;
@@ -73,10 +119,10 @@ Objet prévu : **SCHOOLNET — Activation de votre accès Parent / Tuteur** ou *
 
 **Attention :** le code actuel de la fonction contrôle des redirections HTTPS connues. Pour une vraie activation sur localhost, il faudrait valider séparément un mode de redirection locale ou préférer la Preview HTTPS, sans ouvrir un joker sur les domaines.
 
-## 6. État de validation au 11/11/2026
+## 7. État de validation au 11/11/2026
 
-- **Vérification à faire :** ESLint et build GitHub sur le dernier commit, puis revue du code Edge et des risques de concurrence.
+- **Vérifié :** ESLint/build du code de la fonction GitHub réussis au SHA `8ca3962` ; recette SQL transactionnelle réussie avec ROLLBACK, registre absent après test. Revue Edge approfondie, idempotence et concurrence réelle restent à effectuer.
 - **Aucune nouvelle migration appliquée**, aucune nouvelle Edge Function déployée, aucun compte ni e-mail créé par ces changements.
 - **Source préparée ≠ service opérationnel.** Aucune promesse de fonctionnement avant tests et autorisation.
 
-**Prochaine étape unique :** audit de la proposition de registre et préparation du protocole de reprise/idempotence, puis demande d'autorisation explicite avant toute migration ou activation Supabase.
+**Prochaine étape unique :** finaliser et tester le protocole de reprise/idempotence de la fonction serveur. Présenter ensuite la proposition de migration ciblée pour **autorisation explicite**, sans exécuter les migrations 5.D, S2 ou les migrations non approuvées.
