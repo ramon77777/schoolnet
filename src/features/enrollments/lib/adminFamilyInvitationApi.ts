@@ -13,7 +13,11 @@ export type FamilyInvitationInspection = {
   role: "parent" | "student";
   email: string;
   full_name: string;
-  decision: "new_invitation_possible" | "reuse_after_verification" | "manual_review";
+  decision: "new_invitation_possible" | "reuse_after_verification" | "manual_review" |
+    "already_prepared" | "already_activated";
+  invitation_status?: string | null;
+  can_resume?: boolean;
+  can_renew?: boolean;
 };
 
 export type PreparedFamilyInvitation = {
@@ -26,6 +30,7 @@ export type PreparedFamilyInvitation = {
   full_name: string;
   role: "parent" | "student";
   link: string;
+  generation_count: number;
   no_email_sent: true;
 };
 
@@ -93,6 +98,36 @@ export async function prepareFamilyInvitation(input: {
     !result.link || result.request_id !== input.requestId ||
     result.recipient !== input.recipient || result.no_email_sent !== true) {
     throw new Error("Le lien d'activation n'a pas ete confirme par le serveur.");
+  }
+  return result;
+}
+
+/**
+ * Recuperation controlee d'un compte deja lie au registre, ou renouvellement
+ * d'un lien perdu/expire. Aucune creation Auth dans ces deux operations.
+ * Les boutons ne sont pas encore actifs, meme si ce contrat est disponible.
+ */
+export async function retryFamilyInvitation(input: {
+  action: "resume" | "renew";
+  requestId: string;
+  recipient: FamilyInvitationRecipient;
+  verified: boolean;
+  verificationNote: string;
+}): Promise<PreparedFamilyInvitation> {
+  if (!input.verified || input.verificationNote.trim().length < 10) {
+    throw new Error("L'administrateur doit verifier le dossier et motiver la reprise.");
+  }
+  const result = await invokeFamilyInvitation<PreparedFamilyInvitation>({
+    action: input.action,
+    request_id: input.requestId,
+    recipient: input.recipient,
+    verified: true,
+    verification_note: input.verificationNote.trim(),
+  });
+  if (!result?.success || result.status !== "prepared" ||
+    !result.link || result.request_id !== input.requestId ||
+    result.recipient !== input.recipient || result.no_email_sent !== true) {
+    throw new Error("La reprise ou le renouvellement n'a pas ete confirme.");
   }
   return result;
 }
