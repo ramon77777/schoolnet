@@ -114,14 +114,14 @@ Apprenant / Parent : remplit la demande publique
 - Edge Function **admin-create-user** : création de comptes possible, mais saisie manuelle d'un mot de passe temporaire.
 - Edge Function **schoolnet-admin-invitation** : invitations sécurisées pour admin local **déjà testées en navigateur** ; réutiliser le **modèle** de lien sans mot de passe, pas les privilèges scolaires locaux.
 - RPC **admin_assign_student_to_class** : classe et dossier annuel sont déjà synchronisés ; ne pas écrire une seconde fois ces associations.
-- Dans Supabase au dernier contrôle : **34 migrations**, **4 demandes publiques**, **0 résolution finalisée**, **2 classes historiques**, **2 affectations apprenant**, **2 affectations enseignant** et **2 dossiers annuels** ; ce sont des chiffres de test datés, non des objectifs de création.
+- Dans Supabase, **35 migrations au 11/11/2026 après application de la migration familiale ciblée**. Les chiffres de test historiques avant cette opération étaient : **4 demandes publiques**, **0 résolution finalisée**, **2 classes historiques**, **2 affectations apprenant**, **2 affectations enseignant** et **2 dossiers annuels** ; ils n'ont pas été recalculés lors du contrôle technique du registre.
 
 ### 4.3. Sous-lots d'automatisation (enchaînement obligatoire)
 
 | Étape | Livrable | Statut / gate |
 | --- | --- | --- |
 | **5.C-A — Reconnaissance** | Dans la fiche de demande, proposer comptes plausibles et classes existantes selon le niveau ; aucune écriture | **Recette locale validée le 11/11/2026** (compte Parent, apprenant sans e-mail, classe 5e non créée), sans écriture |
-| **5.C-B — Comptes et identifiants** | **B.1** : présélection assistée sans écriture ; **B.2** : création Auth sans mot de passe, invitation et reprise idempotente sous contrôle ; **B.3** : téléphone propre ou accès enfant supervisé par le Parent | **B.1 et ergonomie validés ; B.2 code de reprise et registre avec audit préparés, tests SQL reproductibles réussis en ROLLBACK.** Aucune migration ni Edge activée ; B.3 non activé |
+| **5.C-B — Comptes et identifiants** | **B.1** : présélection assistée sans écriture ; **B.2** : création Auth sans mot de passe, invitation et reprise idempotente sous contrôle ; **B.3** : téléphone propre ou accès enfant supervisé par le Parent | **B.1 et ergonomie validés ; B.2 registre et audit appliqués dans Supabase, migration `20261111101351` vérifiée (tables vides, RLS). Fonction Edge et créations Auth toujours désactivées** ; B.3 non activé |
 | **5.C-C — Affectation et finalisation** | Choix de classe, réutilisation des RPC existantes, vérification lien familial, traitement idempotent | À développer et tester après GO 5.C-B |
 | **5.C-D — Transmission et activation** | Objet, corps, destinataire, lien temporaire, copier, ouvrir messagerie, déclarer l'envoi, renouveler, première connexion | À terminer puis recette complète Parent/Apprenant |
 
@@ -133,7 +133,9 @@ Apprenant / Parent : remplit la demande publique
 
 **Protocole de reprise 5.C-B.2, 11 novembre 2026 :** la fonction serveur sépare désormais `createUser` sans mot de passe, liaison du compte au registre, préparation du profil et `generateLink(recovery)`. Les actions `resume`, `renew` et `flag_review` sont codées avec contrôle de rôle Super Admin, anti-doublon, délais et verrouillage par changement d'état atomique. Le registre proposé conserve un **historique append-only** sans jeton, ainsi qu'une unicité par demande, e-mail et compte Auth. Les [tests SQL reproductibles](./sql/lot_5_c_b2_family_invitation_registry_TEST_ROLLBACK.sql) sont réussis en `BEGIN/ROLLBACK` : **34 migrations appliquées, 0 nouvelle table conservée**. [Protocole, incidents et limites](./lot-5-c-b2-invitations-familiales-serveur-et-activation.md). **Les essais Auth réels, la concurrence de deux appels et l'activation complète restent à faire après autorisation.**
 
-**Recette ergonomique 11/11/2026 :** sur Chrome local, la nouvelle fiche en deux colonnes est affichée avec les sections secondaires repliables. **5.C-B.2 :** fichier serveur séparé schoolnet-family-invitation et contrat client adminFamilyInvitationApi préparés sur GitHub. L'Edge n'est PAS déployée, et sa création de comptes est bloquée tant qu'un registre SQL d'invitations et le flag serveur ne sont pas approuvés. [Audit et règles d'activation B.2](./lot-5-c-b2-invitations-familiales-serveur-et-activation.md). Aucun e-mail envoyé, aucun compte créé et aucune migration appliquée.
+**Application SQL ciblée 5.C-B.2 — 11/11/2026 :** l'autorisation explicite a été donnée. Après une dernière recette réversible, la migration [`20261111101351_schoolnet_family_invitation_registry.sql`](../supabase/migrations/20261111101351_schoolnet_family_invitation_registry.sql) a été appliquée dans Supabase et vérifiée : **35 migrations au total, 2 nouvelles tables vides, 2 triggers, RLS + FORCE RLS, accès directs anon/authenticated interdits, aucun DELETE accordé à service_role**. La vérification SQL ne crée aucun compte ni invitation. L'historique de 34 migrations dans les paragraphes de recette précédente est le **constat avant l'application**, conservé pour traçabilité. [Rapport d'application et prochaine étape](./lot-5-c-b2-invitations-familiales-serveur-et-activation.md). **La fonction Edge n'est toujours pas déployée et son flag d'écriture reste désactivé.**
+
+**Recette ergonomique 11/11/2026 :** sur Chrome local, la nouvelle fiche en deux colonnes est affichée avec les sections secondaires repliables. **5.C-B.2 :** fichier serveur séparé schoolnet-family-invitation et contrat client adminFamilyInvitationApi préparés sur GitHub. L'Edge n'est PAS déployée ; le registre SQL a été approuvé et appliqué ensuite, mais le flag serveur des créations reste désactivé. [Audit et règles d'activation B.2](./lot-5-c-b2-invitations-familiales-serveur-et-activation.md). Aucun e-mail envoyé, aucun compte créé et aucune migration appliquée.
 
 ### 4.4. Cas de recette obligatoires
 
@@ -368,13 +370,13 @@ Ne pas créer de nouveau dépôt pour résoudre un problème Vercel : la branche
 
 | Sujet | État / prochaine décision |
 | --- | --- |
-| **Lot actif** | **5.C-B.2 : protocole de reprise/idempotence codé (prepare, resume, renew, flag_review), registre audité et SQL testé en ROLLBACK** ; service non activé |
+| **Lot actif** | **5.C-B.2 : migration du registre familial appliquée et vérifiée dans Supabase ; protocole de reprise prêt dans GitHub ; fonction Edge non déployée** |
 | **Code 5.C-A** | **Recette navigateur local réussie le 11/11** ; correspondances Parent/Apprenant et recherche classes cohérentes |
-| **Prochaine action unique** | **Présenter le registre familial ciblé pour autorisation distincte, avant toute migration ou déploiement Edge** |
+| **Prochaine action unique** | **Demander l'accord avant déploiement ciblé de `schoolnet-family-invitation` en mode non activé, puis effectuer uniquement les contrôles read-only `inspect`** |
 | **Étapes suivantes** | 5.C-B.2 : migration du registre après accord, fonction Edge + recette, suivi envoi ; 5.C-B.3 : apprenants sans e-mail ; 5.C-C : affectation/finalisation ; 5.C-D : transmission et connexion |
 | **Établissements** | E1/E2 partiellement activés ; E3=S2 préparé mais non activé ; E4/E5 après 5.C |
 | **Passage d'année 5.D** | Code préparé, migration non appliquée |
-| **Supabase (dernier contrôle)** | 34 migrations ; 2 établissements ; 1 admin local ; 2 classes historiques ; 4 demandes ; 0 résolution |
+| **Supabase (dernier contrôle)** | **35 migrations** (dont `20261111101351_schoolnet_family_invitation_registry`), 2 tables familiales vides et protégées. Les autres valeurs affichées sont celles des contrôles historiques, non réactualisées lors de cette migration |
 | **GitHub** | PR #5 + PR #6 en brouillon, aucun merge main |
 | **Vercel** | Dernier SHA applicatif 563149e : rate-limit ; fallback local |
 | **Règle de clôture** | Un seul petit bloc, test concret, accord avant toute écriture durable ou production |
