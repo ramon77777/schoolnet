@@ -1,6 +1,6 @@
-// SCHOOLNET — Lot 5.C-B.2. FONCTION PREPAREE, NON DEPLOYEE.
-// Elle ne doit etre activee qu'apres creation + recette du registre SQL
-// schoolnet_family_invitation_records et approbation de la migration.
+// SCHOOLNET — Lot 5.C-B.2. Fonction de lecture "inspect" deployee et recetee.
+// Les ecritures Auth, registre et liens demeurent bloquees par deux verrous.
+// Aucun deploiement d'une nouvelle version ni activation sans accord distinct.
 // AUCUN email n'est envoye : le responsable scolaire transmet le lien manuellement.
 // Le service-role ne doit jamais etre expose au navigateur.
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
   const found = foundData as Lookup | null;
 
   // Registre en lecture seule : seul le service-role serveur peut y acceder.
-  // Le registre n'est PAS installe avant autorisation de la migration.
+  // Les deux tables ont ete installees lors de la migration ciblee 5.C-B.2.
   const { data: existingRecord, error: recordError } = await service
     .from("schoolnet_family_invitation_records")
     .select("request_id,recipient,expected_role,email,user_id,status,generation_count,first_prepared_at,last_prepared_at,updated_at")
@@ -251,10 +251,31 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Activation impossible sans accord, registre, recette et flag serveur.
+  // Verrou n°1 : toute ecriture reste interdite durant la phase A.
   if (!enabled) {
     return reject(req, 503, "Les invitations familiales ne sont pas encore activees.");
   }
+
+  // Verrou n°2 : un futur deblocage ne doit JAMAIS ouvrir toutes les demandes.
+  // Le dossier ET le destinataire du pilote sont imposes par le serveur.
+  // Ces variables ne sont pas des decisions du client ni une preuve d'identite.
+  const pilotRequestId = clean(Deno.env.get("SCHOOLNET_FAMILY_PILOT_REQUEST_ID")).toLowerCase();
+  const pilotRecipient = clean(Deno.env.get("SCHOOLNET_FAMILY_PILOT_RECIPIENT"));
+  if (!uuidPattern.test(pilotRequestId) || pilotRequestId !== requestId.toLowerCase() ||
+    (pilotRecipient !== "parent" && pilotRecipient !== "student") ||
+    pilotRecipient !== recipient) {
+    return reject(req, 403, "Cette demande ou ce destinataire n'est pas autorise en pilote.");
+  }
+
+  // Aucune preparation Auth vers une adresse fictive ou reservee pour les recettes.
+  const domain = email.split("@")[1] ?? "";
+  if (domain === "example.test" || domain === "example.com" ||
+    domain === "example.org" || domain === "example.net" ||
+    domain === "invalid" || domain.endsWith(".invalid") ||
+    domain === "test" || domain.endsWith(".test")) {
+    return reject(req, 422, "Adresse de recette interdite pour la creation d'un compte.");
+  }
+
   if (body.verified !== true) {
     return reject(req, 422, "Une verification administrative explicite est requise.");
   }
