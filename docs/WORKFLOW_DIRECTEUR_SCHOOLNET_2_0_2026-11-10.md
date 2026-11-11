@@ -1,3 +1,10 @@
+> **POINT DE REPRISE — 11 novembre 2026, après déploiement Edge 5.C-B.2**  
+> La fonction `schoolnet-family-invitation` est maintenant **déployée en version 1**, `verify_jwt=true`, avec un verrou codé `READ_ONLY_DEPLOYMENT=true` qui interdit toutes les écritures indépendamment du flag serveur. `http://localhost:5173` est autorisé pour `inspect` seulement. Un panneau de test Parent/Apprenant en lecture seule est intégré à la fiche des demandes publiques. Supabase : **35 migrations, 7 Edge Functions, 0 invitation familiale, 0 événement**. La recette HTTP avec une vraie session Super Admin est **à réaliser en local** ; ne pas déclarer 5.C-B.2 terminé avant ce test. Commits : `78cef306` (verrou), `e51fb5e` (panneau inspect) ; détail : [protocole 5.C-B.2](./lot-5-c-b2-invitations-familiales-serveur-et-activation.md). **Pas de Vercel, pas de migration, pas de comptes Auth créés, pas de merge.** Prochaine étape : synchroniser le PC Windows sans écraser des changements locaux, puis `npm ci`, lint, build et tests `inspect` sur `localhost:5173`.  
+>
+> Les éléments datés du 10 novembre ou d'avant ce déploiement ci-dessous sont conservés comme historique et peuvent indiquer que la fonction Edge n'était pas encore déployée.
+
+---
+
 # SCHOOLNET — WORKFLOW COMPLET DE DÉVELOPPEMENT POST-V1
 ## Édition consolidée V2.2 : inscriptions automatisées, établissements et continuité en local
 
