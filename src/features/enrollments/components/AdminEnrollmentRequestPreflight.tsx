@@ -36,6 +36,22 @@ type Catalog =
   | { status: "error" }
   | { status: "ready"; classes: Class[]; currentYears: string[] };
 
+type InspectionSlot = {
+  requestId: string;
+  email: string;
+  loading: boolean;
+  result?: FamilyInvitationInspection;
+  error?: string;
+};
+
+const invitationDecisionLabels: Record<FamilyInvitationInspection["decision"], string> = {
+  new_invitation_possible: "Aucun compte trouvé. Préparation envisageable après vérification (désactivée).",
+  reuse_after_verification: "Compte existant : confirmer l'identité et réutiliser manuellement.",
+  manual_review: "Incohérence détectée : vérification manuelle obligatoire.",
+  already_prepared: "Une préparation figure déjà au registre : aucune duplication autorisée.",
+  already_activated: "Une activation est déjà enregistrée : contrôle administratif requis.",
+};
+
 function normalizedEmail(value: string | null): string {
   return (value ?? "").trim().toLowerCase();
 }
@@ -194,21 +210,39 @@ export default function AdminEnrollmentRequestPreflight({
   onSelectCandidate: (role: "parent" | "student", userId: string) => void;
 }) {
   const [catalog, setCatalog] = useState<Catalog>({ status: "loading" });
-  const [inspection, setInspection] = useState<{
-    recipient: FamilyInvitationRecipient;
-    result?: FamilyInvitationInspection;
-    error?: string;
-    loading?: boolean;
-  } | null>(null);
+  const [inspections, setInspections] =
+    useState<Partial<Record<FamilyInvitationRecipient, InspectionSlot>>>({});
 
   async function checkInvitation(recipient: FamilyInvitationRecipient): Promise<void> {
-    setInspection({ recipient, loading: true });
+    const requestId = request.id;
+    const email = normalizedEmail(recipient === "parent" ? request.guardian_email : request.student_email);
+    const otherEmail = normalizedEmail(recipient === "parent" ? request.student_email : request.guardian_email);
+    if (!email || (otherEmail && email === otherEmail)) return;
+    setInspections((current) => ({
+      ...current,
+      [recipient]: { requestId, email, loading: true },
+    }));
+
+    function finish(next: Pick<InspectionSlot, "loading" | "result" | "error">): void {
+      setInspections((current) => {
+        const previous = current[recipient];
+        if (!previous || previous.requestId !== requestId || previous.email !== email) {
+          return current;
+        }
+        return { ...current, [recipient]: { ...previous, ...next } };
+      });
+    }
+
     try {
-      const result = await inspectFamilyInvitation(request.id, recipient);
-      setInspection({ recipient, result });
+      const result = await inspectFamilyInvitation(requestId, recipient);
+      if (normalizedEmail(result.email) !== email) {
+        throw new Error("Le destinataire a changé : relancez l'inspection avant toute décision.");
+      }
+      finish({ loading: false, result, error: undefined });
     } catch (error) {
-      setInspection({
-        recipient,
+      finish({
+        loading: false,
+        result: undefined,
         error: error instanceof Error ? error.message : "Inspection indisponible.",
       });
     }
@@ -225,6 +259,15 @@ export default function AdminEnrollmentRequestPreflight({
   const guardianEmail = normalizedEmail(request.guardian_email);
   const studentEmail = normalizedEmail(request.student_email);
   const sameEmail = Boolean(guardianEmail && guardianEmail === studentEmail);
+  const availableRecipients: FamilyInvitationRecipient[] =
+    request.request_type === "student_enrollment" ? ["parent", "student"] : ["parent"];
+  const currentInspection = (recipient: FamilyInvitationRecipient): InspectionSlot | undefined => {
+    const inspection = inspections[recipient];
+    const email = recipient === "parent" ? guardianEmail : studentEmail;
+    return inspection?.requestId === request.id && inspection.email === email
+      ? inspection : undefined;
+  };
+  const inspectionLoading = availableRecipients.some((recipient) => currentInspection(recipient)?.loading);
   const parentAccountFound = parentCandidates.email.length === 1 &&
     parentCandidates.emailAlreadyOtherRole.length === 0 &&
     parentCandidates.email[0].is_active;
@@ -314,13 +357,19 @@ export default function AdminEnrollmentRequestPreflight({
         </summary>
         <div className="space-y-3 border-t border-sky-100 p-3">
           <p className="text-xs leading-5 text-slate-600">
-            Vérification du registre et de la correspondance des comptes par la fonction serveur.
+            Vérification du registre et des comptes par la fonction serveur, séparément pour chaque destinataire.
             Aucun compte, lien d'activation ou invitation n'est créé.
           </p>
+          {sameEmail && (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              Parent et apprenant utilisent la même adresse : vérification manuelle obligatoire.
+              Aucune préparation de deux comptes distincts.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={inspection?.loading === true || !guardianEmail}
+              disabled={inspectionLoading || !guardianEmail || sameEmail}
               onClick={() => { void checkInvitation("parent"); }}
               className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -329,7 +378,7 @@ export default function AdminEnrollmentRequestPreflight({
             {request.request_type === "student_enrollment" && (
               <button
                 type="button"
-                disabled={inspection?.loading === true || !studentEmail}
+                disabled={inspectionLoading || !studentEmail || sameEmail}
                 onClick={() => { void checkInvitation("student"); }}
                 className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -337,23 +386,51 @@ export default function AdminEnrollmentRequestPreflight({
               </button>
             )}
           </div>
-          {inspection?.loading && (
-            <p role="status" className="text-xs text-slate-600">Inspection du registre en cours…</p>
-          )}
-          {inspection?.error && (
-            <p role="alert" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
-              {inspection.error}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {availableRecipients.map((recipient) => {
+              const current = currentInspection(recipient);
+              const label = recipient === "parent" ? "Parent / tuteur" : "Apprenant";
+              return (
+                <div key={recipient} className="min-w-0 rounded-xl border border-sky-100 bg-slate-50 p-3">
+                  <p className="text-xs font-bold text-slate-900">{label}</p>
+                  {!current && (
+                    <p className="mt-1 text-xs text-slate-600">Inspection non exécutée pour cette demande.</p>
+                  )}
+                  {current?.loading && (
+                    <p role="status" className="mt-1 text-xs text-slate-600">Inspection en cours…</p>
+                  )}
+                  {current?.error && (
+                    <p role="alert" className="mt-1 text-xs text-amber-800">{current.error}</p>
+                  )}
+                  {current?.result && (
+                    <div role="status" className="mt-2 space-y-1 text-xs leading-5 text-emerald-950">
+                      <p className="font-bold text-emerald-800">Inspection confirmée — aucune écriture</p>
+                      <p>{invitationDecisionLabels[current.result.decision]}</p>
+                      <p>Registre : {current.result.invitation_status ?? "Aucune invitation enregistrée"}</p>
+                      {current.result.can_resume && (
+                        <p>Reprise à examiner par l'administration, non activée.</p>
+                      )}
+                      {current.result.can_renew && (
+                        <p>Renouvellement à examiner par l'administration, non activé.</p>
+                      )}
+                      {current.result.can_flag_review && (
+                        <p>Interruption ancienne détectée : revue humaine nécessaire.</p>
+                      )}
+                      <p className="text-slate-500">Décision technique : {current.result.decision}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-700">
+            <p className="font-bold text-slate-900">Avant toute future activation</p>
+            <p>Vérifier hors de cet assistant l'identité, le lien familial, le dossier scolaire
+              et la propriété de chaque adresse e-mail. Un compte retrouvé ne prouve pas la filiation.</p>
+            <p className="mt-1 font-semibold text-violet-800">
+              Création de comptes, remise de liens et rattachements toujours désactivés.
             </p>
-          )}
-          {inspection?.result && (
-            <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">
-              <p className="font-bold">Inspection confirmée — aucune écriture</p>
-              <p>Destinataire : {inspection.result.recipient === "parent" ? "Parent" : "Apprenant"}</p>
-              <p>Décision serveur : {inspection.result.decision}</p>
-              <p>État du registre : {inspection.result.invitation_status ?? "Aucune invitation enregistrée"}</p>
-              <p className="mt-1">La vérification familiale et toute création restent manuelles et désactivées.</p>
-            </div>
-          )}
+          </div>
         </div>
       </details>
 
