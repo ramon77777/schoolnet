@@ -429,9 +429,23 @@ export default function AdminEnrollmentRequestPreflight({
                             ? "statut enregistré au registre, preuve Auth encore à vérifier"
                             : "non confirmée"}
                         </p>
+                        <p>
+                          Preuve serveur :{" "}
+                          {current.result.activation_evidence_verified === true &&
+                            current.result.activation_proof_state === "verified"
+                              ? "correspondance Auth contrôlée"
+                              : current.result.activation_proof_state === "requires_review" ||
+                                current.result.activation_proof_state === "identity_mismatch" ||
+                                current.result.activation_proof_state === "invalid_chronology"
+                                  ? "incohérence — vérification humaine requise"
+                                  : current.result.activation_proof_state === "awaiting_delivery"
+                                    ? "transmission préalable attendue"
+                                    : "non disponible — aucun contrôle Auth complet déployé"}
+                        </p>
                         <p className="text-amber-800">
-                          Une déclaration d'envoi ne prouve pas la réception.
-                          Aucune activation ne sera confirmée sur une simple déclaration.
+                          Une déclaration d'envoi, une session ou un e-mail confirmé ne prouvent pas
+                          l'activation. Le serveur doit vérifier le changement de mot de passe
+                          puis une authentification par mot de passe avant toute confirmation.
                         </p>
                       </div>
                       {current.result.can_resume && (
@@ -456,7 +470,7 @@ export default function AdminEnrollmentRequestPreflight({
               et la propriété de chaque adresse e-mail. Un compte retrouvé ne prouve pas la filiation.</p>
             <p className="mt-1 font-semibold text-violet-800">
               Création de comptes, déclaration de transmission, confirmation d'activation
-              et rattachements toujours désactivés.
+              et rattachements toujours désactivés. Vérification A.2.2 strictement consultative.
             </p>
           </div>
         </div>
