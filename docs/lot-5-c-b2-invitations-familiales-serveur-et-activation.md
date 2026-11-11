@@ -1,3 +1,5 @@
+> **Correctif du 11/11/2026 — recette locale 5.C-B.2 :** le premier essai sur `localhost:5173` a renvoyé « Service d'invitation familiale indisponible ». Les journaux Supabase ont identifié `OPTIONS 503` / `BOOT_ERROR` : `Uncaught SyntaxError: Identifier 'profileError' has already been declared`. Dans la fonction, la seconde déclaration au niveau du traitement de reprise a été renommée `linkedProfileError` (commit `4431d7b`). **Version 2 de la seule Edge Function redéployée sur Supabase**, `verify_jwt=true`, double verrou de lecture seule maintenu ; ni nouveau compte, ni migration, ni Vercel. **La réussite de l'appel `inspect` n'est pas encore attestée** : retester le parent depuis le navigateur local connecté en Super Admin, puis inspecter l'apprenant si applicable. 
+
 ## Actualisation du 11 novembre 2026 — déploiement technique en lecture seule
 
 **Fonction `schoolnet-family-invitation` déployée sur Supabase `schoolnet_2.0` (version 1, ACTIVE, `verify_jwt=true`).** Ce déploiement était autorisé pour la recette `inspect` uniquement, sans activation des écritures.
