@@ -18,6 +18,7 @@ export type FamilyInvitationInspection = {
   invitation_status?: string | null;
   can_resume?: boolean;
   can_renew?: boolean;
+  can_flag_review?: boolean;
 };
 
 export type PreparedFamilyInvitation = {
@@ -130,6 +131,34 @@ export async function retryFamilyInvitation(input: {
     throw new Error("La reprise ou le renouvellement n'a pas ete confirme.");
   }
   return result;
+}
+
+/**
+ * Signale une operation en cours depuis trop longtemps, sans toucher a Auth.
+ * Ne doit pas etre relie a un bouton tant que registre et Edge non valides.
+ */
+export async function flagStaleFamilyInvitation(input: {
+  requestId: string;
+  recipient: FamilyInvitationRecipient;
+  verified: boolean;
+  verificationNote: string;
+}): Promise<{success: true; status: "requires_review"; has_bound_auth_user: boolean}> {
+  if (!input.verified || input.verificationNote.trim().length < 10) {
+    throw new Error("Justifiez la mise en revue de l'invitation.");
+  }
+  const data = await invokeFamilyInvitation<{
+    success: true; status: "requires_review"; has_bound_auth_user: boolean;
+  }>({
+    action: "flag_review",
+    request_id: input.requestId,
+    recipient: input.recipient,
+    verified: true,
+    verification_note: input.verificationNote.trim(),
+  });
+  if (!data?.success || data.status !== "requires_review") {
+    throw new Error("La mise en revue n'a pas ete confirmee.");
+  }
+  return data;
 }
 
 /** Message en texte brut, que l'administrateur transmet manuellement. */
