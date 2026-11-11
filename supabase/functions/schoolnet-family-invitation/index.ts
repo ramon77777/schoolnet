@@ -5,7 +5,7 @@
 // Le service-role ne doit jamais etre expose au navigateur.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-type Action = "inspect" | "prepare" | "resume" | "renew" | "flag_review";
+type Action = "inspect" | "prepare" | "resume" | "renew" | "flag_review" | "declare_sent";
 type Recipient = "parent" | "student";
 type RequestRow = {
   id: string;
@@ -35,6 +35,8 @@ type InvitationRecord = {
   first_prepared_at: string;
   last_prepared_at: string;
   updated_at: string;
+  sent_declared_at: string | null;
+  sent_declared_by: string | null;
 };
 type AuthUser = {
   id: string;
@@ -48,6 +50,8 @@ type Body = {
   recipient?: unknown;
   verified?: unknown;
   verification_note?: unknown;
+  delivery_confirmed?: unknown;
+  delivery_method?: unknown;
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -172,7 +176,7 @@ Deno.serve(async (req) => {
   }
   const requestId = clean(body.request_id);
   const recipient = clean(body.recipient) as Recipient;
-  if (!["inspect", "prepare", "resume", "renew", "flag_review"].includes(action) ||
+  if (!["inspect", "prepare", "resume", "renew", "flag_review", "declare_sent"].includes(action) ||
     !uuidPattern.test(requestId) ||
     (recipient !== "parent" && recipient !== "student")) {
     return reject(req, 400, "Demande ou destinataire invalide.");
@@ -220,7 +224,7 @@ Deno.serve(async (req) => {
   // Les deux tables ont ete installees lors de la migration ciblee 5.C-B.2.
   const { data: existingRecord, error: recordError } = await service
     .from("schoolnet_family_invitation_records")
-    .select("request_id,recipient,expected_role,email,user_id,status,generation_count,first_prepared_at,last_prepared_at,updated_at")
+    .select("request_id,recipient,expected_role,email,user_id,status,generation_count,first_prepared_at,last_prepared_at,updated_at,sent_declared_at,sent_declared_by")
     .eq("request_id", requestId).eq("recipient", recipient).maybeSingle();
   if (recordError) {
     return reject(req, 503, "Registre familial non active. Migration a valider.");
@@ -239,6 +243,16 @@ Deno.serve(async (req) => {
       success: true, request_id: requestId, reference: row.reference,
       recipient, role: expectedRole, email, full_name: name,
       decision, invitation_status: previous?.status ?? null,
+      // A.2 : etats purement consultatifs. Jamais de lien ni de jeton.
+      delivery_status: previous?.sent_declared_at
+        ? "declared_by_admin" : previous?.status === "prepared"
+          ? "ready_to_declare" : "not_declared",
+      delivery_declared_at: previous?.sent_declared_at ?? null,
+      activation_status: previous?.status === "activated"
+        ? "recorded_in_registry" : "not_confirmed",
+      // Une valeur "activated" existante n'est pas une preuve Auth en soi.
+      // La validation serveur d'un changement de mot de passe reste a construire.
+      activation_evidence_verified: false,
       can_resume: Boolean(previous?.user_id) &&
         ["auth_created", "profile_ready", "requires_review"].includes(previous?.status ?? ""),
       can_renew: Boolean(previous?.user_id) &&
@@ -313,6 +327,67 @@ Deno.serve(async (req) => {
       request_id: requestId, recipient, user_id: userId, email, full_name: name,
       role: expectedRole, link, generation_count: generationCount,
       no_email_sent: true,
+    });
+  }
+
+  // Etape A.2 : enregistrement d'une ATTESTATION de transmission manuelle.
+  // Aucune preuve de reception chez le destinataire n'est pretendue.
+  // Le verrou READ_ONLY_DEPLOYMENT reste actif : ce bloc est dormant
+  // jusqu'a une autorisation DISTINCTE d'ecriture et une recette en projet isole.
+  if (action === "declare_sent") {
+    if (body.delivery_confirmed !== true) {
+      return reject(req, 422, "Confirmez avoir transmis le lien par un canal externe.");
+    }
+    const deliveryMethod = clean(body.delivery_method);
+    if (deliveryMethod !== "manual_email" && deliveryMethod !== "in_person") {
+      return reject(req, 422, "Canal de transmission manuelle invalide.");
+    }
+    if (/https?:\\/\\/|bearer\\s|access_token|refresh_token/i.test(verificationNote)) {
+      return reject(req, 422, "Ne conservez aucun lien ou jeton dans la justification.");
+    }
+    if (!previous || previous.status !== "prepared" || !previous.user_id ||
+      previous.generation_count < 1 || previous.sent_declared_at ||
+      previous.sent_declared_by || previous.email !== email ||
+      previous.expected_role !== expectedRole) {
+      return reject(req, 409, "Aucun lien prepare non declare et coherent pour cette personne.");
+    }
+    if (!found?.exists || found.user_id !== previous.user_id ||
+      found.role !== expectedRole) {
+      return reject(req, 409, "Compte Auth incoherent : revue manuelle requise.");
+    }
+    const { data: recipientAuthData, error: recipientAuthError } =
+      await service.auth.admin.getUserById(previous.user_id);
+    const recipientAuth = recipientAuthData?.user;
+    if (recipientAuthError || !recipientAuth ||
+      recipientAuth.email?.trim().toLowerCase() !== email) {
+      return reject(req, 409, "Compte Auth de l'invitation introuvable ou different.");
+    }
+    const { data: recipientProfile, error: recipientProfileError } = await service
+      .from("profiles").select("role,full_name").eq("id", previous.user_id)
+      .maybeSingle();
+    if (recipientProfileError || recipientProfile?.role !== expectedRole ||
+      recipientProfile?.full_name !== name) {
+      return reject(req, 409, "Profil du destinataire incoherent.");
+    }
+    const deliveryNote = "DELIVERY_" + deliveryMethod.toUpperCase() +
+      ": " + verificationNote;
+    if (deliveryNote.length > 1000) {
+      return reject(req, 422, "Justification trop longue pour l'historique.");
+    }
+    const declaredAt = new Date().toISOString();
+    const declared = await advance("prepared", "sent_declared", {
+      sent_declared_at: declaredAt, sent_declared_by: callerId,
+      recovery_note: deliveryNote,
+    });
+    if (!declared) {
+      return reject(req, 409, "Etat de l'invitation modifie : actualisez avant de declarer l'envoi.");
+    }
+    // Ne jamais retourner ou recreer un lien via cette action.
+    return send(req, {
+      success: true, status: "sent_declared",
+      request_id: requestId, recipient, delivery_declared_at: declaredAt,
+      delivery_confirmed_by_admin: true, recipient_activation_verified: false,
+      no_email_sent: true, no_link_in_response: true,
     });
   }
 
