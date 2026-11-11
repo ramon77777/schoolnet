@@ -91,11 +91,25 @@ function CandidateSummary({
   title,
   email,
   matches,
+  role,
+  requestedName,
+  selectedId,
+  onSelectCandidate,
 }: {
   title: string;
   email: string | null;
   matches: Matching;
+  role: "parent" | "student";
+  requestedName: string;
+  selectedId: string;
+  onSelectCandidate: (role: "parent" | "student", userId: string) => void;
 }) {
+  const uniqueEmailMatch = matches.email.length === 1 &&
+    matches.emailAlreadyOtherRole.length === 0 &&
+    matches.email[0].is_active &&
+    normalizedName(matches.email[0].full_name) === normalizedName(requestedName)
+    ? matches.email[0]
+    : null;
   return (
     <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-sm font-bold text-slate-900">{title}</p>
@@ -109,6 +123,25 @@ function CandidateSummary({
           Identité à confirmer avant réutilisation.
         </p>
       )}
+      {uniqueEmailMatch && (
+        <button
+          className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:cursor-default disabled:opacity-60"
+          type="button"
+          disabled={selectedId === uniqueEmailMatch.id}
+          onClick={() => onSelectCandidate(role, uniqueEmailMatch.id)}
+        >
+          {selectedId === uniqueEmailMatch.id
+            ? "Compte déjà présélectionné"
+            : "Présélectionner ce compte"}
+        </button>
+      )}
+      {matches.email.length === 1 && !uniqueEmailMatch &&
+        !matches.emailAlreadyOtherRole.length && matches.email[0].is_active && (
+          <p className="mt-2 text-xs font-semibold text-amber-800">
+            Le nom du compte diffère de celui de la demande : vérifiez-le
+            manuellement avant toute sélection.
+          </p>
+        )}
       {matches.email.length > 1 && (
         <p className="mt-2 text-xs text-amber-800">
           Plusieurs comptes correspondent à cet e-mail. Vérification manuelle obligatoire.
@@ -142,16 +175,22 @@ function CandidateSummary({
 }
 
 /**
- * Lot 5.C-A : lecture seule. Cet écran ne crée aucun utilisateur, compte Auth,
- * lien familial, dossier annuel ou affectation.
+ * Lots 5.C-A / 5.C-B (préparation) : sans écriture côté serveur. Cet écran ne
+ * crée aucun utilisateur, compte Auth, lien familial, dossier annuel ou affectation.
  * L'administration doit garder la décision d'identité et de classe.
  */
 export default function AdminEnrollmentRequestPreflight({
   request,
   users,
+  selectedParentId,
+  selectedStudentId,
+  onSelectCandidate,
 }: {
   request: Request;
   users: Person[];
+  selectedParentId: string;
+  selectedStudentId: string;
+  onSelectCandidate: (role: "parent" | "student", userId: string) => void;
 }) {
   const [catalog, setCatalog] = useState<Catalog>({ status: "loading" });
 
@@ -163,6 +202,15 @@ export default function AdminEnrollmentRequestPreflight({
     () => findCandidates(users, "student", request.student_full_name, request.student_email),
     [users, request.student_full_name, request.student_email],
   );
+  const guardianEmail = normalizedEmail(request.guardian_email);
+  const studentEmail = normalizedEmail(request.student_email);
+  const sameEmail = Boolean(guardianEmail && guardianEmail === studentEmail);
+  const parentAccountFound = parentCandidates.email.length === 1 &&
+    parentCandidates.emailAlreadyOtherRole.length === 0 &&
+    parentCandidates.email[0].is_active;
+  const studentAccountFound = studentCandidates.email.length === 1 &&
+    studentCandidates.emailAlreadyOtherRole.length === 0 &&
+    studentCandidates.email[0].is_active;
 
   useEffect(() => {
     if (request.request_type !== "student_enrollment") return;
@@ -218,19 +266,76 @@ export default function AdminEnrollmentRequestPreflight({
       <p className="mt-2 text-xs leading-5 text-slate-600">
         SCHOOLNET recherche les comptes possibles et les classes existantes.
         Aucune personne n'est automatiquement identifiée, aucun lien familial
-        n'est validé et aucune écriture n'est effectuée.
+        n'est validé et aucune écriture en base n'est effectuée.
+        La présélection n'agit que sur le formulaire de vérification ci-dessous.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <CandidateSummary
           title="Parent / tuteur"
           email={request.guardian_email}
           matches={parentCandidates}
+          role="parent"
+          requestedName={request.guardian_full_name}
+          selectedId={selectedParentId}
+          onSelectCandidate={onSelectCandidate}
         />
         <CandidateSummary
           title="Apprenant"
           email={request.student_email}
           matches={studentCandidates}
+          role="student"
+          requestedName={request.student_full_name}
+          selectedId={selectedStudentId}
+          onSelectCandidate={onSelectCandidate}
         />
+      </div>
+
+      <div className="mt-3 space-y-2 rounded-xl border border-violet-200 bg-white p-3">
+        <p className="text-sm font-bold text-slate-900">
+          Étape 2 — Accès à préparer
+        </p>
+        <p className="text-xs text-slate-600">
+          Prévisualisation uniquement : les comptes et invitations ne sont pas
+          encore créés. L'administration conserve la vérification de l'identité.
+        </p>
+        <div className="space-y-1 text-xs leading-5 text-slate-700">
+          <p>
+            <strong>Parent :</strong>{" "}
+            {parentCandidates.emailAlreadyOtherRole.length
+              ? "Adresse déjà utilisée par un autre rôle : examen manuel obligatoire."
+              : parentAccountFound
+                ? "Compte Parent retrouvé. Le réutiliser après contrôle du lien familial."
+                : guardianEmail
+                  ? "Compte à vérifier puis, s'il manque, invitation à préparer avec cet e-mail."
+                  : "E-mail du responsable manquant : demander un contact vérifié avant une invitation."}
+          </p>
+          <p>
+            <strong>Apprenant :</strong>{" "}
+            {sameEmail
+              ? "Même adresse que le parent : elle ne peut pas activer deux comptes distincts."
+              : studentCandidates.emailAlreadyOtherRole.length
+                ? "Adresse occupée par un autre rôle : examen manuel obligatoire."
+                : studentAccountFound
+                  ? "Compte Apprenant retrouvé. Le réutiliser après vérification."
+                  : studentEmail
+                    ? "E-mail personnel distinct disponible : accès à préparer après validation."
+                    : "Aucun e-mail personnel : prévoir un accès individualisé, sous supervision parentale."}
+          </p>
+        </div>
+        {!studentEmail && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+            Sans e-mail, un numéro propre à l'apprenant pourra servir à la
+            connexion si l'authentification téléphone est configurée et le
+            numéro vérifié. Le téléphone du parent sert au contact familial,
+            jamais d'identifiant partagé entre plusieurs comptes.
+            L'e-mail du parent recevra les communications après vérification ;
+            ce n'est pas l'e-mail Auth de l'enfant.
+          </p>
+        )}
+        <p className="text-xs font-medium text-violet-800">
+          Activation des invitations en attente de la fonction serveur sécurisée.
+          Ne transmettez aucun mot de passe par e-mail.
+        </p>
       </div>
       {request.request_type === "student_enrollment" && (
         <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
