@@ -73,7 +73,7 @@ CREATE TABLE public.schoolnet_family_invitation_records (
 
   CONSTRAINT schoolnet_family_invitation_error_code_chk
     CHECK (last_error_code IS NULL
-      OR last_error_code ~ '^[A-Z0-9_]{3,72}
+      OR last_error_code ~ '^[A-Z0-9_]{3,72}$'),
 
   CONSTRAINT schoolnet_family_invitation_sent_chk
     CHECK (
@@ -187,7 +187,7 @@ BEFORE UPDATE ON public.schoolnet_family_invitation_records
 FOR EACH ROW
 EXECUTE FUNCTION public.schoolnet_family_invitation_guard_update();
 
--- Audit append-only : jamais de lien, token ni mot de passe.
+-- Historique append-only : jamais de lien, token ni mot de passe.
 CREATE TABLE public.schoolnet_family_invitation_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   request_id UUID NOT NULL,
@@ -269,120 +269,3 @@ COMMENT ON TABLE public.schoolnet_family_invitation_records IS
 
 COMMENT ON COLUMN public.schoolnet_family_invitation_records.status IS
   'preparing=reserve ; auth_created=Auth lie ; profile_ready=profil pret ; renewing=lien en cours ; prepared=lien ponctuel pret ; sent_declared=envoi declare ; activated=connexion confirmee ; requires_review=interruption a examiner.';
-),
-
-  CONSTRAINT schoolnet_family_invitation_sent_chk
-    CHECK (
-      (sent_declared_at IS NULL AND sent_declared_by IS NULL)
-      OR (sent_declared_at IS NOT NULL AND sent_declared_by IS NOT NULL)
-    ),
-
-  CONSTRAINT schoolnet_family_invitation_sent_status_chk
-    CHECK (
-      status <> 'sent_declared'
-      OR sent_declared_at IS NOT NULL
-    ),
-
-  CONSTRAINT schoolnet_family_invitation_dates_chk
-    CHECK (
-      last_prepared_at >= first_prepared_at
-      AND updated_at >= created_at
-    )
-);
-
--- L'unicite sur l'e-mail evite qu'une meme personne soit reservee
--- en parallele dans deux demandes differentes. Les comptes existants
--- doivent etre reutilises apres verification, jamais crees de nouveau.
-CREATE UNIQUE INDEX schoolnet_family_invitation_email_uidx
-  ON public.schoolnet_family_invitation_records (lower(email));
-
-CREATE INDEX schoolnet_family_invitation_status_idx
-  ON public.schoolnet_family_invitation_records (status, last_prepared_at DESC);
-
-CREATE INDEX schoolnet_family_invitation_user_idx
-  ON public.schoolnet_family_invitation_records (user_id)
-  WHERE user_id IS NOT NULL;
-
--- Fonction trigger non privilegiee. Aucune RPC SECURITY DEFINER creee.
-CREATE FUNCTION public.schoolnet_family_invitation_guard_update()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = pg_catalog
-AS $schoolnet_guard$
-BEGIN
-  IF ROW(NEW.request_id, NEW.recipient, NEW.expected_role, NEW.email, NEW.prepared_by)
-    IS DISTINCT FROM
-    ROW(OLD.request_id, OLD.recipient, OLD.expected_role, OLD.email, OLD.prepared_by)
-  THEN
-    RAISE EXCEPTION 'L''identite de la reservation est immuable'
-      USING ERRCODE = '23514';
-  END IF;
-
-  IF OLD.user_id IS NOT NULL AND NEW.user_id IS DISTINCT FROM OLD.user_id THEN
-    RAISE EXCEPTION 'Le compte Auth lie ne peut pas etre remplace'
-      USING ERRCODE = '23514';
-  END IF;
-
-  IF NEW.generation_count < OLD.generation_count THEN
-    RAISE EXCEPTION 'Le nombre de generations ne peut pas diminuer'
-      USING ERRCODE = '23514';
-  END IF;
-
-  IF (
-    (OLD.status = 'preparing'
-      AND NEW.status NOT IN ('preparing', 'prepared', 'requires_review'))
-    OR
-    (OLD.status = 'prepared'
-      AND NEW.status NOT IN ('prepared', 'sent_declared', 'activated', 'requires_review'))
-    OR
-    (OLD.status = 'sent_declared'
-      AND NEW.status NOT IN ('sent_declared', 'activated', 'requires_review'))
-    OR
-    (OLD.status = 'activated'
-      AND NEW.status <> 'activated')
-    OR
-    (OLD.status = 'requires_review'
-      AND NEW.status <> 'requires_review')
-  ) THEN
-    RAISE EXCEPTION 'Transition d''etat d''invitation non autorisee'
-      USING ERRCODE = '23514';
-  END IF;
-
-  NEW.updated_at = pg_catalog.now();
-  RETURN NEW;
-END;
-$schoolnet_guard$;
-
-REVOKE ALL ON FUNCTION public.schoolnet_family_invitation_guard_update()
-  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.schoolnet_family_invitation_guard_update()
-  TO service_role;
-
-CREATE TRIGGER schoolnet_family_invitation_guard_update_trg
-BEFORE UPDATE ON public.schoolnet_family_invitation_records
-FOR EACH ROW
-EXECUTE FUNCTION public.schoolnet_family_invitation_guard_update();
-
--- Table privee au niveau des droits SQL et RLS ; seules les Edge Functions
--- privilegiées y accederont, apres verification de l'identite Admin.
-ALTER TABLE public.schoolnet_family_invitation_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.schoolnet_family_invitation_records FORCE ROW LEVEL SECURITY;
-
-REVOKE ALL ON TABLE public.schoolnet_family_invitation_records
-  FROM PUBLIC, anon, authenticated, service_role;
-
--- Supabase attribue des droits par defaut au service_role. Les retirer
--- explicitement avant de ne redonner que SELECT/INSERT/UPDATE evite DELETE.
-GRANT SELECT, INSERT, UPDATE
-  ON TABLE public.schoolnet_family_invitation_records TO service_role;
-
--- Aucune politique SELECT/INSERT/UPDATE/DELETE pour anon/authenticated.
--- Pas de GRANT DELETE au service-role : toute rectification exige une
--- procedure de reprise auditee, sans effacement automatique des traces.
-
-COMMENT ON TABLE public.schoolnet_family_invitation_records IS
-  'SCHOOLNET 5.C-B.2 : journal prive des preparations d invitations Parent et Apprenant (sans lien ni jeton).';
-
-COMMENT ON COLUMN public.schoolnet_family_invitation_records.status IS
-  'preparing = reserve ; prepared = lien ponctuel cree ; sent_declared = envoi declare ; activated = active ; requires_review = interruption a examiner.';
