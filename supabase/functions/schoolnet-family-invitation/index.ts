@@ -52,7 +52,10 @@ type Body = {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// La recette se fait d'abord en local : cette origine ne pourra utiliser que "inspect".
+const LOCAL_INSPECT_ORIGIN = "http://localhost:5173";
 const allowedOrigins = new Set([
+  LOCAL_INSPECT_ORIGIN,
   "https://schoolnet-snowy.vercel.app",
   "https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app",
   ...(Deno.env.get("SCHOOLNET_ALLOWED_ORIGINS") ?? "")
@@ -118,7 +121,11 @@ Deno.serve(async (req) => {
 
   // Garde-fou serveur : ce code reste inactif meme apres un deploiement
   // accidentel tant que le registre et la recette ne sont pas autorises.
-  const enabled = Deno.env.get("SCHOOLNET_FAMILY_INVITES_ENABLED") === "true";
+  // Double verrou 5.C-B.2 : ce deploiement est exclusivement en lecture.
+  // Une future activation exige une nouvelle modification du code et un GO distinct.
+  const READ_ONLY_DEPLOYMENT = true;
+  const enabled = !READ_ONLY_DEPLOYMENT &&
+    Deno.env.get("SCHOOLNET_FAMILY_INVITES_ENABLED") === "true";
   const authHeader = req.headers.get("authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return reject(req, 401, "Connexion administrateur requise.");
@@ -159,6 +166,10 @@ Deno.serve(async (req) => {
     return reject(req, 400, "Parametres incorrects.");
   }
   const action = clean(body.action) as Action;
+  // Le frontend Vite local sert uniquement a recetter les lectures.
+  if (origin === LOCAL_INSPECT_ORIGIN && action !== "inspect") {
+    return reject(req, 403, "Sur localhost, seule l'inspection est autorisee.");
+  }
   const requestId = clean(body.request_id);
   const recipient = clean(body.recipient) as Recipient;
   if (!["inspect", "prepare", "resume", "renew", "flag_review"].includes(action) ||
