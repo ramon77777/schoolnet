@@ -173,7 +173,7 @@ BEGIN
   BEGIN
     UPDATE public.schoolnet_family_invitation_records
        SET user_id = user_a
-     WHERE request_id = req_c AND recipient = 'student';
+     WHERE request_id = req_a AND recipient = 'parent';
     RAISE EXCEPTION 'ECHEC B2 : utilisateur Auth affecte deux fois';
   EXCEPTION WHEN unique_violation THEN NULL; END;
 
