@@ -38,9 +38,18 @@ assert.ok(
 assert.match(edge, /advance\("prepared", "sent_declared"/,
   "La declaration exige une transition CAS prepared vers sent_declared.",
 );
-assert.match(edge, /activation_evidence_verified: false/,
-  "Le serveur ne doit pas annoncer une preuve Auth qu'il ne possede pas.",
-);
+assert.match(edge, /evaluateFamilyActivationProof\(/,
+  "La preuve Auth A.2.2 doit etre evaluee cote serveur.");
+assert.match(edge, /passwordUpdated: null,/,
+  "Les preuves Auth reelles ne doivent pas etre inventees.");
+assert.match(edge, /validPasswordVerified: null,/,
+  "Le hook de verification doit rester non raccorde.");
+assert.match(edge, /passwordLogin: null,/,
+  "La preuve de connexion par mot de passe doit rester non raccordee.");
+assert.match(edge, /activation_evidence_verified: activationProof\.verified/,
+  "Aucune activation ne peut etre confirmee sans evaluation de preuve.");
+assert.match(edge, /previous\.status === "activated" && !activationProof\.verified/,
+  "Un statut registre activated sans preuve exige revue humaine.");
 assert.doesNotMatch(edge, /action === "confirm_activation"/,
   "La confirmation d'activation ne doit pas etre branchee avant une preuve Auth fiable.");
 assert.doesNotMatch(
