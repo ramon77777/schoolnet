@@ -458,10 +458,10 @@ Deno.serve(async (req) => {
     return reject(req, 409,
       "Identite Auth non coherente avec le registre : reprise interdite.");
   }
-  const { data: profile, error: profileError } = await service
+  const { data: profile, error: linkedProfileError } = await service
     .from("profiles").select("role,full_name").eq("id", previous.user_id)
     .maybeSingle();
-  if (profileError || !profile) {
+  if (linkedProfileError || !profile) {
     return reject(req, 409, "Profil introuvable : reprise interdite.");
   }
   const isExpectedProfile = profile.role === expectedRole && profile.full_name === name;
