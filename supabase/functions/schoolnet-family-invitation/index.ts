@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
       recipient, role: expectedRole, email, full_name: name,
       decision, invitation_status: previous?.status ?? null,
       can_resume: Boolean(previous?.user_id) &&
-        ["auth_created", "profile_ready", "renewing", "requires_review"].includes(previous?.status ?? ""),
+        ["auth_created", "profile_ready", "requires_review"].includes(previous?.status ?? ""),
       can_renew: Boolean(previous?.user_id) &&
         ["prepared", "sent_declared"].includes(previous?.status ?? ""),
       no_write: true,
@@ -390,7 +390,7 @@ Deno.serve(async (req) => {
       "Compte lie absent ou incoherent : revue manuelle requise.");
   }
   const allowedStates = action === "resume"
-    ? ["auth_created", "profile_ready", "renewing", "requires_review"]
+    ? ["auth_created", "profile_ready", "requires_review"]
     : ["prepared", "sent_declared"];
   if (!allowedStates.includes(previous.status)) {
     return reject(req, 409, "Etat non eligible pour cette operation.");
