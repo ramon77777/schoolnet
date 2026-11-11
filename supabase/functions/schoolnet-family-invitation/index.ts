@@ -342,7 +342,9 @@ Deno.serve(async (req) => {
     if (deliveryMethod !== "manual_email" && deliveryMethod !== "in_person") {
       return reject(req, 422, "Canal de transmission manuelle invalide.");
     }
-    if (/https?:\\/\\/|bearer\\s|access_token|refresh_token/i.test(verificationNote)) {
+    const sensitiveNote = verificationNote.toLowerCase();
+    if (["http:", "https:", "access_token", "refresh_token", "bearer "]
+      .some((fragment) => sensitiveNote.includes(fragment))) {
       return reject(req, 422, "Ne conservez aucun lien ou jeton dans la justification.");
     }
     if (!previous || previous.status !== "prepared" || !previous.user_id ||
