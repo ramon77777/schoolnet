@@ -49,3 +49,6 @@ jobs:
 
       - name: Verifier le code de l'Edge Function familiale
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
+
+      - name: Recette hors ligne des preuves Auth famille A.2.2
+        run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
