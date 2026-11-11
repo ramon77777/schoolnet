@@ -227,7 +227,24 @@ export default function AdminRequestResolutionPanel({
         </p>
       </div>
       {!disabled && !loading && !error && !resolution && request.status !== "rejected" && (
-        <AdminEnrollmentRequestPreflight request={request} users={users} />
+        <AdminEnrollmentRequestPreflight
+          request={request}
+          users={users}
+          selectedParentId={parentId}
+          selectedStudentId={studentId}
+          onSelectCandidate={(role, userId) => {
+            // Proposition seulement : le lien familial reste soumis à une
+            // attestation humaine puis à la RPC sécurisée existante.
+            if (role === "parent") {
+              setParentId(userId);
+            } else {
+              setStudentId(userId);
+              setEnrollmentId("");
+            }
+            setFamilyVerified(false);
+            setLinkExists(null);
+          }}
+        />
       )}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p>}
