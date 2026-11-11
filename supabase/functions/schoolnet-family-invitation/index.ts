@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
   } catch {
     return reject(req, 400, "Parametres incorrects.");
   }
-  const action = clean(body.action);
+  const action = clean(body.action) as Action;
   const requestId = clean(body.request_id);
   const recipient = clean(body.recipient) as Recipient;
   if ((action !== "inspect" && action !== "prepare") ||
