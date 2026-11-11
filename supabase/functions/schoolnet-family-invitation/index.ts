@@ -4,6 +4,7 @@
 // AUCUN email n'est envoye : le responsable scolaire transmet le lien manuellement.
 // Le service-role ne doit jamais etre expose au navigateur.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { evaluateFamilyActivationProof } from "../_shared/familyActivationEvidence.ts";
 
 type Action = "inspect" | "prepare" | "resume" | "renew" | "flag_review" | "declare_sent";
 type Recipient = "parent" | "student";
@@ -232,8 +233,22 @@ Deno.serve(async (req) => {
   const previous = existingRecord as InvitationRecord | null;
 
   if (action === "inspect") {
+    // A.2.2 — ZERO source de preuve Auth branchee a ce stade.
+    // Le registre seul, un JWT ou l'email confirme NE PROUVENT PAS
+    // la reinitialisation du mot de passe suivie d'une authentification.
+    // Les sources serveur resteront nulles jusqu'au pilote isole autorise.
+    const activationProof = evaluateFamilyActivationProof({
+      invitation: previous,
+      authUser: null,
+      profile: null,
+      passwordUpdated: null,
+      validPasswordVerified: null,
+      passwordLogin: null,
+      nowIso: new Date().toISOString(),
+    });
     const decision = previous
-      ? previous.status === "activated" ? "already_activated"
+      ? previous.status === "activated" && !activationProof.verified ? "manual_review"
+        : previous.status === "activated" ? "already_activated"
         : previous.status === "prepared" || previous.status === "sent_declared"
           ? "already_prepared" : "manual_review"
       : found?.exists
@@ -252,7 +267,9 @@ Deno.serve(async (req) => {
         ? "recorded_in_registry" : "not_confirmed",
       // Une valeur "activated" existante n'est pas une preuve Auth en soi.
       // La validation serveur d'un changement de mot de passe reste a construire.
-      activation_evidence_verified: false,
+      activation_evidence_verified: activationProof.verified,
+      activation_proof_state: activationProof.state,
+      // Hors du pilote isole : aucune preuve serveur ne peut etre fournie.
       can_resume: Boolean(previous?.user_id) &&
         ["auth_created", "profile_ready", "requires_review"].includes(previous?.status ?? ""),
       can_renew: Boolean(previous?.user_id) &&
