@@ -1,128 +1,126 @@
-# SCHOOLNET — Lot 5.C-B.2 : invitations Parent / Apprenant
+# SCHOOLNET 2.0 — Lot 5.C-B.2 : invitations familiales et reprise sécurisée
 
-**Édition du 11 novembre 2026 — Code préparé, fonction NON déployée et NON activée.**
-**Branche :** feature/schoolnet-multi-etablissements, PR #6.
-**Référence :** workflow directeur V2.2.
+**État au 11 novembre 2026 : code et SQL de conception sauvegardés sur GitHub, aucune migration appliquée et aucune fonction Edge déployée.**  
+**Branche :** `feature/schoolnet-multi-etablissements`, PR #6 (brouillon).  
+**Référence :** [Workflow directeur SCHOOLNET V2.2](./WORKFLOW_DIRECTEUR_SCHOOLNET_2_0_2026-11-10.md).
 
-## 1. Ce que nous avons réellement préparé
+## 1. Objectif fonctionnel
 
-La fonction indépendante **supabase/functions/schoolnet-family-invitation/index.ts** ne réutilise jamais les droits school_admin. Elle est réservée au Super Administrateur SCHOOLNET, et reçoit une référence de demande et un destinataire parent/student. Elle lit le nom et l'e-mail directement dans la demande en base, sans accepter une adresse arbitraire donnée par le navigateur.
+Automatiser le traitement des demandes publiques des apprenants et parents possédant une adresse e-mail personnelle. Réutiliser les comptes existants, créer les comptes manquants **sans mot de passe communiqué à l'administration**, préparer une invitation sûre puis faciliter sa transmission manuelle par le Super Administrateur.
 
-La fonction accepte deux actions :
-- **inspect :** consultation sans écriture. Contrôle l'identité Admin, le statut du dossier, son éventuelle finalisation, les comptes Auth existants et leur rôle. Réponse possible : new_invitation_possible, reuse_after_verification ou manual_review.
-- **prepare :** fonction d'écriture SENSIBLE. Exige la vérification humaine explicite et une note de 10 à 1000 caractères. Elle est verrouillée par la variable serveur SCHOOLNET_FAMILY_INVITES_ENABLED, absente actuellement. Le verrou doit rester en place jusqu'à l'autorisation de la migration de registre et de la recette.
+Les classes, cours, LIVE, enseignants et comptes existants demeurent intacts. Les apprenants sans e-mail personnel relèvent de 5.C-B.3 et **ne sont pas invités via l'adresse Auth du parent**.
 
-Si un compte utilise déjà l'e-mail, la fonction ne le recrée pas et n'en change pas le rôle. L'administrateur doit réutiliser le compte après confirmation de l'identité. L'e-mail du parent ne peut pas identifier un deuxième compte Auth appartenant à l'enfant.
+## 2. Mécanisme serveur conçu
 
-## 2. Séquence d'invitation prévue
+**Fonction distincte :** `supabase/functions/schoolnet-family-invitation/index.ts`. Elle n'attribue jamais `admin` ou `school_admin` et ne modifie aucune appartenance scolaire. La fonction dédiée aux responsables des écoles reste indépendante.
 
-1. Vérifier le JWT et le rôle Admin réel dans profiles, puis la demande publique.
-2. Vérifier que le dossier n'est ni refusé ni déjà finalisé.
-3. Trouver le vrai nom et l'e-mail personnel du destinataire dans la demande.
-4. Contrôler les doublons Auth et les rôles incompatibles.
-5. Réserver l'action dans un registre SQL UNIQUE par (request_id, recipient).
-6. Générer un lien temporaire Supabase invite **sans envoyer d'e-mail ni transmettre de mot de passe**.
-7. Confirmer qu'il s'agit d'un nouveau compte Auth et d'un profil provisoire du trigger Auth, puis positionner le bon rôle parent ou student.
-8. Inscrire le statut prepared avec l'auteur, l'identifiant Auth, le compteur et la date.
-9. Retourner le lien **une seule fois** à l'administrateur qui préparera lui-même son e-mail.
+| Action | Rôle et sécurité | Effet prévu |
+| --- | --- | --- |
+| `inspect` | JWT valide et profil Super Admin ; demande et destinataire lus en base | Lecture seule, indique l'existant et le statut du registre |
+| `prepare` | Super Admin, confirmation humaine, note 10–1000 caractères, absence d'un autre compte sur l'e-mail | Réservation unique, création d'un compte personnel, préparation d'un lien |
+| `renew` | Compte déjà lié, non activé, confirmation humaine, délai minimal 60 s, limite de cinq liens | Un nouveau lien temporaire, sans nouveau compte |
+| `resume` | Compte Auth **déjà lié au registre**, non activé ; état interrompu, note, délai minimal 120 s | Reprise du profil si réellement provisoire et nouveau lien, sans recréation Auth |
+| `flag_review` | Opération en cours depuis au moins 120 s et note explicite | Place le dossier en revue, **sans créer ni modifier de compte Auth** |
 
-Aucun lien ou mot de passe ne doit être conservé dans le registre, les logs, les captures ou les documents. L'écriture Auth et l'écriture SQL ne sont pas une transaction unique : en cas d'échec intermédiaire, ne pas supprimer aveuglément un compte Auth qui aurait pu être activé.
+**Verrou permanent avant autorisation :** `SCHOOLNET_FAMILY_INVITES_ENABLED` n'est pas activé. Toutes les opérations d'écriture sont refusées tant que le serveur n'a pas été configuré explicitement. Les méthodes sont définies dans `src/features/enrollments/lib/adminFamilyInvitationApi.ts`, mais **ne sont reliées à aucun bouton de la fiche publique**.
 
-## 3. Registre nécessaire — proposition, PAS une migration appliquée
+### Création initiale, par étapes vérifiables
 
-Table proposée : **public.schoolnet_family_invitation_records**
+1. Valider le JWT Super Admin et la demande (non refusée, non traitée), puis rechercher l'e-mail via la RPC administrative existante.
+2. **Réserver** `(request_id, recipient)` et l'e-mail dans le registre SQL ; toute seconde réservation échoue.
+3. Appeler `auth.admin.createUser({ email, email_confirm: false })` **sans mot de passe**. L'unicité Auth protège aussi des inscriptions concurrentes externes.
+4. Sauvegarder immédiatement `user_id` et le statut `auth_created`. Si cette étape échoue, **ne pas supprimer ni recréer aveuglément** le compte.
+5. Contrôler le profil provisoire issu du trigger Auth ; lui attribuer uniquement le rôle `parent` ou `student` et le nom validé, puis indiquer `profile_ready`.
+6. Générer un lien `auth.admin.generateLink({ type: "recovery" })` pour le **compte déjà créé**, sans déclencher d'e-mail.
+7. Marquer `prepared` avec le compteur, puis retourner le lien **une seule fois** dans la réponse Admin. Les liens et jetons ne sont jamais conservés dans SQL, GitHub ou les journaux.
 
-| Champ | Règle proposée |
+Cette séparation évite de confondre une création Auth et la génération de lien d'invitation et réduit le risque de s'approprier par erreur un compte nouvellement créé par quelqu'un d'autre.
+
+**Limite explicite :** le comportement d'activation de `generateLink(recovery)` sur un compte tout juste créé et non confirmé devra être vérifié **en environnement autorisé**. La vérification SQL et la compilation ne prouvent pas à elles seules que l'activation e-mail fonctionne.
+
+## 3. Registre SQL et historique d'audit
+
+**Brouillon SQL (NON appliqué) :** [registre, états et permissions](./sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql).
+
+**Script de recette reproductible :** [tests SQL avec ROLLBACK](./sql/lot_5_c_b2_family_invitation_registry_TEST_ROLLBACK.sql).
+
+Tables proposées : `public.schoolnet_family_invitation_records` et `public.schoolnet_family_invitation_events`.
+
+| Mesure | Garantie prévue |
 | --- | --- |
-| request_id | UUID, référence vers la demande publique |
-| recipient | parent ou student |
-| request_id + recipient | Clé primaire composite et réservation anti-double-clic |
-| expected_role | parent ou student, doit correspondre à recipient |
-| email | E-mail personnel normalisé et non modifiable |
-| user_id | UUID Auth, initialement nullable |
-| verification_note | Note de décision humaine, 10–1000 caractères |
-| prepared_by | UUID du Super Administrateur |
-| status | preparing, prepared, sent_declared, activated, requires_review |
-| generation_count | Entier non négatif |
-| last_prepared_at, first_prepared_at | Dates de préparation |
-| sent_declared_at, sent_declared_by | Déclaration d'envoi, pas preuve de réception |
-| created_at, updated_at | Traçabilité |
+| Clé primaire `(request_id, recipient)` | Un seul traitement par destinataire de la demande |
+| Index unique `lower(email)` | Pas de double préparation du même e-mail dans deux demandes |
+| Index unique sur `user_id` non NULL | Un compte Auth n'est pas réservé dans deux dossiers différents |
+| RLS + FORCE RLS et privilèges SQL | Aucun accès direct par `anon` ni `authenticated`; `service_role` limité à SELECT/INSERT/UPDATE sur le registre |
+| Événements append-only | Journal des transitions, acteur, compteur et code d'erreur, **sans lien ni mot de passe** |
+| Trigger de transitions | Interdit les reculs de statut non autorisés, le changement d'e-mail ou de compte Auth lié |
+| Revue des interruptions | `requires_review` bloque les tentatives de création et impose un examen |
+| Générations et temps | Compteur 0 à 5 et temporisations serveur |
 
-Contraintes de sécurité requises : RLS activé ; aucun accès direct anon/authenticated ; accès exclusivement depuis le service serveur protégé ; index empêchant deux préparations simultanées d'une même adresse dans deux demandes ; aucun stockage de lien d'activation. Le schéma proposé doit être audité et testé en BEGIN / ROLLBACK avant tout accord d'application.
+### Transitions d'état
 
-**Le registre n'existe pas actuellement.** Sans registre et sans variable serveur explicitement activée, la fonction ne peut créer aucun compte. C'est une barrière voulue.
+```text
+preparing → auth_created → profile_ready → prepared → sent_declared → activated
+     └────────┬─────────────┬───────────────┬───────────────┐
+              v             v               v               v
+        requires_review ← renewing ← prepared / sent_declared
+              |
+              └─(Auth lié et vérifié, décision humaine)→ renewing → prepared
+```
 
-## 4. Code client associé
+**Précision :** l'état `renewing` ne peut pas être repris simultanément par une deuxième opération. S'il demeure bloqué, l'administrateur doit d'abord demander `flag_review` après le délai de sécurité. Une entrée `requires_review` **sans `user_id` ne peut jamais créer automatiquement un deuxième compte**.
 
-**src/features/enrollments/lib/adminFamilyInvitationApi.ts** contient :
-- inspectFamilyInvitation : interrogation read-only après déploiement de l'Edge ;
-- prepareFamilyInvitation : action sensible réservée à l'activation ultérieure, non reliée actuellement à l'interface ;
-- formatFamilyInvitationEmail : mise en forme d'un message **avec destinataire, objet et texte**, après obtention effective d'un lien.
+## 4. Matrice de reprise après interruption
 
-Objet prévu : **SCHOOLNET — Activation de votre accès Parent / Tuteur** ou **SCHOOLNET — Activation de votre accès Apprenant**. L'administrateur continue à envoyer l'e-mail via sa messagerie. Rien n'est expédié automatiquement.
+| Incident | Situation conservée | Action sûre |
+| --- | --- | --- |
+| Double clic sur « Préparer » | Réservation déjà présente | Refuser la deuxième création et consulter `inspect` |
+| Création Auth refusée ou timeout, aucun identifiant retourné | `requires_review`, sans `user_id` | **Examen humain de la base Auth** avant toute reprise. Aucun nouvel essai automatique |
+| Compte Auth créé et son ID sauvegardé, profil non préparé | `auth_created` ou `requires_review` avec `user_id` | `resume` après contrôle de l'ID, de l'e-mail, du rôle et du délai |
+| Profil prêt, génération de lien interrompue | `profile_ready` ou `requires_review` avec `user_id` | Générer un **nouveau** lien, ne pas retrouver ni réutiliser l'ancien jeton |
+| Lien préparé mais perdu ou expiré | `prepared` avec `user_id` | `renew` après 60 s, sans créer un compte |
+| Crash durant `renewing` | Statut de traitement réservé | `flag_review` après 120 s ; ensuite reprise explicite après contrôles |
+| E-mail appartenant déjà à un autre rôle | Compte existant | Bloquer la création et toute promotion automatique |
+| Compte actif, adresse modifiée, connexion déjà effectuée ou e-mail confirmé | Compte Auth existant | Refuser `resume`/`renew` ; utiliser un parcours normal de récupération de compte |
+| Deux demandes simultanées avec même e-mail ou même compte | Collision interdite par les index | Un seul traitement réservé ; l'autre passe en vérification |
 
-## 5. Projet de migration SQL et recette réversible — 11 novembre 2026
+**Important :** les actions `resume`/`renew` sont codées mais **pas encore testées sur Auth réel**. La matrice définit les comportements à démontrer en recette.
 
-**Fichier GitHub :** [docs/sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql](./sql/lot_5_c_b2_family_invitation_registry_DRAFT.sql).
+## 5. Recette SQL réellement exécutée le 11 novembre 2026
 
-**Ce fichier est un BROUILLON :** volontairement placé dans `docs/sql/`, et **non** dans `supabase/migrations/`. Il ne peut pas être activé par inadvertance lors d'un déploiement global. La migration finale sera créée via `supabase migration new` sur une machine disposant de la CLI, uniquement après approbation.
+Méthode : SQL exact du registre + script de tests exécutés dans **une même transaction `BEGIN ... ROLLBACK`** sur le projet Supabase SCHOOLNET existant. Aucun `Auth.admin` n'a été appelé pendant ces vérifications.
 
-### Recette SQL sur le projet Supabase distant
+**Résultats des assertions :**
 
-**Procédure réellement utilisée :** `BEGIN;` + SQL exact du brouillon + assertions SQL `DO` + `ROLLBACK;`, puis vérification de `to_regclass` et de l'historique des migrations.
+- Blocage des doublons par demande, destinataire, e-mail et compte Auth lié.
+- Rejet de `prepared` sans compte Auth.
+- Rejet d'une reprise sans identifiant de compte conservé.
+- Rejet du changement d'e-mail lié, des statuts rétrogrades et du compteur décroissant.
+- Transitions autorisées `preparing → auth_created → profile_ready → prepared`, puis renouvellement et déclaration d'envoi.
+- Interdiction d'acquérir deux fois le verrou `renewing`.
+- Contrôle de l'historique : **9 événements pour 9 écritures du scénario**.
+- Permissions : les utilisateurs anonymes et authentifiés ne lisent pas le registre ; `service_role` ne possède pas DELETE ; les événements ne sont pas modifiables.
+- Deux tables protégées par RLS et FORCE RLS.
 
-| Contrôle | Résultat |
-| --- | --- |
-| Une réservation valide peut être créée dans la transaction | PASS |
-| Deux réservations pour un même dossier / même destinataire | Bloquées (clé primaire composite) |
-| Deux demandes utilisant le même e-mail | Bloquées (index unique normalisé) |
-| Destinataire et rôle incompatibles | Bloqués par CHECK |
-| E-mail non normalisé | Bloqué par CHECK |
-| Statut prepared sans compte Auth | Bloqué par CHECK |
-| Modification de l'adresse réservée | Bloquée par trigger |
-| Compteur de génération négatif | Bloqué |
-| Passage preparing vers requires_review | Autorisé |
-| Retour automatique de requires_review vers preparing | Bloqué (revue humaine requise) |
-| Lecture / insertion directe par anon ou authenticated | Interdites via ACL + RLS |
-| Service-role : SELECT / INSERT / UPDATE | Accordés |
-| Service-role : DELETE | **Explicitement retiré** |
-| RLS + FORCE ROW LEVEL SECURITY | Activés dans le brouillon |
-| `ROLLBACK` puis `to_regclass` | **NULL — aucune table conservée** |
-| Nombre de migrations après test | **34, inchangé** |
+**Contrôle après ROLLBACK :** les deux tables sont absentes de Supabase ; **34 migrations appliquées, nombre inchangé**.
 
-**Correctif découvert par les tests :** Supabase accorde un droit DELETE par défaut à `service_role` sur une nouvelle table. Le brouillon révoque désormais explicitement les droits de `service_role` avant de lui réattribuer uniquement SELECT/INSERT/UPDATE. Le second passage de tous les tests est **réussi**.
+**Un premier test a détecté des privilèges DELETE accordés par défaut à `service_role`** : le brouillon les révoque explicitement. Un second contrôle a testé la vraie unicité des comptes et des transitions. Les assertions sont enregistrées sur GitHub pour la recette suivante.
 
-**Limites de la recette :** les assertions de clé unique valident la contrainte anti-concurrence, mais ne remplacent pas un test réel à deux requêtes simultanées. Elles ne valident pas non plus le code Edge, les invitations Auth ou le workflow navigateur : tout reste désactivé. Aucun compte Auth n'a été créé et aucun e-mail n'a été envoyé.
+## 6. Ce qui reste avant une activation durable
 
-### Reprise et idempotence : décision restant à finaliser
+1. Revue/autorisation **séparée** de la migration ciblée : produire la migration officielle avec la CLI, sans appliquer 5.D ni les migrations S2 en attente.
+2. Après application autorisée du registre : déployer **la seule** Edge Function dédiée, avec le flag d'écriture encore **désactivé** ; vérifier JWT, CORS et les scénarios `inspect`.
+3. Sur environnement d'essai ou comptes fictifs explicitement autorisés : activer temporairement les écritures sous supervision, tester une invitation Parent ou Apprenant e-mail propre, puis deux appels simultanés et des pannes simulées.
+4. Vérifier effectivement le lien de récupération, la première définition de mot de passe, la session, le rôle `parent`/`student` et l'absence d'accès aux dossiers d'autres familles.
+5. Compléter le suivi `sent_declared`, l'activation réelle et les boutons UI ; conserver l'envoi manuel de l'e-mail par le Super Admin.
+6. Revenir en lecture seule si les tests Auth ou l'isolation des données échouent. Les codes `flag_review`, `resume`, `renew` ne sont **pas une preuve d'une recette utilisateur réalisée**.
 
-Le registre bloque dès la première réservation `preparing`. Si la génération Auth s'interrompt ensuite, le dossier reste bloqué et ne peut pas être relancé sans intervention. **C'est plus sûr que créer un doublon, mais insuffisant pour la livraison.**
+**Redirections :** la fonction n'accepte que les destinations HTTPS explicitement autorisées. La Preview SCHOOLNET doit être au bon SHA et son URL déclarée dans Supabase Auth. `localhost:5173` est un navigateur local qui peut malgré tout utiliser la base distante ; aucune activation réelle n'est prévue sur ce domaine avant approbation technique.
 
-Avant activation :
-1. Concevoir un traitement administratif des lignes `preparing` ou `requires_review` : inspection Auth et profil, résolution de la réservation, traçabilité et reprise sans suppression aveugle.
-2. Vérifier un second appel de préparation : l'API doit retourner « déjà préparée » sans générer un nouveau compte et sans exposer l'ancien jeton.
-3. Définir un parcours distinct pour régénérer un lien expiré et déclarer l'envoi réel, avec limites de fréquence.
-4. Réaliser les tests simultanés et les tests de panne entre Auth et SQL **sur un environnement autorisé**.
-5. Vérifier les statuts `activated` et `sent_declared` sans assimiler la déclaration d'envoi à une preuve de réception.
+**Aucune migration, Edge Function, clé de production, compte ou e-mail n'a été modifié lors de cette préparation.**
 
-**Aucune autorisation d'application durable de la migration n'a encore été donnée.**
+## 7. Prochaine décision
 
-## 6. Ce qui reste à développer avant l'ouverture
+Présenter la migration du **registre familial uniquement** et recueillir l'accord explicite pour son application durable ; puis procéder à une recette ciblée de la fonction avec le flag d'écriture désactivé.
 
-- Préparer et faire valider une migration dédiée : RLS, index de concurrence, statut et journal des invitations ;
-- compléter le traitement des opérations interrompues en statut preparing ;
-- implémenter le renouvellement contrôlé d'un lien expiré et la déclaration d'envoi réel ;
-- raccorder le bouton de préparation dans une seule fiche administrative, après vérification de l'identité et du dossier ;
-- tester le cas Parent existant, Parent nouveau, Apprenant avec e-mail propre, enfant sans e-mail, homonymes, rôles incompatibles et deux demandes concurrentes ;
-- vérifier les redirections Auth et les domaines autorisés ; depuis localhost le front peut appeler le Supabase distant, sans constituer un environnement isolé ;
-- tester le respect des droits parent-enfant et les non-régressions des invitations d'écoles, cours, classes et comptes.
-
-**Attention :** le code actuel de la fonction contrôle des redirections HTTPS connues. Pour une vraie activation sur localhost, il faudrait valider séparément un mode de redirection locale ou préférer la Preview HTTPS, sans ouvrir un joker sur les domaines.
-
-## 7. État de validation au 11/11/2026
-
-- **Vérifié :** ESLint/build du code de la fonction GitHub réussis au SHA `8ca3962` ; recette SQL transactionnelle réussie avec ROLLBACK, registre absent après test. Revue Edge approfondie, idempotence et concurrence réelle restent à effectuer.
-- **Aucune nouvelle migration appliquée**, aucune nouvelle Edge Function déployée, aucun compte ni e-mail créé par ces changements.
-- **Source préparée ≠ service opérationnel.** Aucune promesse de fonctionnement avant tests et autorisation.
-
-**Prochaine étape unique :** finaliser et tester le protocole de reprise/idempotence de la fonction serveur. Présenter ensuite la proposition de migration ciblée pour **autorisation explicite**, sans exécuter les migrations 5.D, S2 ou les migrations non approuvées.
+**Ne pas fusionner vers `main`, pousser toutes les migrations ou activer les créations de comptes par anticipation.**
