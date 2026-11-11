@@ -254,7 +254,7 @@ export default function AdminEnrollmentRequestPreflight({
   }, [request.id, request.request_type, request.requested_level]);
 
   return (
-    <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4" aria-label="Préparation de la demande en lecture seule">
+    <section className="rounded-2xl border border-blue-200 bg-blue-50/40 p-3 sm:p-4" aria-label="Préparation de la demande en lecture seule">
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="text-sm font-extrabold text-slate-950">
           Assistant de préparation — étape 1 : reconnaissance
@@ -264,10 +264,8 @@ export default function AdminEnrollmentRequestPreflight({
         </span>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-600">
-        SCHOOLNET recherche les comptes possibles et les classes existantes.
-        Aucune personne n'est automatiquement identifiée, aucun lien familial
-        n'est validé et aucune écriture en base n'est effectuée.
-        La présélection n'agit que sur le formulaire de vérification ci-dessous.
+        SCHOOLNET suggère les comptes et classes existants, sans créer de compte
+        ni vérifier automatiquement l'identité ou le lien familial.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <CandidateSummary
@@ -290,10 +288,15 @@ export default function AdminEnrollmentRequestPreflight({
         />
       </div>
 
-      <div className="mt-3 space-y-2 rounded-xl border border-violet-200 bg-white p-3">
-        <p className="text-sm font-bold text-slate-900">
-          Étape 2 — Accès à préparer
-        </p>
+      <details className="mt-3 rounded-xl border border-violet-200 bg-white">
+        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-600">
+          <span>Étape 2 — Accès à préparer</span>
+          <span className="text-xs font-normal text-violet-800">
+            {parentAccountFound ? "Parent retrouvé" : "Parent à vérifier"} ·{" "}
+            {studentAccountFound ? "Apprenant retrouvé" : studentEmail ? "Invitation à préparer" : "Apprenant sans e-mail"} · Détails
+          </span>
+        </summary>
+        <div className="space-y-2 border-t border-violet-100 p-3">
         <p className="text-xs text-slate-600">
           Prévisualisation uniquement : les comptes et invitations ne sont pas
           encore créés. L'administration conserve la vérification de l'identité.
@@ -333,10 +336,10 @@ export default function AdminEnrollmentRequestPreflight({
           </p>
         )}
         <p className="text-xs font-medium text-violet-800">
-          Activation des invitations en attente de la fonction serveur sécurisée.
-          Ne transmettez aucun mot de passe par e-mail.
+          Invitations non actives à cette étape. Ne transmettez aucun mot de passe par e-mail.
         </p>
-      </div>
+        </div>
+      </details>
       {request.request_type === "student_enrollment" && (
         <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
           <p className="text-sm font-bold text-slate-900">
@@ -376,9 +379,7 @@ export default function AdminEnrollmentRequestPreflight({
         </div>
       )}
       <p className="mt-3 text-xs text-slate-600">
-        Prochaine étape : l'administrateur confirme l'identité du responsable
-        et la classe. L'automatisation des comptes et des invitations sera
-        activée séparément après ses tests de sécurité.
+        La présélection reste une aide à la vérification, jamais une validation définitive.
       </p>
     </section>
   );
