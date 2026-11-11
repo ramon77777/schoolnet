@@ -407,6 +407,33 @@ export default function AdminEnrollmentRequestPreflight({
                       <p className="font-bold text-emerald-800">Inspection confirmée — aucune écriture</p>
                       <p>{invitationDecisionLabels[current.result.decision]}</p>
                       <p>Registre : {current.result.invitation_status ?? "Aucune invitation enregistrée"}</p>
+                      <div className="mt-2 space-y-1 rounded-lg border border-slate-200 bg-white p-2 text-slate-700">
+                        <p className="font-semibold text-slate-900">Suivi transmission / activation (A.2)</p>
+                        <p>
+                          Transmission :{" "}
+                          {current.result.delivery_status === "declared_by_admin"
+                            ? "déclarée manuellement par un administrateur"
+                            : current.result.delivery_status === "ready_to_declare"
+                              ? "lien préparé, transmission non déclarée"
+                              : current.result.delivery_status === "not_declared"
+                                ? "aucune transmission déclarée"
+                                : "suivi A.2 serveur en attente de publication"}
+                        </p>
+                        {current.result.delivery_declared_at &&
+                          Number.isFinite(Date.parse(current.result.delivery_declared_at)) && (
+                          <p>Date déclarée : {new Date(current.result.delivery_declared_at).toLocaleString("fr-FR")}</p>
+                        )}
+                        <p>
+                          Activation :{" "}
+                          {current.result.activation_status === "recorded_in_registry"
+                            ? "statut enregistré au registre, preuve Auth encore à vérifier"
+                            : "non confirmée"}
+                        </p>
+                        <p className="text-amber-800">
+                          Une déclaration d'envoi ne prouve pas la réception.
+                          Aucune activation ne sera confirmée sur une simple déclaration.
+                        </p>
+                      </div>
                       {current.result.can_resume && (
                         <p>Reprise à examiner par l'administration, non activée.</p>
                       )}
@@ -428,7 +455,8 @@ export default function AdminEnrollmentRequestPreflight({
             <p>Vérifier hors de cet assistant l'identité, le lien familial, le dossier scolaire
               et la propriété de chaque adresse e-mail. Un compte retrouvé ne prouve pas la filiation.</p>
             <p className="mt-1 font-semibold text-violet-800">
-              Création de comptes, remise de liens et rattachements toujours désactivés.
+              Création de comptes, déclaration de transmission, confirmation d'activation
+              et rattachements toujours désactivés.
             </p>
           </div>
         </div>
