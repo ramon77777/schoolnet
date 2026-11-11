@@ -103,7 +103,7 @@ CREATE UNIQUE INDEX schoolnet_family_invitation_email_uidx
 CREATE INDEX schoolnet_family_invitation_status_idx
   ON public.schoolnet_family_invitation_records (status, last_prepared_at DESC);
 
-CREATE INDEX schoolnet_family_invitation_user_idx
+CREATE UNIQUE INDEX schoolnet_family_invitation_user_uidx
   ON public.schoolnet_family_invitation_records (user_id)
   WHERE user_id IS NOT NULL;
 
