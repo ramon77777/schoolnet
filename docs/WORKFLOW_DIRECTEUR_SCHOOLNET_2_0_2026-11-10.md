@@ -121,13 +121,15 @@ Apprenant / Parent : remplit la demande publique
 | Étape | Livrable | Statut / gate |
 | --- | --- | --- |
 | **5.C-A — Reconnaissance** | Dans la fiche de demande, proposer comptes plausibles et classes existantes selon le niveau ; aucune écriture | **Recette locale validée le 11/11/2026** (compte Parent, apprenant sans e-mail, classe 5e non créée), sans écriture |
-| **5.C-B — Comptes et identifiants** | **B.1** : présélection assistée sans écriture ; **B.2** : invitations Parent/Apprenant par e-mail propre ; **B.3** : téléphone propre ou accès enfant supervisé par le Parent | **B.1 validé en local le 11/11 : Parent présélectionné, attestation décochée.** Fiche compacte codée, lint/build OK, recette visuelle à faire ; B.2/B.3 non activés |
+| **5.C-B — Comptes et identifiants** | **B.1** : présélection assistée sans écriture ; **B.2** : fonction d'invitation Parent/Apprenant par e-mail propre ; **B.3** : téléphone propre ou accès enfant supervisé par le Parent | **B.1 et ergonomie compacte validés visuellement le 11/11. B.2 source serveur + contrat client préparés sur GitHub, activation bloquée (registre absent)** ; B.3 non activé |
 | **5.C-C — Affectation et finalisation** | Choix de classe, réutilisation des RPC existantes, vérification lien familial, traitement idempotent | À développer et tester après GO 5.C-B |
 | **5.C-D — Transmission et activation** | Objet, corps, destinataire, lien temporaire, copier, ouvrir messagerie, déclarer l'envoi, renouveler, première connexion | À terminer puis recette complète Parent/Apprenant |
 
 **Décision 11/11/2026 — enfants sans e-mail :** le numéro propre de l'apprenant peut servir à une connexion Supabase après activation/vérification du fournisseur téléphone ; le **numéro du parent ne peut pas être partagé comme identifiant Auth** (index unique). L'e-mail du parent est un **contact de transmission**, mais ne doit pas être utilisé comme identifiant Auth de plusieurs enfants. Le parcours d'activation supervisée d'un enfant sans téléphone propre nécessite une réalisation serveur distincte. [Cadrage technique du Lot 5.C-B](./lot-5-c-b-comptes-invitations-et-acces-sans-email.md).
 
 **Recette 11 novembre 2026 — 5.C-B.1 :** sur le dossier fictif Koffi Amani, le bouton de présélection retrouve Koffi Bernard et met à jour le champ Parent/Tuteur, tandis que la case de vérification familiale reste décochée. Le dossier n'a pas été finalisé. **Amélioration ergonomique ensuite codée :** fiche élargie avec informations à gauche et assistant à droite sur PC ; plan d'accès, note de suivi et formulaire manuel repliables ; affichage vertical sur petit écran. ESLint et build Vite réussis sur GitHub. **La nouvelle ergonomie reste à valider visuellement en local.** Aucune migration Supabase ni déploiement de fonction d'invitation.
+
+**Recette ergonomique 11/11/2026 :** sur Chrome local, la nouvelle fiche en deux colonnes est affichée avec les sections secondaires repliables. **5.C-B.2 :** fichier serveur séparé schoolnet-family-invitation et contrat client adminFamilyInvitationApi préparés sur GitHub. L'Edge n'est PAS déployée, et sa création de comptes est bloquée tant qu'un registre SQL d'invitations et le flag serveur ne sont pas approuvés. [Audit et règles d'activation B.2](./lot-5-c-b2-invitations-familiales-serveur-et-activation.md). Aucun e-mail envoyé, aucun compte créé et aucune migration appliquée.
 
 ### 4.4. Cas de recette obligatoires
 
@@ -362,10 +364,10 @@ Ne pas créer de nouveau dépôt pour résoudre un problème Vercel : la branche
 
 | Sujet | État / prochaine décision |
 | --- | --- |
-| **Lot actif** | **5.C-B.1 validé fonctionnellement**, amélioration ergonomique de la fiche (2 colonnes sur PC, sections repliables) préparée, puis 5.C-B.2 |
+| **Lot actif** | **5.C-B.2 : source de la fonction d'invitation familiale préparée ; sécurité et registre à valider**. 5.C-B.1 et ergonomie compactes validés en local |
 | **Code 5.C-A** | **Recette navigateur local réussie le 11/11** ; correspondances Parent/Apprenant et recherche classes cohérentes |
-| **Prochaine action unique** | **Récupérer les derniers commits GitHub et vérifier la nouvelle fiche compacte en local** ; ne pas finaliser la demande |
-| **Étapes suivantes** | **5.C-B.2** : invitations et comptes sécurisés ; 5.C-B.3 : apprenants sans e-mail ; 5.C-C : affectation/finalisation ; 5.C-D : transmission et connexion |
+| **Prochaine action unique** | **Valider le schéma de registre des invitations, l'idempotence et la reprise des échecs avant toute migration ou activation serveur** |
+| **Étapes suivantes** | 5.C-B.2 : migration du registre après accord, fonction Edge + recette, suivi envoi ; 5.C-B.3 : apprenants sans e-mail ; 5.C-C : affectation/finalisation ; 5.C-D : transmission et connexion |
 | **Établissements** | E1/E2 partiellement activés ; E3=S2 préparé mais non activé ; E4/E5 après 5.C |
 | **Passage d'année 5.D** | Code préparé, migration non appliquée |
 | **Supabase (dernier contrôle)** | 34 migrations ; 2 établissements ; 1 admin local ; 2 classes historiques ; 4 demandes ; 0 résolution |
