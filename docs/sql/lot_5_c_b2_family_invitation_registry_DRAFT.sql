@@ -144,7 +144,7 @@ BEGIN
       AND NEW.status NOT IN ('profile_ready', 'prepared', 'renewing', 'requires_review'))
     OR
     (OLD.status = 'renewing'
-      AND NEW.status NOT IN ('renewing', 'prepared', 'requires_review'))
+      AND NEW.status NOT IN ('prepared', 'requires_review'))
     OR
     (OLD.status = 'prepared'
       AND NEW.status NOT IN ('prepared', 'renewing', 'sent_declared', 'activated', 'requires_review'))
