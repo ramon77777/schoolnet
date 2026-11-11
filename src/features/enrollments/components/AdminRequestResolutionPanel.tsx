@@ -218,12 +218,11 @@ export default function AdminRequestResolutionPanel({
   }
 
   return (
-    <div className="mt-5 space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4" aria-label="Rattachement vérifié">
+    <div className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4" aria-label="Rattachement vérifié">
       <div>
         <h3 className="font-extrabold text-slate-950">🔗 Rattachement vérifié</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-600">
-          Sélectionnez les comptes réels et attestez le lien familial.
-          Aucun compte ni dossier scolaire n'est créé par cette action.
+          Retrouvez les comptes puis confirmez le lien familial avant toute finalisation.
         </p>
       </div>
       {!disabled && !loading && !error && !resolution && request.status !== "rejected" && (
@@ -281,7 +280,15 @@ export default function AdminRequestResolutionPanel({
           Demande refusée : aucun lien ni dossier scolaire ne sera créé.
         </p>
       ) : (
-        <form onSubmit={(event) => void finalize(event)} className="space-y-3">
+        <details className="rounded-xl border border-indigo-200 bg-white">
+          <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm font-bold text-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">
+            <span>Finalisation vérifiée — formulaire manuel</span>
+            <span className="text-xs font-normal text-indigo-700">
+              {parentId ? "Parent présélectionné" : "Parent à sélectionner"} ·{" "}
+              {studentId ? "Apprenant sélectionné" : "Apprenant à sélectionner"} · Ouvrir
+            </span>
+          </summary>
+          <form onSubmit={(event) => void finalize(event)} className="space-y-3 border-t border-indigo-100 p-3">
           {request.status === "processed" && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               Ancienne demande marquée « Traitée » sans preuve de rattachement :
@@ -387,7 +394,8 @@ export default function AdminRequestResolutionPanel({
           <p className="text-xs text-slate-500">
             Transaction atomique : un échec annule également la création éventuelle du lien familial.
           </p>
-        </form>
+          </form>
+        </details>
       )}
     </div>
   );
