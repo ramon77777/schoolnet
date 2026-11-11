@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { inspectFamilyInvitation, type FamilyInvitationInspection, type FamilyInvitationRecipient } from "@/features/enrollments/lib/adminFamilyInvitationApi";
 
 type RequestType = "student_enrollment" | "parent_access";
 
@@ -193,6 +194,25 @@ export default function AdminEnrollmentRequestPreflight({
   onSelectCandidate: (role: "parent" | "student", userId: string) => void;
 }) {
   const [catalog, setCatalog] = useState<Catalog>({ status: "loading" });
+  const [inspection, setInspection] = useState<{
+    recipient: FamilyInvitationRecipient;
+    result?: FamilyInvitationInspection;
+    error?: string;
+    loading?: boolean;
+  } | null>(null);
+
+  async function checkInvitation(recipient: FamilyInvitationRecipient): Promise<void> {
+    setInspection({ recipient, loading: true });
+    try {
+      const result = await inspectFamilyInvitation(request.id, recipient);
+      setInspection({ recipient, result });
+    } catch (error) {
+      setInspection({
+        recipient,
+        error: error instanceof Error ? error.message : "Inspection indisponible.",
+      });
+    }
+  }
 
   const parentCandidates = useMemo(
     () => findCandidates(users, "parent", request.guardian_full_name, request.guardian_email),
@@ -287,6 +307,55 @@ export default function AdminEnrollmentRequestPreflight({
           onSelectCandidate={onSelectCandidate}
         />
       </div>
+
+      <details className="mt-3 rounded-xl border border-sky-200 bg-white">
+        <summary className="cursor-pointer p-3 text-sm font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600">
+          Recette serveur 5.C-B.2 — inspection sans écriture
+        </summary>
+        <div className="space-y-3 border-t border-sky-100 p-3">
+          <p className="text-xs leading-5 text-slate-600">
+            Vérification du registre et de la correspondance des comptes par la fonction serveur.
+            Aucun compte, lien d'activation ou invitation n'est créé.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={inspection?.loading === true || !guardianEmail}
+              onClick={() => { void checkInvitation("parent"); }}
+              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Inspecter le parent
+            </button>
+            {request.request_type === "student_enrollment" && (
+              <button
+                type="button"
+                disabled={inspection?.loading === true || !studentEmail}
+                onClick={() => { void checkInvitation("student"); }}
+                className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Inspecter l'apprenant
+              </button>
+            )}
+          </div>
+          {inspection?.loading && (
+            <p role="status" className="text-xs text-slate-600">Inspection du registre en cours…</p>
+          )}
+          {inspection?.error && (
+            <p role="alert" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+              {inspection.error}
+            </p>
+          )}
+          {inspection?.result && (
+            <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-950">
+              <p className="font-bold">Inspection confirmée — aucune écriture</p>
+              <p>Destinataire : {inspection.result.recipient === "parent" ? "Parent" : "Apprenant"}</p>
+              <p>Décision serveur : {inspection.result.decision}</p>
+              <p>État du registre : {inspection.result.invitation_status ?? "Aucune invitation enregistrée"}</p>
+              <p className="mt-1">La vérification familiale et toute création restent manuelles et désactivées.</p>
+            </div>
+          )}
+        </div>
+      </details>
 
       <details className="mt-3 rounded-xl border border-violet-200 bg-white">
         <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm font-bold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-600">
