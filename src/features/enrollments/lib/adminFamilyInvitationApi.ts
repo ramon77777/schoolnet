@@ -21,7 +21,10 @@ export type FamilyInvitationInspection = {
   delivery_declared_at?: string | null;
   activation_status?: "not_confirmed" | "recorded_in_registry";
   /** Registry state is not, by itself, proof of a password change. */
-  activation_evidence_verified?: false;
+  activation_evidence_verified?: boolean;
+  activation_proof_state?: "not_applicable" | "awaiting_delivery" |
+    "evidence_source_unavailable" | "identity_mismatch" |
+    "invalid_chronology" | "requires_review" | "verified";
   can_resume?: boolean;
   can_renew?: boolean;
   can_flag_review?: boolean;
