@@ -161,8 +161,10 @@ ALTER TABLE public.schoolnet_family_invitation_records ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.schoolnet_family_invitation_records FORCE ROW LEVEL SECURITY;
 
 REVOKE ALL ON TABLE public.schoolnet_family_invitation_records
-  FROM PUBLIC, anon, authenticated;
+  FROM PUBLIC, anon, authenticated, service_role;
 
+-- Supabase attribue des droits par defaut au service_role. Les retirer
+-- explicitement avant de ne redonner que SELECT/INSERT/UPDATE evite DELETE.
 GRANT SELECT, INSERT, UPDATE
   ON TABLE public.schoolnet_family_invitation_records TO service_role;
 
