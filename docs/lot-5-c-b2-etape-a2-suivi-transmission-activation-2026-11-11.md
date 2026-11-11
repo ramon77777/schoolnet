@@ -1,3 +1,5 @@
+> **Contrôles techniques terminés — 11/11/2026.** GitHub Actions `43054088371` a confirmé : lint ESLint, build TypeScript/Vite + prébuild de sécurité, installation Deno et `deno check --node-modules-dir=auto` réussis. Une première exécution Deno avait échoué uniquement sur la résolution npm (absence du mode `nodeModulesDir=auto`) ; l'étape CI a été corrigée. Vérification Supabase post-commits : **fonction distante v2 inchangée sans `declare_sent`**, `verify_jwt=true`, `READ_ONLY_DEPLOYMENT=true` ; 35 migrations, 10 Auth, 0 registres, 0 événements, demande test `DEM-3CF7B169BAD9` `new`, 0 résolution. **Pas de déploiement serveur, de SQL ni de Vercel.** La recette navigateur A.2.1 doit encore être effectuée sur le PC.
+
 # SCHOOLNET — Lot 5.C-B.2 / Étape A.2.1
 ## Suivi de la transmission et de l'activation — implémentation préparatoire (11 novembre 2026)
 
