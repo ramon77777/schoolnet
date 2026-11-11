@@ -29,8 +29,22 @@ assert.match(
   /\[functions\.schoolnet-family-invitation\][\s\S]*?verify_jwt = true/,
   "La verification du JWT doit etre explicite dans config.toml.",
 );
+assert.match(edge, /if \(action === "declare_sent"\)/,
+  "La declaration d'envoi doit rester un contrat serveur distinct.");
+assert.ok(
+  edge.indexOf('if (action === "declare_sent")') > edge.indexOf("if (!enabled)"),
+  "Toute declaration d'envoi doit rester derriere le verrou d'ecriture.",
+);
+assert.match(edge, /advance\("prepared", "sent_declared"/,
+  "La declaration exige une transition CAS prepared vers sent_declared.",
+);
+assert.match(edge, /activation_evidence_verified: false/,
+  "Le serveur ne doit pas annoncer une preuve Auth qu'il ne possede pas.",
+);
+assert.doesNotMatch(edge, /action === "confirm_activation"/,
+  "La confirmation d'activation ne doit pas etre branchee avant une preuve Auth fiable.");
 assert.doesNotMatch(
   preflight,
-  /\b(?:prepareFamilyInvitation|retryFamilyInvitation|flagStaleFamilyInvitation)\s*\(/,
+  /\b(?:prepareFamilyInvitation|retryFamilyInvitation|flagStaleFamilyInvitation|declareFamilyInvitationSent)\s*\(/,
   "Aucun bouton de mutation ne doit etre raccorde dans le panneau de preflight.",
 );
