@@ -1,3 +1,5 @@
+> **12/11/2026 — Suite B.5.1 après GO :** migration SQL sandbox `20261112094548_schoolnet_auth_sandbox_b51_token_observer` installée, une table privée d'observation des **pré-émissions non vérifiées**, fonction SQL `observe_access_token` renvoyant les claims inchangés, GRANT limités à `supabase_auth_admin`, RLS FORCÉE, journal append-only. Tests simulés et ROLLBACK réussis ; le rôle SQL de maintenance n'a pas le droit `SET ROLE supabase_auth_admin`, donc tests réels du rôle Auth encore à effectuer. **Le hook n'a PAS été activé dans les paramètres Supabase Authentication > Hooks** et aucune méthode Auth réelle n'a encore été collectée en B.5.1. Voir [rapport B.5.1](./lot-5-c-b2-b51-custom-access-token-hook-sandbox-2026-11-12.md). Le principal est intact ; pas de fusion ni Vercel.
+
 # SCHOOLNET — Lot 5.C-B.2 / Étape B.4
 ## Architecture des preuves Auth durables — Supabase Free
 ### Audit en lecture seule et plan d'expérimentation du 12 novembre 2026
