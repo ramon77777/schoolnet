@@ -1,3 +1,5 @@
+> **Suite du 12/11/2026 — Phase B.2 effectuée avec autorisation distincte.** Sandbox `onqlsvphmrqhelislpry` : schéma privé `schoolnet_auth_sandbox`, deux tables de simulation, RLS forcée, droits publics révoqués, historique append-only ; migration unique `20261112085040_schoolnet_auth_sandbox_b2_private_evidence`. **9/9 tests de contraintes dans une transaction ROLLBACK réussis.** Sandbox après test : **0 compte Auth, 0 cas synthétique, 0 événement**, schéma présent ; projet principal intact. Rapport [B.2 — schéma, sécurité et recette](./lot-5-c-b2-b2-sandbox-sql-securite-2026-11-12.md). Les opérations B.3 d'activation réelle et de création de comptes restent non autorisées.
+
 # SCHOOLNET — Lot 5.C-B.2 / Phase B.1
 ## Création contrôlée de l'environnement Supabase Auth isolé — 12 novembre 2026
 
