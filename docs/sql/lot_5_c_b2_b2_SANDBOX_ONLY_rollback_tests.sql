@@ -8,6 +8,7 @@ BEGIN;
 DO $test$
 DECLARE
   c uuid := 'b2b20000-0000-4000-8000-000000000001';
+  c2 uuid := 'b2b20000-0000-4000-8000-000000000006';
   u uuid := 'b2b20000-0000-4000-8000-000000000002';
   r uuid := 'b2b20000-0000-4000-8000-000000000003';
   bad_user uuid := 'b2b20000-0000-4000-8000-000000000004';
@@ -22,6 +23,12 @@ BEGIN
     (case_id,request_id,recipient,generation_count,expected_auth_user_id,case_status)
   VALUES (c,r,'parent',1,u,'prepared');
 
+  -- Dossier apprenant distinct, sans evenement : la recette FK ne doit
+  -- pas etre court-circuitee par l'unicite des types de preuve du parent.
+  INSERT INTO schoolnet_auth_sandbox.invitation_cases
+    (case_id,request_id,recipient,generation_count,expected_auth_user_id,case_status)
+  VALUES (c2,r,'student',1,u,'prepared');
+
   INSERT INTO schoolnet_auth_sandbox.activation_evidence_events
     (event_id,case_id,generation_count,expected_auth_user_id,
      event_kind,source_kind,source_event_ref,occurred_at)
@@ -34,7 +41,7 @@ BEGIN
      'b2-passlogin-001',now() - interval '1 minute');
 
   IF (SELECT count(*) FROM schoolnet_auth_sandbox.invitation_cases
-       WHERE case_id=c) <> 1
+       WHERE request_id=r) <> 2
     OR (SELECT count(*) FROM schoolnet_auth_sandbox.activation_evidence_events
        WHERE case_id=c) <> 3 THEN
     RAISE EXCEPTION 'B2 : insertion synthetique de reference incorrecte';
@@ -54,7 +61,7 @@ BEGIN
     INSERT INTO schoolnet_auth_sandbox.activation_evidence_events
       (case_id,generation_count,expected_auth_user_id,event_kind,
        source_kind,source_event_ref,occurred_at)
-    VALUES (c,1,bad_user,'password_login','synthetic_password_login',
+    VALUES (c2,1,bad_user,'password_login','synthetic_password_login',
             'b2-baduser-001',now());
     RAISE EXCEPTION 'B2 : preuve liee a une autre identite';
   EXCEPTION WHEN foreign_key_violation THEN prevented := prevented+1;
@@ -133,7 +140,7 @@ BEGIN
       prevented;
   END IF;
 
-  RAISE NOTICE 'SCHOOLNET B2 : 9 protections sur 9; 1 dossier et 3 evenements synthetiques valides temporairement; ROLLBACK requis.';
+  RAISE NOTICE 'SCHOOLNET B2 : 9 protections sur 9; 2 dossiers et 3 evenements synthetiques valides temporairement; ROLLBACK requis.';
 END;
 $test$;
 
