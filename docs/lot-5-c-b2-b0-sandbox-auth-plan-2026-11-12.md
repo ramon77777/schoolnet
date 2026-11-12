@@ -1,3 +1,5 @@
+> **12/11/2026 — Phase B.1 créée avec autorisation distincte :** nouveau projet Free `schoolnet-auth-sandbox` **`onqlsvphmrqhelislpry`** en région `eu-west-1`, devis 0 USD/mois, statut `ACTIVE_HEALTHY`. Vérification de la sandbox : 0 utilisateur Auth, 0 table métier `public`, 0 fonction Edge et aucun historique de migration SCHOOLNET. Deux projets actifs sont maintenant présents, principal `anttmbhaphkhmkoqsofd` intact (10 comptes, 35 migrations). **La phase B.0 a bien été suivie de B.1 sous autorisation explicite** ; B.2, B.3 et B.4 restent non autorisées. Rapport détaillé : [B.1 — création et isolation](./lot-5-c-b2-b1-sandbox-cree-2026-11-12.md).
+
 # SCHOOLNET — Lot 5.C-B.2 / Phase B.0
 ## Préparation de l'environnement Auth isolé — 12 novembre 2026
 
