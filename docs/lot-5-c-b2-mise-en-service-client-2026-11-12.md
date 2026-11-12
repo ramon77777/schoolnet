@@ -1,3 +1,7 @@
+> **12/11/2026 ~14:08 UTC — HOOK PRINCIPAL ACTIVÉ PAR L'UTILISATEUR ET CONTRÔLE POST-ACTIVATION CONFORME.** Capture Supabase projet **`schoolnet_2.0`**, Auth Hooks : **Customize Access Token (JWT) Claims hook ENABLED**, type `Postgres function`, schéma `schoolnet_family_auth_proof`, fonction `observe_family_access_token`, toast `Successfully created`. Vérification SQL de l'intégrité : **10 Auth, 36 migrations, 0 registre, 0 événement, 0 observation**, table de preuve `FORCE RLS=true`. Journaux du créneau 13:55–14:30 UTC : **0 erreur dans `auth_logs`**, sans preuve qu'une authentification post-installation a effectivement exécuté le hook. **Ne pas annoncer la preuve Auth bout en bout validée** avant connexion pilote autorisée et écriture corrélée à une session. **SUITE IMMÉDIATE :** confirmer la redirection `https://schoolnet-snowy.vercel.app/auth/reset-password?mode=family-invite` dans Authentication → URL Configuration ; déployer le backend contrôlé puis faire une vraie recette pilotée. La connexion Vercel MCP voit l'équipe `ramon77777s-projects` mais ne peut ni inspecter le projet `schoolnet` (404) ni lister ses déploiements (403) : vérifier l'accès Vercel avant de promettre une confirmation technique du déploiement ; un check GitHub Vercel `success` est disponible sur la branche et n'est pas une preuve de production. Aucune fusion ni redéploiement Vercel réalisés à ce stade.
+
+---
+
 # SCHOOLNET — Lot 5.C-B.2 — Mise en service pour tests clients
 ## Reprise prioritaire — 12 novembre 2026
 
