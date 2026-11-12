@@ -1,59 +1,62 @@
-// SCHOOLNET — Lot 5.C-B.2: garde de compilation sans effet de bord.
-// Verifie statiquement que le build n'est pas lance si l'un des verrous
-// d'invitations familiales est retire par inadvertance.
+// SCHOOLNET — Garde de publication des invitations familiales.
+// Aucune requête réseau ou écriture. Assertions statiques avant build.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const edge = readFileSync("supabase/functions/schoolnet-family-invitation/index.ts", "utf8");
 const config = readFileSync("supabase/config.toml", "utf8");
-const preflight = readFileSync(
-  "src/features/enrollments/components/AdminEnrollmentRequestPreflight.tsx",
+const manager = readFileSync(
+  "src/features/enrollments/components/AdminFamilyInvitationManager.tsx",
+  "utf8",
+);
+const sql = readFileSync(
+  "supabase/proposals/20261112_family_password_auth_hook_proof.sql",
   "utf8",
 );
 
-assert.match(edge, /const READ_ONLY_DEPLOYMENT = true;/, "Le verrou permanent doit rester actif.");
-assert.match(
-  edge,
-  /const enabled = !READ_ONLY_DEPLOYMENT &&/,
-  "Le flag d'environnement ne peut pas contourner le verrou permanent.",
-);
-assert.match(edge, /pilotRequestId !== requestId\.toLowerCase\(\)/, "Le dossier pilote doit etre borne par le serveur.");
-assert.match(edge, /pilotRecipient !== recipient/, "Le destinataire pilote doit etre borne par le serveur.");
-assert.match(
-  edge,
-  /origin === LOCAL_INSPECT_ORIGIN && action !== "inspect"/,
-  "Le navigateur local ne doit jamais effectuer d'ecriture.",
-);
-assert.match(
-  config,
-  /\[functions\.schoolnet-family-invitation\][\s\S]*?verify_jwt = true/,
-  "La verification du JWT doit etre explicite dans config.toml.",
-);
-assert.match(edge, /if \(action === "declare_sent"\)/,
-  "La declaration d'envoi doit rester un contrat serveur distinct.");
-assert.ok(
-  edge.indexOf('if (action === "declare_sent")') > edge.indexOf("if (!enabled)"),
-  "Toute declaration d'envoi doit rester derriere le verrou d'ecriture.",
-);
+assert.match(edge, /const READ_ONLY_DEPLOYMENT = false;/,
+  "Le code doit correspondre au parcours autorisé, pas à l'ancienne version consultative.");
+assert.match(edge, /Deno\.env\.get\("SCHOOLNET_FAMILY_INVITES_ENABLED"\) !== "false"/,
+  "L'arrêt d'urgence par variable serveur doit rester possible.");
+assert.match(edge, /url !== PRODUCTION_PROJECT_URL/,
+  "Les opérations doivent être limitées au projet Supabase officiel.");
+assert.match(edge, /const PRODUCTION_PROJECT_URL = "https:\/\/anttmbhaphkhmkoqsofd\.supabase\.co";/,
+  "Le projet principal doit être explicitement vérifié côté serveur.");
+assert.match(edge, /action !== "inspect" && origin !== PRODUCTION_ORIGIN/,
+  "Toute mutation doit être refusée hors origine de production.");
+assert.match(edge, /callerProfile\?\.role !== "admin"/,
+  "Le rôle de Super Administrateur doit être vérifié en base.");
+assert.match(edge, /service\.auth\.getUser\(authHeader\.slice\(7\)\)/,
+  "Le JWT doit être vérifié par Supabase Auth.");
+assert.match(edge, /Deno\.env\.get\("SCHOOLNET_FAMILY_PILOT_REQUEST_ID"\)/,
+  "Le verrou facultatif de demande pilote doit être conservé.");
+assert.match(edge, /Deno\.env\.get\("SCHOOLNET_FAMILY_PILOT_RECIPIENT"\)/,
+  "Le verrou facultatif de destinataire pilote doit être conservé.");
+assert.match(edge, /\.from\("schoolnet_family_invitation_records"\)/,
+  "Le registre et les transitions CAS ne doivent pas être contournés.");
 assert.match(edge, /advance\("prepared", "sent_declared"/,
-  "La declaration exige une transition CAS prepared vers sent_declared.",
-);
-assert.match(edge, /evaluateFamilyActivationProof\(/,
-  "La preuve Auth A.2.2 doit etre evaluee cote serveur.");
-assert.match(edge, /passwordUpdated: null,/,
-  "Les preuves Auth reelles ne doivent pas etre inventees.");
-assert.match(edge, /validPasswordVerified: null,/,
-  "Le hook de verification doit rester non raccorde.");
-assert.match(edge, /passwordLogin: null,/,
-  "La preuve de connexion par mot de passe doit rester non raccordee.");
-assert.match(edge, /activation_evidence_verified: activationProof\.verified/,
-  "Aucune activation ne peut etre confirmee sans evaluation de preuve.");
-assert.match(edge, /previous\.status === "activated" && !activationProof\.verified/,
-  "Un statut registre activated sans preuve exige revue humaine.");
-assert.doesNotMatch(edge, /action === "confirm_activation"/,
-  "La confirmation d'activation ne doit pas etre branchee avant une preuve Auth fiable.");
-assert.doesNotMatch(
-  preflight,
-  /\b(?:prepareFamilyInvitation|retryFamilyInvitation|flagStaleFamilyInvitation|declareFamilyInvitationSent)\s*\(/,
-  "Aucun bouton de mutation ne doit etre raccorde dans le panneau de preflight.",
-);
+  "Déclaration d'envoi distincte obligatoire.");
+assert.match(edge, /advance\("sent_declared", "activated"\)/,
+  "L'activation requiert une transition serveur spécifique.");
+assert.match(edge, /schoolnet_family_password_session_proof/,
+  "L'activation exige une preuve JWT password corrélée à une vraie session.");
+assert.match(edge, /type: "invite", email, options: \{ redirectTo \}/,
+  "Les comptes nouveaux doivent recevoir un lien Supabase temporaire sans mail automatique.");
+assert.match(edge, /schoolnet_family_invitation: true/,
+  "Le marqueur de preuve Auth doit rester dans app_metadata géré par le serveur.");
+assert.doesNotMatch(edge, /auth\.admin\.deleteUser/,
+  "Ne jamais supprimer automatiquement un compte Auth pour effacer un incident.");
+assert.doesNotMatch(edge, /sendEmail\(|sendMail\(/,
+  "Aucun envoi d'e-mail à l'insu de l'administrateur.");
+assert.match(config, /\[functions\.schoolnet-family-invitation\][\s\S]*?verify_jwt = true/,
+  "La vérification JWT côté Supabase Edge doit rester active.");
+assert.match(manager, /confirmFamilyInvitationActivation\(/,
+  "L'interface doit proposer une confirmation sécurisée après preuve Auth.");
+assert.match(manager, /declareFamilyInvitationSent\(/,
+  "La transmission doit être déclarée séparément.");
+assert.match(sql, /SECURITY INVOKER/,
+  "Le hook Auth doit être sans élévation de privilège.");
+assert.match(sql, /schoolnet_family_password_session_proof/,
+  "La preuve de session doit être disponible avant de confirmer l'activation.");
+assert.doesNotMatch(sql, /GRANT SELECT ON schoolnet_family_auth_proof\.token_issue_observations TO (?:anon|authenticated)/,
+  "Les observations ne doivent jamais être exposées directement au navigateur.");
