@@ -122,10 +122,20 @@ export default function AdminFamilyInvitationManager({
       }
 
       if (action === "declare_sent") {
-        if (!panels[recipient].draft || !deliveryConfirmed[recipient]) {
-          throw new Error("Copiez puis transmettez le lien, et confirmez la remise.");
+        const currentPanel = panels[recipient];
+        const currentInspection = currentPanel.inspection;
+        const canAttestExisting = currentInspection?.invitation_status === "prepared" &&
+          currentInspection.delivery_status === "ready_to_declare" &&
+          !currentInspection.delivery_declared_at;
+        if ((!currentPanel.draft && !canAttestExisting) || !deliveryConfirmed[recipient]) {
+          throw new Error("Vérifiez une invitation préparée et confirmez sa remise réelle.");
         }
-        if (!window.confirm("Avez-vous réellement transmis ce lien au destinataire vérifié ?")) return;
+        const confirmation = currentPanel.draft
+          ? "Avez-vous réellement transmis ce lien au destinataire vérifié ?"
+          : "Confirmez-vous avoir déjà transmis le lien initial au bon destinataire ? " +
+            "Le registre conservera la date de cette déclaration, pas la date de la remise. " +
+            "Aucun nouveau lien ne sera généré.";
+        if (!window.confirm(confirmation)) return;
         await declareFamilyInvitationSent({
           requestId: request.id, recipient, verified: true,
           deliveryConfirmed: true, verificationNote: note,
@@ -231,6 +241,12 @@ export default function AdminFamilyInvitationManager({
             request.status !== "processed";
           const canResume = inspection?.can_resume === true;
           const canRenew = inspection?.can_renew === true;
+          // Le lien secret disparait a la fermeture de la fenetre, pas son etat serveur.
+          // Autoriser l'attestation d'une remise deja realisee, sans regenerer le lien.
+          const canDeclareWithoutDraft = !panel.draft &&
+            inspection?.invitation_status === "prepared" &&
+            inspection.delivery_status === "ready_to_declare" &&
+            !inspection.delivery_declared_at;
           const canConfirm = inspection?.can_confirm_activation === true &&
             inspection?.activation_evidence_verified === true;
           return (
@@ -304,17 +320,34 @@ export default function AdminFamilyInvitationManager({
                   </div>
                 </div>
               )}
-              {panel.draft && (
+              {(panel.draft || canDeclareWithoutDraft) && (
                 <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs">
-                  <p className="font-bold text-emerald-900">Lien temporaire prêt — génération {panel.draft.generation_count}</p>
-                  <p className="text-emerald-900">
-                    Ce lien personnel est affiché uniquement pendant cette session.
-                    Il n'est pas sauvegardé en clair dans le registre.
-                  </p>
-                  <button type="button" onClick={() => void copyMessage(recipient)}
-                    className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">
-                    Copier le message avec le lien
-                  </button>
+                  {panel.draft ? (
+                    <>
+                      <p className="font-bold text-emerald-900">Lien temporaire prêt — génération {panel.draft.generation_count}</p>
+                      <p className="text-emerald-900">
+                        Ce lien personnel est affiché uniquement pendant cette session.
+                        Il n'est pas sauvegardé en clair dans le registre.
+                      </p>
+                      <button type="button" onClick={() => void copyMessage(recipient)}
+                        className="rounded-lg bg-emerald-700 px-3 py-2 font-bold text-white">
+                        Copier le message avec le lien
+                      </button>
+                    </>
+                  ) : (
+                    <div role="status" className="space-y-1 text-emerald-900">
+                      <p className="font-bold">Lien déjà préparé — déclaration possible après fermeture</p>
+                      <p>
+                        Le lien secret n'est plus affichable. Si vous l'avez réellement
+                        transmis au bon destinataire, vous pouvez enregistrer cette remise
+                        sans recréer de compte ni générer de nouveau lien.
+                      </p>
+                      <p>
+                        Le registre conservera la date de cette déclaration.
+                        Précisez la date réelle de remise dans la justification si vous la connaissez.
+                      </p>
+                    </div>
+                  )}
                   <label className="block text-slate-700">
                     Mode de transmission
                     <select value={deliveryMethod[recipient]}
@@ -337,7 +370,7 @@ export default function AdminFamilyInvitationManager({
                   <button type="button" disabled={!canWrite || !deliveryConfirmed[recipient]}
                     onClick={() => void run(recipient, "declare_sent")}
                     className="rounded-lg bg-indigo-700 px-3 py-2 font-bold text-white disabled:opacity-50">
-                    Déclarer la transmission
+                    {panel.draft ? "Déclarer la transmission" : "Déclarer le lien déjà transmis"}
                   </button>
                 </div>
               )}
