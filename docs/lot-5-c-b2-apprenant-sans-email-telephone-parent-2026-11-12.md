@@ -1,3 +1,7 @@
+> **ACTIVATION PARENT CONFIRMÉE 12/11/2026.** La demande publique de Yao Tabra (4e, sans e-mail personnel) a produit un compte Parent Yao Thierno créé et désormais **`activated`**. Vérification SQL sur `schoolnet_2.0` (`anttmbhaphkhmkoqsofd`) : 1 registre Parent `status=activated`, `generation_count=1`, `sent_declared_at=2026-11-12 16:31:38.109+00`, `schoolnet_family_password_session_proof(user_id,sent_declared_at)=true`, **1 observation `password` liée à une session Auth postérieure à la transmission**. 11 comptes Auth / 1 invitation activée / 6 événements du registre / 5 observations du hook / 36 migrations. La confirmation est visible dans l'UI Super Administrateur. **Aucun compte Apprenant ni rattachement familial n'a encore été créé** ; sur le tableau de bord Parent, `Aucun enfant lié` est donc normal. Ne PAS recreer le Parent ou renvoyer son lien. La prochaine priorité reste le **parcours apprenant sans e-mail**, avec téléphone familial + identifiant individuel, mot de passe propre et lien à remettre à l'adresse e-mail du Parent. La branche est séparée de `main` ; ne pas déployer un mode de connexion non validé.
+
+---
+
 # SCHOOLNET — Lot 5.C-B.2 — Apprenant sans adresse e-mail personnelle
 Date : 12 novembre 2026
 État : **CONCEPTION ET PRÉPARATION SUR UNE BRANCHE ISOLÉE — NON IMPLÉMENTÉ, NON DÉPLOYÉ**
