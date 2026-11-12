@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { getAdminEnrollments, type AdminEnrollment } from "@/features/enrollments/lib/adminEnrollmentsApi";
 import AdminEnrollmentRequestPreflight from "@/features/enrollments/components/AdminEnrollmentRequestPreflight";
+import AdminFamilyInvitationManager from "@/features/enrollments/components/AdminFamilyInvitationManager";
 
 type RequestStatus = "new" | "contacted" | "processed" | "rejected";
 type RequestType = "student_enrollment" | "parent_access";
@@ -225,6 +226,34 @@ export default function AdminRequestResolutionPanel({
           Retrouvez les comptes puis confirmez le lien familial avant toute finalisation.
         </p>
       </div>
+      {!loading && !migrationPending && request.status !== "rejected" && (
+        <AdminFamilyInvitationManager
+          request={request}
+          disabled={disabled}
+          onBusyChange={onBusyChange}
+          onAccountPrepared={async (recipient, userId) => {
+            const { data: refreshed, error: refreshError } =
+              await supabase.rpc("admin_list_users");
+            if (refreshError) throw refreshError;
+            const usersAfter = (refreshed ?? []) as UserChoice[];
+            const target = usersAfter.find((item) =>
+              item.id === userId && item.role === recipient
+            );
+            if (!target) {
+              throw new Error("Compte préparé mais liste des utilisateurs non actualisée.");
+            }
+            setUsers(usersAfter);
+            if (recipient === "parent") {
+              setParentId(userId);
+            } else {
+              setStudentId(userId);
+              setEnrollmentId("");
+            }
+            setFamilyVerified(false);
+            setLinkExists(null);
+          }}
+        />
+      )}
       {!disabled && !loading && !error && !resolution && request.status !== "rejected" && (
         <AdminEnrollmentRequestPreflight
           request={request}
