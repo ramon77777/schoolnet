@@ -1,7 +1,11 @@
+> **VALIDATION RÉELLE POST-CORRECTION — 12/11/2026, 11:51:47 UTC — ÉTAPE `password` RÉUSSIE.** L'utilisateur a exécuté le script local sous clés sandbox, en ne modifiant que le mot de passe du **Parent fictif** : `B52_PRECONTROLE_OK`, `B52_MOT_DE_PASSE_REDEFINI`, `B52_CONNEXION_PASSWORD_OK`, `B52_SESSION_VERIFIEE`, `B52_TEST_POST_CORRECTION_TERMINE`. **Contrôle SQL DIRECT ensuite : une (1) observation** dans `schoolnet_auth_observation.token_issue_events`, méthode **`password`**, destinataire **Parent**, état immuable **`token_pre_issue_unverified`**, `observed_at=2026-11-12 11:51:47.562986+00`. Corrélation `e.session_id=s.id AND e.user_id=s.user_id` avec `auth.sessions` : **1 correspondance / 0 sans session**. Sandbox : **2 comptes Auth, 1 observation, 0 cas/événement B.2, 3 migrations**. Principal : **10 Auth, 0 invitation, 0 événement familial, 35 migrations**. **Le correctif fonctionne de bout en bout pour l'observation serveur `password`** ; cela ne prouve ni une connexion familiale activée, ni un changement de mot de passe indépendant attesté par audit, ni `activated`. La source reste `token_pre_issue_unverified`, sans promotion automatique. **SUITE B.5.2** sous autorisation déjà donnée : tester `token_refresh` avec un jeton de session temporaire, puis `recovery`, et lire le journal après chaque étape. Aucun besoin de toucher à la sandbox SQL, au principal ou à Vercel pour ce contrôle.
+
+---
+
 # SCHOOLNET — Lot 5.C-B.2 / B.5.2
 ## Correctif ciblé du hook Auth et reprise de la recette réelle — 12 novembre 2026
 
-**ÉTAT : CORRECTION SQL APPLIQUÉE DANS LA SANDBOX ; SIMULATIONS RÉUSSIES ; NOUVEAU LOGIN RÉEL POST-CORRECTION ENCORE À EFFECTUER.**
+**ÉTAT ACTUEL : CORRECTION SQL ET TEST AUTH RÉEL `password` VALIDÉS, AVEC OBSERVATION CORRÉLÉE À UNE SESSION. TESTS `token_refresh` ET `recovery` RESTANTS.**
 
 ### 1. Autorisation et périmètre
 
