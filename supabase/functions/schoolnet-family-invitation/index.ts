@@ -1,12 +1,12 @@
-// SCHOOLNET — Lot 5.C-B.2. Fonction de lecture "inspect" deployee et recetee.
-// Les ecritures Auth, registre et liens demeurent bloquees par deux verrous.
-// Aucun deploiement d'une nouvelle version ni activation sans accord distinct.
-// AUCUN email n'est envoye : le responsable scolaire transmet le lien manuellement.
+// SCHOOLNET — Lot 5.C-B.2. Parcours de comptes et invitations familiales.
+// Uniquement SUPER ADMIN et origine officielle pour les mutations.
+// Le serveur genere des liens temporaires, n'envoie AUCUN email.
+// L'activation exige une transmission declaree, un login Auth password
+// observe et une session reelle correspondante, sans token en base.
 // Le service-role ne doit jamais etre expose au navigateur.
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { evaluateFamilyActivationProof } from "../_shared/familyActivationEvidence.ts";
 
-type Action = "inspect" | "prepare" | "resume" | "renew" | "flag_review" | "declare_sent";
+type Action = "inspect" | "prepare" | "resume" | "renew" | "flag_review" | "declare_sent" | "confirm_activation";
 type Recipient = "parent" | "student";
 type RequestRow = {
   id: string;
@@ -44,6 +44,8 @@ type AuthUser = {
   email?: string;
   email_confirmed_at?: string | null;
   last_sign_in_at?: string | null;
+  created_at?: string;
+  app_metadata?: Record<string, unknown>;
 };
 type Body = {
   action?: unknown;
@@ -59,9 +61,11 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // La recette se fait d'abord en local : cette origine ne pourra utiliser que "inspect".
 const LOCAL_INSPECT_ORIGIN = "http://localhost:5173";
+const PRODUCTION_ORIGIN = "https://schoolnet-snowy.vercel.app";
+const PRODUCTION_PROJECT_URL = "https://anttmbhaphkhmkoqsofd.supabase.co";
 const allowedOrigins = new Set([
   LOCAL_INSPECT_ORIGIN,
-  "https://schoolnet-snowy.vercel.app",
+  PRODUCTION_ORIGIN,
   "https://schoolnet-git-feature-schoolnet-mul-4bbbf5-ramon77777s-projects.vercel.app",
   ...(Deno.env.get("SCHOOLNET_ALLOWED_ORIGINS") ?? "")
     .split(",").map((value) => value.trim()).filter(Boolean),
@@ -124,13 +128,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return send(req, { success: true });
   if (req.method !== "POST") return reject(req, 405, "Methode non autorisee.");
 
-  // Garde-fou serveur : ce code reste inactif meme apres un deploiement
-  // accidentel tant que le registre et la recette ne sont pas autorises.
-  // Double verrou 5.C-B.2 : ce deploiement est exclusivement en lecture.
-  // Une future activation exige une nouvelle modification du code et un GO distinct.
-  const READ_ONLY_DEPLOYMENT = true;
+  // Publication pilote SCHOOLNET : écritures possibles uniquement depuis
+  // l'origine de production, par un Super Administrateur vérifié par Auth.
+  // Variable d'urgence SCHOOLNET_FAMILY_INVITES_ENABLED=false : désactivation
+  // sans redéploiement de l'interface. Le blocage local demeure permanent.
+  const READ_ONLY_DEPLOYMENT = false;
   const enabled = !READ_ONLY_DEPLOYMENT &&
-    Deno.env.get("SCHOOLNET_FAMILY_INVITES_ENABLED") === "true";
+    Deno.env.get("SCHOOLNET_FAMILY_INVITES_ENABLED") !== "false";
   const authHeader = req.headers.get("authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return reject(req, 401, "Connexion administrateur requise.");
@@ -138,8 +142,8 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!url || !anonKey || !serviceKey) {
-    return reject(req, 503, "Service indisponible.");
+  if (url !== PRODUCTION_PROJECT_URL || !anonKey || !serviceKey) {
+    return reject(req, 503, "Service SCHOOLNET non configure sur le projet attendu.");
   }
 
   const service = createClient(url, serviceKey, {
@@ -171,13 +175,13 @@ Deno.serve(async (req) => {
     return reject(req, 400, "Parametres incorrects.");
   }
   const action = clean(body.action) as Action;
-  // Le frontend Vite local sert uniquement a recetter les lectures.
-  if (origin === LOCAL_INSPECT_ORIGIN && action !== "inspect") {
-    return reject(req, 403, "Sur localhost, seule l'inspection est autorisee.");
+  // Toute mutation est interdite aux builds locaux, previews et autres domaines.
+  if (action !== "inspect" && origin !== PRODUCTION_ORIGIN) {
+    return reject(req, 403, "Les mutations sont reservees au domaine officiel SCHOOLNET.");
   }
   const requestId = clean(body.request_id);
   const recipient = clean(body.recipient) as Recipient;
-  if (!["inspect", "prepare", "resume", "renew", "flag_review", "declare_sent"].includes(action) ||
+  if (!["inspect", "prepare", "resume", "renew", "flag_review", "declare_sent", "confirm_activation"].includes(action) ||
     !uuidPattern.test(requestId) ||
     (recipient !== "parent" && recipient !== "student")) {
     return reject(req, 400, "Demande ou destinataire invalide.");
@@ -190,8 +194,8 @@ Deno.serve(async (req) => {
   if (requestError) return reject(req, 503, "Lecture de la demande indisponible.");
   const row = request as RequestRow | null;
   if (!row) return reject(req, 404, "Demande introuvable.");
-  if (row.status === "rejected" || row.status === "processed") {
-    return reject(req, 409, "Cette demande ne permet pas une nouvelle invitation.");
+  if (row.status === "rejected") {
+    return reject(req, 409, "Une demande refusee ne peut pas recevoir d'invitation.");
   }
   if (row.request_type !== "student_enrollment" && row.request_type !== "parent_access") {
     return reject(req, 409, "Type de demande non reconnu.");
@@ -214,7 +218,9 @@ Deno.serve(async (req) => {
     .from("public_enrollment_request_resolutions")
     .select("request_id").eq("request_id", requestId).maybeSingle();
   if (resolutionError) return reject(req, 503, "Verification de finalisation indisponible.");
-  if (resolution) return reject(req, 409, "Demande deja finalisee.");
+  // Une demande deja finalisee peut ENCORE suivre ses invitations,
+  // sans creer de nouvel utilisateur. Les actions de creation sont
+  // filtrees apres lecture du registre.
 
   const { data: foundData, error: lookupError } = await scoped
     .rpc("schoolnet_admin_lookup_auth_email", { p_email: email });
@@ -231,21 +237,41 @@ Deno.serve(async (req) => {
     return reject(req, 503, "Registre familial non active. Migration a valider.");
   }
   const previous = existingRecord as InvitationRecord | null;
+  if ((row.status === "processed" || resolution) && !previous) {
+    return reject(req, 409, "Demande finalisee sans invitation familiale : revue manuelle requise.");
+  }
+
+  // Preuve Auth: un hook non modificateur enregistre la methode password
+  // puis le serveur verifie l'existence d'une session persistee APRES l'envoi.
+  // Le registre seul et un email confirme ne suffisent jamais.
+  async function observedPasswordLogin(invite: InvitationRecord | null): Promise<{
+    verified: boolean; unavailable: boolean;
+  }> {
+    if (!invite?.user_id || !invite.sent_declared_at ||
+      !["sent_declared", "activated"].includes(invite.status)) {
+      return { verified: false, unavailable: false };
+    }
+    const { data, error } = await service.rpc(
+      "schoolnet_family_password_session_proof", {
+        p_user_id: invite.user_id,
+        p_after: invite.sent_declared_at,
+      },
+    );
+    return { verified: !error && data === true, unavailable: Boolean(error) };
+  }
 
   if (action === "inspect") {
-    // A.2.2 — ZERO source de preuve Auth branchee a ce stade.
-    // Le registre seul, un JWT ou l'email confirme NE PROUVENT PAS
-    // la reinitialisation du mot de passe suivie d'une authentification.
-    // Les sources serveur resteront nulles jusqu'au pilote isole autorise.
-    const activationProof = evaluateFamilyActivationProof({
-      invitation: previous,
-      authUser: null,
-      profile: null,
-      passwordUpdated: null,
-      validPasswordVerified: null,
-      passwordLogin: null,
-      nowIso: new Date().toISOString(),
-    });
+    // La preuve doit être lue côté serveur depuis une méthode JWT
+    // observée, liée au même utilisateur et à une vraie session Auth.
+    const methodProof = await observedPasswordLogin(previous);
+    const activationProof = {
+      verified: methodProof.verified,
+      state: methodProof.verified ? "verified" :
+        methodProof.unavailable ? "evidence_source_unavailable" :
+        previous?.status === "sent_declared" ? "awaiting_password_login" :
+        previous?.status === "activated" ? "requires_review" :
+        previous?.status === "prepared" ? "awaiting_delivery" : "not_applicable",
+    };
     const decision = previous
       ? previous.status === "activated" && !activationProof.verified ? "manual_review"
         : previous.status === "activated" ? "already_activated"
@@ -270,6 +296,9 @@ Deno.serve(async (req) => {
       activation_evidence_verified: activationProof.verified,
       activation_proof_state: activationProof.state,
       // Hors du pilote isole : aucune preuve serveur ne peut etre fournie.
+      can_confirm_activation: Boolean(previous?.user_id && previous.status === "sent_declared" &&
+        found?.exists && found?.user_id === previous.user_id &&
+        found?.role === expectedRole && activationProof.verified),
       can_resume: Boolean(previous?.user_id) &&
         ["auth_created", "profile_ready", "requires_review"].includes(previous?.status ?? ""),
       can_renew: Boolean(previous?.user_id) &&
@@ -282,20 +311,21 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Verrou n°1 : toute ecriture reste interdite durant la phase A.
+  // Arrêt d'urgence: aucun traitement serveur possible si désactivé.
   if (!enabled) {
-    return reject(req, 503, "Les invitations familiales ne sont pas encore activees.");
+    return reject(req, 503, "Les invitations familiales sont temporairement suspendues.");
   }
 
-  // Verrou n°2 : un futur deblocage ne doit JAMAIS ouvrir toutes les demandes.
-  // Le dossier ET le destinataire du pilote sont imposes par le serveur.
-  // Ces variables ne sont pas des decisions du client ni une preuve d'identite.
+  // Option de restriction d'un essai à UNE demande, configurable côté serveur.
+  // Sans ces variables la fonction traite les demandes sous contrôle Admin.
   const pilotRequestId = clean(Deno.env.get("SCHOOLNET_FAMILY_PILOT_REQUEST_ID")).toLowerCase();
   const pilotRecipient = clean(Deno.env.get("SCHOOLNET_FAMILY_PILOT_RECIPIENT"));
-  if (!uuidPattern.test(pilotRequestId) || pilotRequestId !== requestId.toLowerCase() ||
-    (pilotRecipient !== "parent" && pilotRecipient !== "student") ||
-    pilotRecipient !== recipient) {
-    return reject(req, 403, "Cette demande ou ce destinataire n'est pas autorise en pilote.");
+  if ((pilotRequestId && pilotRequestId !== requestId.toLowerCase()) ||
+    (pilotRecipient && pilotRecipient !== recipient)) {
+    return reject(req, 403, "Cette demande ou ce destinataire est hors du pilote autorise.");
+  }
+  if (row.status === "processed" && action === "prepare") {
+    return reject(req, 409, "Le dossier finalise ne permet pas de nouveau compte.");
   }
 
   // Aucune preparation Auth vers une adresse fictive ou reservee pour les recettes.
@@ -347,10 +377,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Etape A.2 : enregistrement d'une ATTESTATION de transmission manuelle.
-  // Aucune preuve de reception chez le destinataire n'est pretendue.
-  // Le verrou READ_ONLY_DEPLOYMENT reste actif : ce bloc est dormant
-  // jusqu'a une autorisation DISTINCTE d'ecriture et une recette en projet isole.
+  // Attestation de transmission manuelle: aucune preuve de reception
+  // ni aucune preuve de connexion n'est deduite de ce seul geste.
   if (action === "declare_sent") {
     if (body.delivery_confirmed !== true) {
       return reject(req, 422, "Confirmez avoir transmis le lien par un canal externe.");
@@ -410,6 +438,49 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Confirmation par le Super Admin apres preuve de mot de passe.
+  // Cette action reste distincte de "declare_sent": aucune activation
+  // sur une simple declaration d'envoi ou un status client.
+  if (action === "confirm_activation") {
+    if (!previous || !previous.user_id || previous.email !== email ||
+      previous.expected_role !== expectedRole ||
+      !previous.sent_declared_at ||
+      !["sent_declared", "activated"].includes(previous.status) ||
+      !found?.exists || found.user_id !== previous.user_id ||
+      found.role !== expectedRole) {
+      return reject(req, 409, "Aucune invitation envoyee et liee a ce compte.");
+    }
+    const proof = await observedPasswordLogin(previous);
+    if (proof.unavailable) {
+      return reject(req, 503, "La preuve Auth est indisponible : aucune activation.");
+    }
+    if (!proof.verified) {
+      return reject(req, 409,
+        "Le destinataire doit d'abord choisir son mot de passe et se connecter.");
+    }
+    const authCheck = await service.auth.admin.getUserById(previous.user_id);
+    const authUser = authCheck.data?.user;
+    if (authCheck.error || !authUser ||
+      authUser.email?.trim().toLowerCase() !== email ||
+      !authUser.email_confirmed_at) {
+      return reject(req, 409, "Le compte Auth n'est pas confirme ou est different.");
+    }
+    const profileCheck = await service.from("profiles")
+      .select("role,full_name").eq("id", previous.user_id).maybeSingle();
+    if (profileCheck.error || profileCheck.data?.role !== expectedRole ||
+      profileCheck.data?.full_name !== name) {
+      return reject(req, 409, "Role ou identite du profil non confirme.");
+    }
+    if (previous.status === "sent_declared" &&
+      !await advance("sent_declared", "activated")) {
+      return reject(req, 409, "Statut modifie entre-temps : actualisez la demande.");
+    }
+    return send(req, {
+      success: true, status: "activated", recipient, request_id: requestId,
+      activation_evidence_verified: true, no_link_in_response: true,
+    });
+  }
+
   // Requalification manuelle d'une operation bloquee depuis au moins 2 min.
   // Aucun compte Auth ni jeton n'est cree ici. Les etats incertains sans user_id
   // restent bloques apres revue : pas de recreation automatique.
@@ -461,21 +532,27 @@ Deno.serve(async (req) => {
       "Impossible de reserver la preparation. Verifiez les invitations existantes.");
     }
 
-    // createUser(email_confirm: false) cree un compte SANS mot de passe.
-    // Contrairement a generateLink(invite), la creation Auth est ici explicite.
-    // En cas de course avec un signup externe, l'unicite Auth refuse le doublon.
-    const { data: creation, error: createError } =
-      await service.auth.admin.createUser({ email, email_confirm: false });
-    const created = creation?.user;
-    if (createError || !created || created.email?.toLowerCase() !== email ||
+    // Une invitation Auth cree le compte SANS email envoye automatiquement.
+    // Le jeton n'est renvoye au Super Admin qu'apres les verifications serveur.
+    const startedAt = Date.now();
+    const { data: initialLinkData, error: createError } =
+      await service.auth.admin.generateLink({
+        type: "invite", email, options: { redirectTo },
+      });
+    const created = initialLinkData?.user;
+    const initialActionLink = initialLinkData?.properties?.action_link;
+    const createdAt = Date.parse(created?.created_at ?? "");
+    if (createError || !created || !initialActionLink ||
+      created.email?.trim().toLowerCase() !== email ||
+      !Number.isFinite(createdAt) || createdAt < startedAt - 15_000 ||
       Boolean(created.last_sign_in_at) || Boolean(created.email_confirmed_at)) {
       await markReview("preparing", "AUTH_CREATION_UNCERTAIN");
       return reject(req, 409,
-        "Creation Auth non confirmee. Intervention requise, ne recommencez pas.");
+        "Creation ou invitation Auth incertaine. Controle manuel obligatoire, aucun nouvel essai.");
     }
 
-    // Lier le compte Auth au registre immediatement ; aucun lien n'a encore
-    // ete genere. Si cette ecriture echoue, le compte est conserve pour revue.
+    // Lier le compte Auth au registre avant d'exposer le lien au navigateur.
+    // Si cette ecriture echoue, le compte est conserve pour revue.
     const linked = await advance("preparing", "auth_created", {
       user_id: created.id, last_error_code: null,
     });
@@ -483,6 +560,19 @@ Deno.serve(async (req) => {
       await markReview("preparing", "AUTH_LINK_FAILED");
       return reject(req, 503,
         "Compte cree, mais association interrompue. Controle manuel necessaire.");
+    }
+
+    // Marqueur serveur non modifiable par les utilisateurs : l'Auth Hook
+    // ne journalise ensuite que ces nouveaux comptes familiaux.
+    const marker = await service.auth.admin.updateUserById(created.id, {
+      app_metadata: {
+        ...(created.app_metadata ?? {}), schoolnet_family_invitation: true,
+      },
+    });
+    if (marker.error || marker.data?.user?.id !== created.id ||
+      marker.data?.user?.app_metadata?.schoolnet_family_invitation !== true) {
+      await markReview("auth_created", "AUTH_MARKER_FAILED");
+      return reject(req, 503, "Marqueur Auth indisponible : invitation non transmissible.");
     }
 
     const { data: provisional, error: provisionalError } = await service
@@ -514,16 +604,8 @@ Deno.serve(async (req) => {
       return reject(req, 503, "Sauvegarde du profil interrompue.");
     }
 
-    // recovery sur le compte deja cree : aucun envoi d'email automatique.
-    const { data: preparedLink, error: linkError } =
-      await service.auth.admin.generateLink({
-        type: "recovery", email, options: { redirectTo },
-      });
-    if (linkError || !preparedLink?.properties?.action_link ||
-      preparedLink.user?.id !== created.id) {
-      await markReview("profile_ready", "LINK_GENERATION_FAILED");
-      return reject(req, 503, "Lien non genere. Reprise supervisee requise.");
-    }
+    // Lien initial d'invitation deja genere par Supabase Auth. Aucune
+    // seconde generation recovery n'est requise pour un compte neuf.
     if (!await advance("profile_ready", "prepared", {
       generation_count: 1, last_prepared_at: new Date().toISOString(),
       last_error_code: null,
@@ -532,7 +614,7 @@ Deno.serve(async (req) => {
       return reject(req, 503,
         "Lien non confirme dans le registre. Ne le transmettez pas.");
     }
-    return linkResult(created.id, preparedLink.properties.action_link, 1);
+    return linkResult(created.id, initialActionLink, 1);
   }
 
   // Reprise ou renouvellement exclusivement d'un compte DEJA lie au registre.
