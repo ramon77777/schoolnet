@@ -1,3 +1,5 @@
+> **SUITE B.0 — 12/11/2026 : préparation du projet de test isolé terminée, SANS CRÉATION.** Devis officiel sur l'organisation Supabase Free `schoolnet 2.0` : **0 USD/mois** pour un second projet, **1 projet actuellement visible sur 2 emplacements Free** ; branche payante évitée. Architecture recommandée : Docker/CLI + Mailpit local pour liens de récupération (pas d'envoi réel), puis éventuel `schoolnet-auth-sandbox` autonome en région `eu-west-1`, sous GO distinct. Le SMTP intégré hébergé ne délivre qu'aux membres de l'équipe autorisés ; la récupération avec des adresses fictives sera testée localement. **Aucun changement au projet principal, aucun projet créé ni coût engagé.** Voir [Plan détaillé B.0 — environnement Auth isolé](./lot-5-c-b2-b0-sandbox-auth-plan-2026-11-12.md).
+
 # SCHOOLNET — Lot 5.C-B.2 / Étape A.2.3
 ## Audit de provenance Auth et stratégie de première connexion — 12 novembre 2026
 
