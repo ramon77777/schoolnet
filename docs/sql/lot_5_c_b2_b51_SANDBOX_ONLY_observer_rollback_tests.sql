@@ -26,15 +26,28 @@ BEGIN
  END IF;
  IF NOT has_schema_privilege('supabase_auth_admin','schoolnet_auth_observation','USAGE')
     OR NOT has_table_privilege('supabase_auth_admin','schoolnet_auth_observation.token_issue_events','INSERT')
-    OR has_table_privilege('supabase_auth_admin','schoolnet_auth_observation.token_issue_events','SELECT') THEN
+    OR NOT has_function_privilege('supabase_auth_admin','schoolnet_auth_observation.observe_access_token(jsonb)','EXECUTE')
+    OR has_table_privilege('supabase_auth_admin','schoolnet_auth_observation.token_issue_events','SELECT')
+    OR NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname='schoolnet_auth_observation'
+        AND tablename='token_issue_events'
+        AND policyname='b51_auth_admin_insert_observation'
+        AND cmd='INSERT'
+        AND 'supabase_auth_admin'=ANY(roles)
+    )
+ THEN
     RAISE EXCEPTION 'B5.1 test: privileges auth admin incorrects';
  END IF;
 END;
 $guard$;
 
--- Le test se met dans le contexte du role Auth natif, pas dans celui
--- du superuser postgres, afin de verifier les droits et la policy RLS.
-SET LOCAL ROLE supabase_auth_admin;
+-- Le connecteur SQL ne permet pas SET ROLE supabase_auth_admin (42501).
+-- On controle donc les GRANT, la RLS et la policy dans pg_catalog et
+-- on simule la fonction en tant que postgres DANS UNE TRANSACTION ANNULEE.
+-- Ne PAS attribuer supabase_auth_admin a postgres pour contourner le refus.
+-- Le test effectif de l'invocation par Supabase Auth reste a effectuer
+-- apres configuration du hook via Authentication > Hooks et GO distinct.
 DO $role$
 DECLARE
   first_event jsonb;
@@ -96,10 +109,9 @@ BEGIN
   IF schoolnet_auth_observation.observe_access_token(e) IS DISTINCT FROM e THEN
     RAISE EXCEPTION 'B5.1: claims invalides ont provoque une erreur';
   END IF;
-  RAISE NOTICE 'B5.1: role Auth, claims inchanges, modes et exclusions OK';
+  RAISE NOTICE 'B5.1: simulation owner, claims inchanges, modes et exclusions OK';
 END;
 $role$;
-RESET ROLE;
 
 DO $owner$
 DECLARE
