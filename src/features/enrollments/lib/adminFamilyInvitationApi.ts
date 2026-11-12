@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 
-// Lot 5.C-B.2 — Contrat client PREPARE, sans appel automatique.
-// La fonction Edge reste inactive avant validation du registre des invitations.
+// Lot 5.C-B.2 — Service d'invitations familiales, appel explicite Admin.
+// Les mutations ne sont possibles que sur l'origine de production et
+// après vérification de l'identité, avec permissions serveur strictes.
 export type FamilyInvitationRecipient = "parent" | "student";
 
 export type FamilyInvitationInspection = {
@@ -24,7 +25,8 @@ export type FamilyInvitationInspection = {
   activation_evidence_verified?: boolean;
   activation_proof_state?: "not_applicable" | "awaiting_delivery" |
     "evidence_source_unavailable" | "identity_mismatch" |
-    "invalid_chronology" | "requires_review" | "verified";
+    "invalid_chronology" | "requires_review" | "awaiting_password_login" | "verified";
+  can_confirm_activation?: boolean;
   can_resume?: boolean;
   can_renew?: boolean;
   can_flag_review?: boolean;
@@ -66,7 +68,7 @@ async function invokeFamilyInvitation<T>(body: Record<string, unknown>): Promise
   return data as T;
 }
 
-/** Read-only : la fonction Edge doit etre deployee pour utiliser cette methode. */
+/** Inspection sans écriture. Une preuve n'est vraie qu'après vérification SQL. */
 export async function inspectFamilyInvitation(
   requestId: string,
   recipient: FamilyInvitationRecipient,
@@ -84,9 +86,8 @@ export async function inspectFamilyInvitation(
 }
 
 /**
- * ECRITURE SENSIBLE. Ne relier a aucun bouton tant que la migration de registre
- * n'est pas validee et que SCHOOLNET_FAMILY_INVITES_ENABLED n'est pas active.
- * L'appelant doit verifier l'identite puis attester l'operation au serveur.
+ * ECRITURE SENSIBLE. Réservée au Super Admin après validation explicite
+ * de l'identité et du dossier. Le serveur contrôle aussi l'origine.
  */
 export async function prepareFamilyInvitation(input: {
   requestId: string;
@@ -113,10 +114,8 @@ export async function prepareFamilyInvitation(input: {
 }
 
 /**
- * ETAPE A.2 — PREPARE, NON RACCORDE AUX ECRANS.
- * Cette action declare uniquement une transmission manuelle attestee
- * par le Super Admin. Elle n'envoie aucun lien et ne confirme PAS l'activation.
- * Le serveur reste bloque en lecture seule jusqu'a un GO distinct.
+ * Attestation de transmission MANUELLE, sans envoi automatique.
+ * Ne confirme jamais l'activation ni la prise de connaissance du lien.
  */
 export async function declareFamilyInvitationSent(input: {
   requestId: string;
@@ -173,7 +172,7 @@ export async function declareFamilyInvitationSent(input: {
 /**
  * Recuperation controlee d'un compte deja lie au registre, ou renouvellement
  * d'un lien perdu/expire. Aucune creation Auth dans ces deux operations.
- * Les boutons ne sont pas encore actifs, meme si ce contrat est disponible.
+ * Le serveur refuse les reprises incohérentes et conserve un audit.
  */
 export async function retryFamilyInvitation(input: {
   action: "resume" | "renew";
@@ -202,7 +201,7 @@ export async function retryFamilyInvitation(input: {
 
 /**
  * Signale une operation en cours depuis trop longtemps, sans toucher a Auth.
- * Ne doit pas etre relie a un bouton tant que registre et Edge non valides.
+ * Réservé aux états interrompus et après vérification humaine.
  */
 export async function flagStaleFamilyInvitation(input: {
   requestId: string;
@@ -226,6 +225,46 @@ export async function flagStaleFamilyInvitation(input: {
     throw new Error("La mise en revue n'a pas ete confirmee.");
   }
   return data;
+}
+
+/** Confirmation serveur, distincte de la déclaration de transmission. */
+export async function confirmFamilyInvitationActivation(input: {
+  requestId: string;
+  recipient: FamilyInvitationRecipient;
+  verified: boolean;
+  verificationNote: string;
+}): Promise<{
+  success: true;
+  status: "activated";
+  request_id: string;
+  recipient: FamilyInvitationRecipient;
+  activation_evidence_verified: true;
+  no_link_in_response: true;
+}> {
+  if (!input.verified || input.verificationNote.trim().length < 10) {
+    throw new Error("Confirmez le contrôle d'identité et justifiez l'activation.");
+  }
+  const result = await invokeFamilyInvitation<{
+    success: true;
+    status: "activated";
+    request_id: string;
+    recipient: FamilyInvitationRecipient;
+    activation_evidence_verified: true;
+    no_link_in_response: true;
+  }>({
+    action: "confirm_activation",
+    request_id: input.requestId,
+    recipient: input.recipient,
+    verified: true,
+    verification_note: input.verificationNote.trim(),
+  });
+  if (!result?.success || result.status !== "activated" ||
+    result.request_id !== input.requestId || result.recipient !== input.recipient ||
+    result.activation_evidence_verified !== true ||
+    result.no_link_in_response !== true) {
+    throw new Error("L'activation n'a pas été prouvée côté serveur.");
+  }
+  return result;
 }
 
 /** Message en texte brut, que l'administrateur transmet manuellement. */
