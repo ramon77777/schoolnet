@@ -52,3 +52,6 @@ jobs:
 
       - name: Recette hors ligne des preuves Auth famille A.2.2
         run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
+
+      - name: Verifier la recette Auth sandbox B3 (sans deploiement)
+        run: deno check --node-modules-dir=auto docs/sandbox/b3/edge/index.ts
