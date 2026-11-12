@@ -1,3 +1,7 @@
+> **ACTUALISATION B.5.1 — 12/11/2026, 10:04 UTC — ACTIVATION DASHBOARD CONFIRMÉE PAR CAPTURE UTILISATEUR.** Dans **`schoolnet-auth-sandbox`** (`onqlsvphmrqhelislpry`), page `Authentication → Auth Hooks`, le hook **`Customize Access Token (JWT) Claims`** est affiché **ENABLED**, type **Postgres function**, schéma `schoolnet_auth_observation`, fonction `observe_access_token`. L'utilisateur a sauvegardé la configuration depuis le Dashboard ; l'écran liste le hook actif. **Ne pas confondre : cette preuve UI confirme l'activation de la configuration, MAIS PAS encore une invocation réelle de la fonction Auth ou la collecte d'une observation.** Contrôles SQL read-only immédiatement après capture : sandbox **2 Auth, 0 dossiers B.2, 0 événements B.2, 0 observations B.5.1, 2 migrations, 1 policy du journal d'observation** ; principal **10 Auth, 35 migrations, 0 invitation, 0 événement, demande `DEM-3CF7B169BAD9` `new`**. Aucun nouveau compte, e-mail, lien, test de connexion, migration ou déploiement effectué lors de cette validation visuelle. **Phase B.5.1 : installation SQL + activation UI confirmées ; recette d'invocation Auth effective NON EFFECTUÉE, GO B.5.2 requis.** En cas d'échec Auth à la prochaine étape, désactiver uniquement le hook de la sandbox dans Dashboard → Auth Hooks, puis vérifier les connexions.
+
+---
+
 # SCHOOLNET — Lot 5.C-B.2 / Étape B.5.1
 ## Custom Access Token Hook : préparation sécurisée en sandbox — 12 novembre 2026
 
