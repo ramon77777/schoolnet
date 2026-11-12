@@ -1,3 +1,5 @@
+> **Suite du 12/11/2026 — B.3 AUTH RÉELLE EN SANDBOX RÉUSSIE.** Après GO distinct B.3, deux comptes fictifs Parent/Apprenant ont été créés avec succès dans `onqlsvphmrqhelislpry` et utilisés pour tester connexion, récupération, changement de mot de passe et rejeu de token ; aucun email d'invitation n'a été demandé. **Les deux tables privées B.2 demeurent à 0 cas et 0 événement**, sans confirmation d'activation. L'orchestrateur Edge temporaire a été neutralisé (v2, `verify_jwt=true`). Voir [rapport B.3](./lot-5-c-b2-b3-sandbox-auth-first-login-2026-11-12.md). Principal inchangé ; B.2 reste correctement isolée et fermée.
+
 # SCHOOLNET — Lot 5.C-B.2 / Phase B.2
 ## Recette du schéma SQL privé de la sandbox Auth — 12 novembre 2026
 
