@@ -2,7 +2,9 @@
 // SCHOOLNET | Lot 5 - Inscriptions et dossiers des apprenants
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import AdminEnrollmentDocuments from "@/features/enrollments/components/AdminEnrollmentDocuments";
 import {
   enrollmentErrorMessage,
   getAdminEnrollmentCatalog,
@@ -477,6 +479,7 @@ export default function AdminEnrollments() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link className="sn-btn-ghost" to="/app/admin/year-rollover">📆 Passage d’année</Link>
             <button
               type="button"
               className="sn-btn-ghost sn-press"
@@ -830,6 +833,7 @@ export default function AdminEnrollments() {
                   <button type="button" className="sn-btn-primary" disabled={statusSaving} onClick={() => void submitStatus()}>{statusSaving ? "Mise à jour…" : "Valider le statut"}</button>
                 </div>
               </div>
+              <AdminEnrollmentDocuments enrollmentId={detail.enrollment_id} disabled={isDemo} />
               <div>
                 <h3 className="font-bold text-slate-950">Historique du dossier</h3>
                 <p className="mb-3 text-xs text-slate-500">Événements enregistrés par le backend.</p>

@@ -28,14 +28,16 @@ const navItem = ({ isActive }: { isActive: boolean }) =>
   `sn-nav-item ${isActive ? "sn-nav-item-active" : "sn-nav-item-inactive"}`;
 
 function roleLabel(role: UserRole) {
-  if (role === "admin") return "Admin";
+  if (role === "admin") return "Super Administrateur";
+  if (role === "school_admin") return "Administrateur d’établissement";
   if (role === "teacher") return "Enseignant";
   if (role === "parent") return "Parent / Tuteur";
   return "Apprenant";
 }
 
 function roleInitial(role: UserRole) {
-  if (role === "admin") return "AD";
+  if (role === "admin") return "SA";
+  if (role === "school_admin") return "AE";
   if (role === "teacher") return "E";
   if (role === "parent") return "P";
   return "A";
@@ -43,6 +45,7 @@ function roleInitial(role: UserRole) {
 
 function messagingPath(role: UserRole) {
   if (role === "admin") return "/app/admin/messages";
+  if (role === "school_admin") return "/app/school/dashboard";
   if (role === "teacher") return "/app/teacher/messages";
   if (role === "parent") return "/app/parent/messages";
   return "/app/student/messages";
@@ -72,7 +75,8 @@ function UnreadMessagesBadge({
 
 
 function spaceLabel(role: UserRole) {
-  if (role === "admin") return "🛠️ Espace Admin";
+  if (role === "admin") return "🛠️ Super Administration";
+  if (role === "school_admin") return "🏫 Espace Établissement";
   if (role === "teacher") return "👩‍🏫 Espace Enseignant";
   if (role === "parent") return "👨‍👩‍👧 Espace Parent / Tuteur";
   return "🎓 Espace Apprenant";
@@ -82,6 +86,9 @@ function subtitle(
   role: UserRole,
   platformName: string
 ) {
+  if (role === "school_admin") {
+    return "Espace limité à votre établissement";
+  }
   if (role === "admin") {
     return "Gestion de la plateforme et des utilisateurs";
   }
@@ -98,8 +105,9 @@ function subtitle(
 }
 
 function isPathAllowedForRole(pathname: string, role: UserRole) {
-  if (pathname === "/app/profile") return true;
+  if (pathname === "/app/profile" || pathname === "/app/notifications") return true;
   if (role === "admin") return pathname.startsWith("/app/admin");
+  if (role === "school_admin") return pathname.startsWith("/app/school");
   if (role === "teacher") return pathname.startsWith("/app/teacher");
   if (role === "parent") return pathname.startsWith("/app/parent");
   return pathname.startsWith("/app/student");
@@ -205,6 +213,10 @@ export default function DashboardLayout() {
               to="/app/student/dashboard"
             >
               📊 Tableau de bord
+            </NavLink>
+
+            <NavLink className={navItem} to="/app/student/enrollments">
+              📁 Mon dossier scolaire
             </NavLink>
 
             <NavLink
@@ -314,6 +326,10 @@ export default function DashboardLayout() {
               to="/app/parent/children"
             >
               👧 Mes enfants
+            </NavLink>
+
+            <NavLink className={navItem} to="/app/parent/enrollments">
+              📁 Dossiers scolaires
             </NavLink>
 
             <NavLink
@@ -514,6 +530,16 @@ export default function DashboardLayout() {
           </>
         )}
 
+        {user.role === "school_admin" && (
+          <>
+            <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              Administration de l’établissement
+            </div>
+            <NavLink className={navItem} to="/app/school/dashboard">🏫 Mon établissement</NavLink>
+            <NavLink className={navItem} to="/app/school/classes">🏫 Classes</NavLink>
+          </>
+        )}
+
         {user.role === "admin" && (
           <>
             <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
@@ -521,6 +547,8 @@ export default function DashboardLayout() {
             </div>
             <NavLink className={navItem} to="/app/admin/dashboard">📊 Tableau de bord</NavLink>
             <NavLink className={navItem} to="/app/admin/users">👥 Utilisateurs</NavLink>
+            <NavLink className={navItem} to="/app/admin/schools">🏫 Établissements</NavLink>
+            <NavLink className={navItem} to="/app/admin/school-invitations">✉ Invitations des écoles</NavLink>
             <NavLink className={navItem} to="/app/admin/classes">🏫 Classes</NavLink>
             <NavLink className={navItem} to="/app/admin/live" > 🎥 Cours en direct</NavLink>
             <NavLink className={navItem} to="/app/admin/enrollment-requests">
@@ -537,8 +565,10 @@ export default function DashboardLayout() {
               </span>
             </NavLink>
             <NavLink className={navItem} to="/app/admin/enrollments"> 📝 Inscriptions</NavLink>
+            <NavLink className={navItem} to="/app/admin/year-rollover">📆 Passage d’année</NavLink>
             <NavLink className={navItem} to="/app/admin/attendance" > 📋 Présences & absences </NavLink>
             <NavLink className={navItem} to="/app/admin/timetable" > 📅 Emploi du temps </NavLink>
+            <NavLink className={navItem} to="/app/admin/rooms">🚪 Salles de classe</NavLink>
             <NavLink className={navItem} to="/app/admin/school-years">📅 Années scolaires</NavLink>
             <NavLink className={navItem} to="/app/admin/averages"> 🧮 Moyennes</NavLink>
             <NavLink className={navItem} to="/app/admin/report-cards" >📄 Bulletins </NavLink>

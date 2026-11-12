@@ -26,6 +26,7 @@ type CallFrame = {
   destroy: () => Promise<unknown>;
   setLocalAudio: (enabled: boolean) => unknown;
   setLocalVideo: (enabled: boolean) => unknown;
+  setDailyLang?: (language: string) => unknown;
   on: (event: string, listener: (details?: unknown) => void) => unknown;
 };
 
@@ -245,6 +246,19 @@ export default function LiveRoomPage() {
         });
         if (cancelled || leavingRef.current) return;
 
+        // Daily Prebuilt peut heriter d'une langue de salle ou de jeton :
+        // setDailyLang a priorite et consolide le francais apres chaque join.
+        // Une erreur de traduction ne doit jamais couper le cours video.
+        try {
+          await frame.setDailyLang?.("fr");
+        } catch (localizationError) {
+          console.warn(
+            "[SCHOOLNET LIVE] Localisation Daily en francais :",
+            readableError(localizationError)
+          );
+        }
+        if (cancelled || leavingRef.current) return;
+
         if (muted) {
           frame.setLocalAudio(false);
           frame.setLocalVideo(false);
@@ -282,6 +296,8 @@ export default function LiveRoomPage() {
           }
 
           const created = daily.createFrame(containerRef.current, {
+            // Active les traductions Daily des l'ecran de preconnexion.
+            lang: "fr",
             showLeaveButton: true,
             showFullscreenButton: true,
             activeSpeakerMode: true,
@@ -451,7 +467,7 @@ export default function LiveRoomPage() {
   const shownError =
     error ??
     (invalidUser
-      ? "Vous devez etre connecte avec un compte enseignant ou apprenant."
+      ? "Vous devez être connecté avec un compte enseignant ou apprenant."
       : null);
   const videoHidden = invalidUser || (phase === "error" && !frameRef.current);
 
@@ -466,7 +482,7 @@ export default function LiveRoomPage() {
             Salle de cours en direct
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Camera, micro, partage d'ecran et participants dans SCHOOLNET.
+            Caméra, micro, partage d’écran et participants dans SCHOOLNET.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -492,12 +508,12 @@ export default function LiveRoomPage() {
 
       {shownError && (
         <div role="alert" className="sn-card border-red-200 bg-red-50 p-5">
-          <p className="font-semibold text-red-800">Connexion a la salle</p>
+          <p className="font-semibold text-red-800">Connexion à la salle</p>
           <p className="mt-1 text-sm text-red-700">{shownError}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {!invalidUser && (phase === "error" || phase === "paused") && (
               <button type="button" className="sn-btn-primary" onClick={resumeRoom}>
-                Reessayer en securite
+                Réessayer en sécurité
               </button>
             )}
             <button type="button" className="sn-btn-ghost" onClick={returnToCalendar}>
@@ -510,7 +526,7 @@ export default function LiveRoomPage() {
       {!videoHidden && (
         <div className="flex justify-end">
           <button type="button" className="sn-btn-ghost" onClick={toggleImmersive}>
-            {immersive ? "Reduire la video" : "Agrandir la video"}
+            {immersive ? "Réduire la vidéo" : "Agrandir la vidéo"}
           </button>
         </div>
       )}
@@ -533,9 +549,9 @@ export default function LiveRoomPage() {
             className="absolute right-3 top-3 z-50 rounded-full bg-slate-950/85 px-4 py-2 text-sm font-semibold text-white shadow-lg"
             style={{ top: "max(12px, env(safe-area-inset-top))" }}
             onClick={toggleImmersive}
-            aria-label="Quitter le mode plein ecran"
+            aria-label="Quitter le mode plein écran"
           >
-            Reduire
+            Réduire
           </button>
         )}
 
@@ -544,7 +560,7 @@ export default function LiveRoomPage() {
             className="absolute inset-0 z-20 flex items-center justify-center p-6 text-center text-sm text-white"
             role="status"
           >
-            Preparation de votre cours video...
+            Préparation de votre cours vidéo...
           </div>
         )}
 
@@ -554,7 +570,7 @@ export default function LiveRoomPage() {
               {phase === "paused" ? "Votre participation est en pause" : "Connexion interrompue"}
             </p>
             <p className="max-w-md text-sm text-slate-300">
-              La reprise verifie vos droits et redemarre avec le micro et la camera coupes.
+              La reprise vérifie vos droits et redémarre avec le micro et la caméra coupés.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <button type="button" className="sn-btn-primary" onClick={resumeRoom}>
@@ -579,8 +595,8 @@ export default function LiveRoomPage() {
 
       {!immersive && (
         <p className="text-xs text-gray-500">
-          Autorisez l'acces au micro et a la camera si votre navigateur le demande.
-          En cas d'interruption, SCHOOLNET memorise uniquement la seance, jamais le jeton Daily.
+          Autorisez l’accès au micro et à la caméra si votre navigateur le demande.
+          En cas d’interruption, SCHOOLNET mémorise uniquement la séance, jamais le jeton Daily.
         </p>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ChangeEvent, FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -329,6 +330,19 @@ export default function MyProfile() {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">Gérez vos coordonnées, votre photo et la sécurité de votre compte. Vos droits scolaires restent protégés.</p>
         </div>
       </header>
+
+      <div className="sn-card flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+        <div>
+          <h2 className="font-bold text-slate-900">Préférences de notifications</h2>
+          <p className="mt-1 text-sm text-slate-600">Personnalisez les rappels LIVE et les alertes de messagerie.</p>
+        </div>
+        <Link
+          to="/app/notifications?tab=preferences"
+          className={secondaryButtonClasses}
+        >
+          Gérer mes notifications
+        </Link>
+      </div>
 
       {alert && (
         <div

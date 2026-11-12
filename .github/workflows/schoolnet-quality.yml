@@ -1,0 +1,57 @@
+name: SCHOOLNET — Vérifications du code
+
+on:
+  pull_request:
+    branches: [main, feature/schoolnet-notifications]
+  push:
+    branches: [feature/schoolnet-multi-etablissements]
+  workflow_dispatch:
+
+# Ce workflow vérifie uniquement le code : aucun accès à Supabase,
+# aucune donnée sensible, aucune fusion et aucun déploiement Vercel.
+permissions:
+  contents: read
+
+concurrency:
+  group: schoolnet-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-build:
+    name: ESLint et build TypeScript / Vite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Télécharger la branche de la PR
+        uses: actions/checkout@v4
+
+      - name: Préparer Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Installer les dépendances du lockfile
+        run: npm ci --no-audit --no-fund
+
+      - name: Vérification ESLint
+        run: npm run lint
+
+      - name: Compilation TypeScript et Vite
+        run: npm run build
+      
+      # Validation statique de la fonction Edge sans deployment ni connexion Supabase.
+      - name: Preparer Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verifier le code de l'Edge Function familiale
+        run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
+
+      - name: Recette hors ligne des preuves Auth famille A.2.2
+        run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
+
+      - name: Verifier la recette Auth sandbox B3 (sans deploiement)
+        run: deno check --node-modules-dir=auto docs/sandbox/b3/edge/index.ts

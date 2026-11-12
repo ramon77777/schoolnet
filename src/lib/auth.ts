@@ -1,7 +1,7 @@
 // src/lib/auth.ts
 import { supabase } from "@/lib/supabaseClient";
 
-export type UserRole = "student" | "parent" | "teacher" | "admin";
+export type UserRole = "student" | "parent" | "teacher" | "admin" | "school_admin";
 
 export type AuthUser = {
   id: string;
@@ -32,6 +32,7 @@ export function clearAuthUser() {
 
 export function getDefaultPathByRole(role: UserRole) {
   if (role === "admin") return "/app/admin/dashboard";
+  if (role === "school_admin") return "/app/school/dashboard";
   if (role === "teacher") return "/app/teacher/grading";
   if (role === "parent") return "/app/parent/home";
   return "/app/student/courses";

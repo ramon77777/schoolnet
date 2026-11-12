@@ -32,4 +32,14 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/schoolnet-live/index.ts"
 
+[functions.schoolnet-admin-invitation]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/schoolnet-admin-invitation/index.ts"
 
+# Lot 5.C-B.2 - inspection en lecture seule. Un deploiement n'active PAS les ecritures.
+# verify_jwt doit rester actif; le verrou permanent est dans index.ts.
+[functions.schoolnet-family-invitation]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/schoolnet-family-invitation/index.ts"

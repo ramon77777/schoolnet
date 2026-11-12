@@ -526,7 +526,7 @@ export default function TeacherAssessmentCreate() {
               ? isExamFileOnly
                 ? false
                 : shuffleQuestions
-              : false,
+              : null,
 
           instruction_file_url:
             isHomeworkFile || isExamWithFile

@@ -16,12 +16,19 @@ import AdminClasses from "../features/admin/pages/AdminClasses";
 import AdminContent from "../features/admin/pages/AdminContent";
 import AdminSettings from "../features/admin/pages/AdminSettings";
 import AdminSchoolYears from "@/features/admin/pages/AdminSchoolYears";
+import AdminSchools from "@/features/admin/pages/AdminSchools";
+import AdminSchoolInvitations from "@/features/admin/pages/AdminSchoolInvitations";
+import LocalSchoolDashboard from "@/features/schools/pages/LocalSchoolDashboard";
+import LocalSchoolClasses from "@/features/schools/pages/LocalSchoolClasses";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
 import AdminTimetable from "@/features/admin/pages/AdminTimetable";
+import AdminRooms from "@/features/admin/pages/AdminRooms";
 import AdminReportCards from "@/features/admin/pages/AdminReportCards";
 import AdminEnrollments from "@/features/admin/pages/AdminEnrollments";
+import AdminYearRollover from "@/features/admin/pages/AdminYearRollover";
+import EnrollmentRecordsPage from "@/features/enrollments/pages/EnrollmentRecordsPage";
 import AdminEnrollmentRequests from "@/features/admin/pages/AdminEnrollmentRequests";
 
 
@@ -82,6 +89,7 @@ import PublicEnrollmentRequest from "@/features/public/pages/PublicEnrollmentReq
 import MessagingPage from "../features/messages/pages/MessagingPage";
 import ClassFeedPage from "@/features/class-posts/pages/ClassFeedPage";
 import MyProfile from "@/features/profile/pages/MyProfile";
+import NotificationsPage from "@/features/notifications/pages/NotificationsPage";
 import LiveSessionsPage from "@/features/live/pages/LiveSessionsPage";
 import ParentLiveSessionsPage from "@/features/live/pages/ParentLiveSessionsPage";
 import LiveRoomPage from "@/features/live/pages/LiveRoomPage";
@@ -125,6 +133,7 @@ export const router = createBrowserRouter([
           { path: "forbidden", element: <div className="sn-card p-6">⛔ Accès interdit</div> },
 
           { path: "profile", element: <MyProfile /> },
+          { path: "notifications", element: <NotificationsPage /> },
 
           {
             element: <RoleGate allowed={["student"]} />,
@@ -138,6 +147,8 @@ export const router = createBrowserRouter([
                 path: "student/dashboard",
                 element: <StudentDashboard />,
               },
+
+              { path: "student/enrollments", element: <EnrollmentRecordsPage /> },
 
               {
                 path: "student/courses",
@@ -265,6 +276,7 @@ export const router = createBrowserRouter([
               },
 
               { path: "parent/children", element: <ParentChildren /> },
+              { path: "parent/enrollments", element: <EnrollmentRecordsPage /> },
               { path: "parent/live", element: <ParentLiveSessionsPage /> },
               { path: "parent/deadlines", element: <ParentDeadlines /> },
               { path: "parent/results", element: <ParentResults /> },
@@ -363,17 +375,30 @@ export const router = createBrowserRouter([
           },
 
           {
+            element: <RoleGate allowed={["school_admin"]} />,
+            children: [
+              { path: "school", element: <Navigate to="/app/school/dashboard" replace /> },
+              { path: "school/dashboard", element: <LocalSchoolDashboard /> },
+              { path: "school/classes", element: <LocalSchoolClasses /> },
+            ],
+          },
+
+          {
             element: <RoleGate allowed={["admin"]} />,
             children: [
               { path: "admin", element: <Navigate to="/app/admin/dashboard" replace /> },
               { path: "admin/dashboard", element: <AdminDashboard /> },
               { path: "admin/users", element: <AdminUsers /> },
+              { path: "admin/schools", element: <AdminSchools /> },
+              { path: "admin/school-invitations", element: <AdminSchoolInvitations /> },
               { path: "admin/classes", element: <AdminClasses /> },
               { path: "admin/live", element: <LiveSessionsPage />,},
               { path: "admin/enrollments", element: <AdminEnrollments />,},
+              { path: "admin/year-rollover", element: <AdminYearRollover />,},
               { path: "admin/enrollment-requests", element: <AdminEnrollmentRequests /> },
               { path: "admin/attendance", element: <AdminAttendance />, },
               { path: "admin/timetable",  element: <AdminTimetable />, },
+              { path: "admin/rooms", element: <AdminRooms />, },
               { path: "admin/school-years", element: <AdminSchoolYears />, },
               { path: "admin/averages", element: <AdminAverages /> },
               { path: "/app/admin/report-cards", element: <AdminReportCards />, },

@@ -1,0 +1,120 @@
+name: SCHOOLNET — B3 sandbox Auth (execution unique)
+
+on:
+  push:
+    branches:
+      - feature/schoolnet-multi-etablissements
+    paths:
+      - ".github/workflows/schoolnet-auth-sandbox-b3-once.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test-auth-b3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    concurrency:
+      group: schoolnet-auth-sandbox-b3
+      cancel-in-progress: false
+    env:
+      B3_ENDPOINT: https://onqlsvphmrqhelislpry.supabase.co/functions/v1/schoolnet-auth-sandbox-b3
+      B3_AUDIENCE: schoolnet-auth-sandbox-b3
+
+    steps:
+      - name: Confirmer qu'un appel non authentifie est refuse
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --max-time 25 \
+            --output /dev/null --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --data '{"mode":"preflight"}' "$B3_ENDPOINT")
+          if [ "$code" != "401" ]; then
+            echo "B3 refusal of unauthenticated request FAILED (HTTP $code)"
+            exit 1
+          fi
+          echo "B3 anonymous request rejected: HTTP 401"
+
+      - name: Executer une fois le cycle Auth fictif par OIDC GitHub
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This is a signed, short-lived GitHub OIDC token. Never log it.
+          raw=$(curl --fail --silent --show-error --max-time 30 \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$B3_AUDIENCE")
+          oidc_token=$(printf '%s' "$raw" | jq -er '.value')
+          [ -n "$oidc_token" ] || exit 1
+
+          send_b3() {
+            local mode="$1"
+            local result_file code stage
+            result_file=$(mktemp)
+            code=$(curl --silent --show-error --max-time 150 \
+              --output "$result_file" --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' \
+              --header "Authorization: Bearer $oidc_token" \
+              --data "{\"mode\":\"$mode\"}" \
+              "$B3_ENDPOINT")
+            if [ "$mode" = "preflight" ]; then
+              if [ "$code" != "200" ] || ! jq -e \
+                '.ok == true and .empty_auth == true and .sandbox_only == true' \
+                "$result_file" >/dev/null; then
+                stage=$(jq -r '.stage // "unexpected"' "$result_file" 2>/dev/null || true)
+                echo "B3 preflight FAILED: HTTP $code; stage=$stage"
+                rm -f "$result_file"
+                return 1
+              fi
+              echo "B3 signed OIDC preflight: HTTP 200, sandbox Auth empty"
+            elif [ "$mode" = "run" ]; then
+              if [ "$code" != "200" ] || ! jq -e '
+                .ok == true and
+                .sandbox_only == true and
+                .created_auth_accounts == 2 and
+                .no_email_dispatch_requested == true and
+                .wrong_password_rejected == true and
+                .password_login_parent == true and
+                .password_login_student == true and
+                .recovery_link_generated_without_email == true and
+                .recovery_token_consumed == true and
+                .password_updated_via_recovery == true and
+                .recovery_token_replay_rejected == true and
+                .previous_password_rejected == true and
+                .new_password_login_verified == true and
+                .evidence_registry_unchanged == true and
+                .activation_confirmed == false
+              ' "$result_file" >/dev/null; then
+                stage=$(jq -r '.stage // "unexpected"' "$result_file" 2>/dev/null || true)
+                echo "B3 synthetic Auth test FAILED: HTTP $code; stage=$stage"
+                rm -f "$result_file"
+                return 1
+              fi
+              echo "B3 Auth: two synthetic accounts, password tests, recovery and new login PASSED"
+              echo "B3 no email sent; activation unconfirmed"
+            else
+              rm -f "$result_file"
+              return 1
+            fi
+            rm -f "$result_file"
+          }
+
+          send_b3 preflight
+          send_b3 run
+
+          # Second invocation must be refused to prevent duplicates.
+          duplicate_file=$(mktemp)
+          duplicate_code=$(curl --silent --show-error --max-time 30 \
+            --output "$duplicate_file" --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --header "Authorization: Bearer $oidc_token" \
+            --data '{"mode":"run"}' "$B3_ENDPOINT")
+          if [ "$duplicate_code" != "409" ] || ! jq -e \
+            '.stage == "sandbox_users_already_exist"' "$duplicate_file" >/dev/null; then
+            echo "B3 idempotency FAILED: HTTP $duplicate_code"
+            rm -f "$duplicate_file"
+            exit 1
+          fi
+          rm -f "$duplicate_file"
+          echo "B3 repeat call rejected HTTP 409 — no duplicate created"
