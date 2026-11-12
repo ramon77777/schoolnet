@@ -1,3 +1,5 @@
+> **12/11/2026 — B.4 : étude de preuve Auth compatible Free achevée, sans nouvelle écriture.** Après B.3, la source externe `auth_audit_logs` montre 4 événements `login` et 1 `user_updated_password`, mais les métadonnées visibles ne permettent pas d'attester la méthode `password`. Le hook **Custom Access Token**, disponible sur Free, reçoit `authentication_method` (`password` ou `recovery`, etc.) et `claims.session_id` selon la documentation officielle ; un **test sandbox et une corroboration après émission de jeton** seront impératifs. Le Password Verification Hook reste indisponible sur Free. [Rapport B.4](./lot-5-c-b2-b4-architecture-preuves-auth-free-2026-11-12.md). Aucun hook installé, aucun compte créé ou lien généré durant B.4 ; fonction B.3 v2 toujours neutralisée.
+
 # SCHOOLNET — Lot 5.C-B.2 / Phase B.3
 ## Recette Auth réelle sur Supabase Free, exclusivement en sandbox — 12 novembre 2026
 
