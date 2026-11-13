@@ -3,6 +3,7 @@
 // Zero automatic emails; one-time code and Auth invite link are returned ONLY to a verified Admin.
 import {createClient} from 'npm:@supabase/supabase-js@2.90.1';
 import {generateSchoolnetStudentCode,studentCodeLookupDigest} from '../_shared/schoolnetStudentIdentity.ts';
+import {schoolnetStudentPilotWriteAllowed} from '../_shared/schoolnetStudentPilotGuard.ts';
 import {validateStudentNoEmailRequest,technicalSchoolnetAlias,validateAdminVerification,
   type StudentRequest,type ParentInvitation} from '../_shared/studentNoEmailPolicy.ts';
 
@@ -56,6 +57,13 @@ Deno.serve(async(req:Request)=>{
  if(!['inspect','prepare','declare_sent'].includes(action)||
     typeof requestId!=='string'||!UUID.test(requestId))
    return deny(origin,400,'Demande ou action invalide.');
+ // Pilot fail-closed: no request may be changed unless explicitly allowlisted
+ // in this production Edge Function's server-side environment.
+ const pilotAllowed=schoolnetStudentPilotWriteAllowed({
+   accountsEnabled:creationEnabled,
+   pilotRequestId:Deno.env.get('SCHOOLNET_STUDENT_PILOT_REQUEST_ID'),
+   requestId,
+ });
 
  const service=createClient(url,secret,OPTIONS);
  const {data:verified,error:authErr}=await service.auth.getUser(authorization.slice(7));
@@ -94,10 +102,11 @@ Deno.serve(async(req:Request)=>{
  if(action==='inspect')return reply(origin,200,{success:true,status:record?.status??'not_prepared',
   student_id:record?.student_auth_user_id??null,
   has_delivery:Boolean(record?.sent_at),is_activated:Boolean(record?.activated_at),
-  parent_verified:true,admin_enabled:creationEnabled,request_id:requestId});
- // Les écritures sont refusées si le drapeau serveur est absent, faux
- // ou mal orthographié. Seule la consultation précédente est accessible.
- if(!creationEnabled)return deny(origin,503,'Création des comptes Apprenant non activée.');
+  parent_verified:true,admin_enabled:pilotAllowed,request_id:requestId});
+ // Strictly allow mutations on the single explicitly authorized pilot request.
+ // All other requests remain inspect-only even when the global flag is true.
+ if(!pilotAllowed)
+   return deny(origin,403,'Mode pilote : creation limitee au dossier de test autorise.');
  let note:string;
  try{
   if(body.verified!==true)throw Error('verified');
