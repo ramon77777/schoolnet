@@ -10,7 +10,9 @@ export function studentSchoolnetLoginMode(): StudentLoginFormMode {
     isDev: import.meta.env.DEV,
     projectUrl: import.meta.env.VITE_SUPABASE_URL ?? '',
     sandboxEnabled: import.meta.env.VITE_SCHOOLNET_STUDENT_LOGIN_ENABLED === 'true',
-    productionEnabled: import.meta.env.VITE_SCHOOLNET_STUDENT_LOGIN_RELEASE_ENABLED === 'true',
+    // Mise en service du pilote SCHOOLNET sur le projet de production autorisé.
+    // Le backend impose toujours CAPTCHA, limites, et UUID de dossier pilote.
+    productionEnabled: import.meta.env.PROD,
   });
 }
 
