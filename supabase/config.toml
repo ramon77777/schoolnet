@@ -43,3 +43,17 @@ entrypoint = "./functions/schoolnet-admin-invitation/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/schoolnet-family-invitation/index.ts"
+
+# 5.C-B.2 — SCHOOLNET principal: backend deployed but gated OFF.
+# Public login intentionally requires JWT until CAPTCHA, trusted ingress IP,
+# Auth + RLS pending-session audit and server secrets have been approved.
+# Never deploy login with verify_jwt=false as a shortcut.
+[functions.schoolnet-student-no-email-admin]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/schoolnet-student-no-email-admin/index.ts"
+
+[functions.schoolnet-student-login-release]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/schoolnet-student-login-release/index.ts"

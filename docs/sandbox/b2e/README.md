@@ -1,6 +1,6 @@
 # SCHOOLNET — Lot 5.C-B.2 / Backend, invitation et lien Parent–Apprenant
 
-**Statut mis à jour au 13 novembre 2026 : migration de sécurité SQL appliquée à la base principale et vérifiée, mais nouveaux services Edge et connexion Apprenant toujours NON déployés / NON activés.** Voir `SECURITY_APPLIED_PRODUCTION_2026-11-13.md`.
+**Statut mis à jour au 13 novembre 2026 : migration de sécurité SQL appliquée et vérifiée. Les deux fonctions Edge sont désormais DÉPLOYÉES sur Supabase principal (v1), mais volontairement NON ACTIVÉES pour les utilisateurs.** Voir `SECURITY_APPLIED_PRODUCTION_2026-11-13.md` et `PRODUCTION_EDGE_GUARDED_DEPLOYMENT_2026-11-13.md`.
 
 ## Parcours réutilisant les modules actuels
 
@@ -23,8 +23,8 @@ Cette proposition est dans `supabase/proposals/20261113_student_no_email_release
 | --- | --- |
 | Interface connexion sans e-mail : recette locale | Validée par captures utilisateur (formulaire et message vert) |
 | Prévisualisation Admin de l'invitation sans e-mail | Codée, lecture seule en local |
-| Backend Admin pour créer une identité scolaire | Codé, **non déployé** |
-| Backend Auth de production avec contrôle Turnstile | Codé, **non déployé** |
+| Backend Admin pour créer une identité scolaire | **Déployé en production**, JWT obligatoire, actions **désactivées** par défaut |
+| Backend Auth de production avec contrôle Turnstile | **Déployé en production**, JWT obligatoire provisoirement, login public **fermé** |
 | SQL migration rôle/RLS/identités | **Appliquée en production** (`20261113124329`), vérifiée |
 | Compte réel Yao Tabra / lien vers Yao Thierno | **Non créé, non lié** |
 | Edge sandbox ancienne | Toujours verrouillée |
@@ -73,4 +73,4 @@ Si `git status` signale des fichiers modifiés, ne pas utiliser `reset --hard` e
 
 Les variables Vite facultatives `VITE_SCHOOLNET_STUDENT_ACCOUNTS_ENABLED` et `VITE_SCHOOLNET_STUDENT_LOGIN_RELEASE_ENABLED` restent **désactivées** tant que la recette backend n'est pas approuvée. Le navigateur n'obtient aucune clé privée.
 
-**Aucune de ces étapes d'activation n'a été exécutée automatiquement.**
+**Les deux fonctions ont été déployées, mais aucune activation ni création de compte n'a été exécutée.** Le login public exige encore un contrôle de sécurité de bout en bout. Ne pas confondre `status=ACTIVE` (fonction installée) et `SCHOOLNET_STUDENT_LOGIN_ENABLED=true` (service ouvert).
