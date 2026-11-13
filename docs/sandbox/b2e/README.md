@@ -13,7 +13,7 @@
 
 ## Sécurité préalable importante
 
-La base principale autorise aujourd'hui un utilisateur connecté à modifier directement les colonnes `profiles.role` et `profiles.child_ids` de sa propre ligne, malgré le contrôle RLS par identifiant. La **proposition** SQL retire les droits de mise à jour de table aux clients ordinaires, puis n'accorde que les colonnes de profil personnel. Cela protège le rôle et les liens familiaux. **Cette migration n'a pas été appliquée** à la production : revue d'impact et sauvegarde obligatoires.
+La base principale accorde encore des **privilèges SQL trop larges** sur `profiles`, mais le déclencheur existant protège déjà le rôle et les liens familiaux contre leur modification par l'utilisateur propriétaire. La migration revue ajoute des restrictions par colonne et protège les trois voies de rattachement : finalisation, `parent_links` et `profiles.child_ids`. **Rien de nouveau n'a été appliqué en production.** Voir `docs/sandbox/b2e/SECURITY_REVIEW_2026-11-13.md`.
 
 Cette proposition est dans `supabase/proposals/20261113_student_no_email_release_REVIEW_ONLY.sql`, volontairement **pas** dans `supabase/migrations/` afin d'éviter son exécution accidentelle.
 
