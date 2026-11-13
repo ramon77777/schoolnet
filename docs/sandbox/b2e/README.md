@@ -1,6 +1,6 @@
 # SCHOOLNET — Lot 5.C-B.2 / Backend, invitation et lien Parent–Apprenant
 
-**Statut au 13 novembre 2026 : code préparé sur branche de développement, jamais activé en production.**
+**Statut mis à jour au 13 novembre 2026 : migration de sécurité SQL appliquée à la base principale et vérifiée, mais nouveaux services Edge et connexion Apprenant toujours NON déployés / NON activés.** Voir `SECURITY_APPLIED_PRODUCTION_2026-11-13.md`.
 
 ## Parcours réutilisant les modules actuels
 
@@ -13,7 +13,7 @@
 
 ## Sécurité préalable importante
 
-La base principale accorde encore des **privilèges SQL trop larges** sur `profiles`, mais le déclencheur existant protège déjà le rôle et les liens familiaux contre leur modification par l'utilisateur propriétaire. La migration revue ajoute des restrictions par colonne et protège les trois voies de rattachement : finalisation, `parent_links` et `profiles.child_ids`. **Rien de nouveau n'a été appliqué en production.** Voir `docs/sandbox/b2e/SECURITY_REVIEW_2026-11-13.md`.
+La migration de sécurité est **désormais appliquée et vérifiée en production** : droits SQL de `profiles` limités aux champs personnels pour les utilisateurs ordinaires, et trois voies de rattachement protégées (`public_enrollment_request_resolutions`, `parent_links`, `profiles.child_ids`). **Aucun compte Apprenant n'a été créé, aucun service de connexion n'a été activé.** Voir `docs/sandbox/b2e/SECURITY_APPLIED_PRODUCTION_2026-11-13.md`.
 
 Cette proposition est dans `supabase/proposals/20261113_student_no_email_release_REVIEW_ONLY.sql`, volontairement **pas** dans `supabase/migrations/` afin d'éviter son exécution accidentelle.
 
@@ -25,10 +25,10 @@ Cette proposition est dans `supabase/proposals/20261113_student_no_email_release
 | Prévisualisation Admin de l'invitation sans e-mail | Codée, lecture seule en local |
 | Backend Admin pour créer une identité scolaire | Codé, **non déployé** |
 | Backend Auth de production avec contrôle Turnstile | Codé, **non déployé** |
-| SQL migration rôle/RLS/identités | Préparé pour revue, **non appliqué** |
+| SQL migration rôle/RLS/identités | **Appliquée en production** (`20261113124329`), vérifiée |
 | Compte réel Yao Tabra / lien vers Yao Thierno | **Non créé, non lié** |
 | Edge sandbox ancienne | Toujours verrouillée |
-| `main` / Supabase production | **Aucun changement lors de cette étape** |
+| `main` / Supabase production | `main` inchangée ; **migration DB de sécurité appliquée**, données utilisateur inchangées |
 
 ## Test local après `git pull` (Windows)
 
@@ -51,7 +51,7 @@ Si `git status` signale des fichiers modifiés, ne pas utiliser `reset --hard` e
 
 ## Conditions préalables à une activation/déploiement
 
-- Approuver séparément la migration SQL et la protection de `profiles.role` / `profiles.child_ids`. Sauvegarder le schéma et tester les mises à jour de profil existantes.
+- **Migration SQL déjà approuvée, appliquée et contrôlée** ; ne pas la réexécuter. Effectuer la recette UI des champs personnels `profiles` après la restriction des droits et l'audit des sessions `pending`.
 - Fournir un **domaine technique effectivement contrôlé** pour les identités Auth. Le prototype `@schoolnet.invalid` n'est pas un domaine de production. Configurer les redirections Supabase Auth autorisées vers `/auth/reset-password?mode=student-invite`.
 - Fournir un secret HMAC stable (`SCHOOLNET_STUDENT_CODE_PEPPER`, longueur >=32) **uniquement** dans les secrets serveur, jamais `VITE_` ou GitHub. Éviter toute rotation non planifiée : elle invaliderait la correspondance des codes déjà émis.
 - Installer la migration sur **un environnement de préproduction** et valider la création de deux enfants partageant un téléphone, les liens uniques de récupération, l'activation Auth et le lien familial via la RPC existante.

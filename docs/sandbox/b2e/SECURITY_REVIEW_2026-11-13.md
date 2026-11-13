@@ -2,6 +2,8 @@
 
 **Branche de travail :** `feature/schoolnet-student-sans-email`. **SQL :** `supabase/proposals/20261113_student_no_email_release_REVIEW_ONLY.sql`.
 
+> **Note de statut ultérieure (13 novembre 2026)** : ce rapport décrit l'état **avant** application. La migration a ensuite été appliquée sur Supabase principal et vérifiée. Le rapport faisant foi est [`SECURITY_APPLIED_PRODUCTION_2026-11-13.md`](SECURITY_APPLIED_PRODUCTION_2026-11-13.md). Les composants Edge restent désactivés.
+
 ## État et périmètre
 Migration renforcée et testée en simulation PostgreSQL sur la **sandbox**, **non appliquée en production**. Pas de nouveaux comptes, de liens familiaux, de déploiement Edge/Vercel ou de fusion vers `main`.
 
