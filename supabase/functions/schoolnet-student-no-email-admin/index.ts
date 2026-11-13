@@ -32,9 +32,11 @@ Deno.serve(async(req:Request)=>{
  const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
  const anon=Deno.env.get('SUPABASE_ANON_KEY')||'';
  const pepper=Deno.env.get('SCHOOLNET_STUDENT_CODE_PEPPER')||'';
- if(url!==PROD_PROJECT||!secret||!anon ||
-    Deno.env.get('SCHOOLNET_STUDENT_ACCOUNTS_ENABLED')!=='true')
-   return deny(origin,503,'Service Apprenant sans e-mail non active.');
+ const creationEnabled=Deno.env.get('SCHOOLNET_STUDENT_ACCOUNTS_ENABLED')==='true';
+ // Consultation Admin permise en lecture seule même avant l'activation :
+ // aucun secret HMAC ni écriture Auth/SQL dans l'action "inspect".
+ if(url!==PROD_PROJECT||!secret||!anon)
+   return deny(origin,503,'Service Apprenant sans e-mail indisponible.');
  if(req.headers.get('content-type')?.split(';')[0].trim()!=='application/json')
    return deny(origin,415,'Format non pris en charge.');
  const authorization=req.headers.get('authorization')||'';
@@ -92,7 +94,10 @@ Deno.serve(async(req:Request)=>{
  if(action==='inspect')return reply(origin,200,{success:true,status:record?.status??'not_prepared',
   student_id:record?.student_auth_user_id??null,
   has_delivery:Boolean(record?.sent_at),is_activated:Boolean(record?.activated_at),
-  parent_verified:true,request_id:requestId});
+  parent_verified:true,admin_enabled:creationEnabled,request_id:requestId});
+ // Les écritures sont refusées si le drapeau serveur est absent, faux
+ // ou mal orthographié. Seule la consultation précédente est accessible.
+ if(!creationEnabled)return deny(origin,503,'Création des comptes Apprenant non activée.');
  let note:string;
  try{
   if(body.verified!==true)throw Error('verified');
