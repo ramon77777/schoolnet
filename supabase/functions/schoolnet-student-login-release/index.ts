@@ -11,7 +11,6 @@ const PROD='https://anttmbhaphkhmkoqsofd.supabase.co';
 const ORIGIN='https://schoolnet-snowy.vercel.app';
 const MAX_LENGTH=2600;
 const CLIENT={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}};
-const errorBody=(status:number,message:string)=>({status,body:{ok:false,message}});
 function json(status:number,body:Record<string,unknown>,allowOrigin=false){
  return new Response(JSON.stringify(body),{status,headers:{
   'content-type':'application/json; charset=utf-8',
