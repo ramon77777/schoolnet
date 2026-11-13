@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  resolveSchoolLevelCatalog,
+  type AcademicSchoolLevel,
+  type AcademicSchoolClass,
+  type PublicSchoolLevel,
+  type SchoolLevelResolution,
+} from "@/features/enrollments/lib/schoolLevelConsistency";
 import { inspectFamilyInvitation, type FamilyInvitationInspection, type FamilyInvitationRecipient } from "@/features/enrollments/lib/adminFamilyInvitationApi";
 
 type RequestType = "student_enrollment" | "parent_access";
@@ -22,19 +29,12 @@ type Request = {
   requested_level: string | null;
 };
 
-type Level = { id: number; name: string };
-type Class = {
-  id: string;
-  level_id: number;
-  name: string;
-  school_year: string;
-};
 type SchoolYear = { name: string; is_current: boolean };
 
 type Catalog =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; classes: Class[]; currentYears: string[] };
+  | { status: "ready"; resolution: SchoolLevelResolution; currentYears: string[] };
 
 type InspectionSlot = {
   requestId: string;
@@ -63,10 +63,6 @@ function normalizedName(value: string | null): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ")
     .toLowerCase();
-}
-
-function normalizedLevel(value: string | null): string {
-  return normalizedName(value).replace(/[\s.\-–_]/g, "");
 }
 
 type Matching = {
@@ -279,36 +275,32 @@ export default function AdminEnrollmentRequestPreflight({
     if (request.request_type !== "student_enrollment") return;
     let cancelled = false;
 
+    setCatalog({ status: "loading" });
     void (async () => {
-      const [levels, classes, years] = await Promise.all([
+      const [publicLevels, academicLevels, classes, years] = await Promise.all([
+        supabase.from("public_levels").select("slug,name,short_label,is_visible"),
         supabase.from("levels").select("id,name"),
         supabase.from("classes").select("id,name,level_id,school_year"),
         supabase.from("school_years").select("name,is_current"),
       ]);
       if (cancelled) return;
 
-      if (levels.error || classes.error || years.error) {
+      if (publicLevels.error || academicLevels.error || classes.error || years.error) {
         setCatalog({ status: "error" });
         return;
       }
 
-      const wantedLevel = normalizedLevel(request.requested_level);
-      const allowedLevelIds = new Set(
-        ((levels.data ?? []) as Level[])
-          .filter((level) => normalizedLevel(level.name) === wantedLevel)
-          .map((level) => level.id),
-      );
-      const suggestedClasses = ((classes.data ?? []) as Class[])
-        .filter((item) => allowedLevelIds.has(item.level_id))
-        .sort((a, b) => a.school_year.localeCompare(b.school_year) || a.name.localeCompare(b.name));
-
-      setCatalog({
-        status: "ready",
-        classes: suggestedClasses,
-        currentYears: ((years.data ?? []) as SchoolYear[])
-          .filter((year) => year.is_current)
-          .map((year) => year.name),
+      const currentYears = ((years.data ?? []) as SchoolYear[])
+        .filter((year) => year.is_current)
+        .map((year) => year.name);
+      const resolution = resolveSchoolLevelCatalog({
+        requestedLevel: request.requested_level,
+        publicLevels: (publicLevels.data ?? []) as PublicSchoolLevel[],
+        academicLevels: (academicLevels.data ?? []) as AcademicSchoolLevel[],
+        classes: (classes.data ?? []) as AcademicSchoolClass[],
+        currentYears,
       });
+      setCatalog({ status: "ready", resolution, currentYears });
     })().catch(() => {
       if (!cancelled) setCatalog({ status: "error" });
     });
@@ -515,12 +507,12 @@ export default function AdminEnrollmentRequestPreflight({
         </div>
         {!studentEmail && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-            Sans e-mail, un numéro propre à l'apprenant pourra servir à la
-            connexion si l'authentification téléphone est configurée et le
-            numéro vérifié. Le téléphone du parent sert au contact familial,
-            jamais d'identifiant partagé entre plusieurs comptes.
-            L'e-mail du parent recevra les communications après vérification ;
-            ce n'est pas l'e-mail Auth de l'enfant.
+            Sans e-mail personnel, l'apprenant disposera d'un identifiant
+            SCHOOLNET unique et de son propre mot de passe. Le téléphone familial
+            pourra être partagé entre plusieurs enfants : chaque accès restera
+            individualisé par son code SCHOOLNET et son mot de passe. Le mot de
+            passe et le compte Auth du Parent ne seront jamais réutilisés.
+            L'e-mail du Parent reste uniquement un contact de remise vérifié.
           </p>
         )}
         <p className="text-xs font-medium text-violet-800">
@@ -543,25 +535,68 @@ export default function AdminEnrollmentRequestPreflight({
               Répertoire des classes indisponible. Aucun rattachement n'est proposé automatiquement.
             </p>
           )}
-          {catalog.status === "ready" && catalog.classes.length === 0 && (
-            <p className="mt-2 text-xs text-amber-800">
-              Aucune classe du niveau demandé n'a été trouvée. Vérifiez le niveau
-              et les classes disponibles avant de valider une affectation.
+          {catalog.status === "ready" && catalog.resolution.publicLevel && (
+            <p className="mt-2 text-xs text-slate-700">
+              Niveau de référence : <strong>{catalog.resolution.publicLevel.name}</strong>
+              {" "}({catalog.resolution.publicLevel.short_label || catalog.resolution.publicLevel.slug})
+              {" "}— présent dans le catalogue public.
+              {!catalog.resolution.publicLevel.is_visible && (
+                <span className="text-amber-800"> Actuellement masqué sur le site public.</span>
+              )}
             </p>
           )}
-          {catalog.status === "ready" && catalog.classes.length > 0 && (
+          {catalog.status === "ready" && catalog.resolution.state === "academic_catalog_missing" && (
+            <p role="status" className="mt-2 rounded-lg bg-amber-50 p-2 text-xs leading-5 text-amber-900">
+              Ce niveau existe déjà dans « Niveaux & Matières » du site public,
+              mais il n'est pas encore synchronisé dans les niveaux de gestion scolaire.
+              Il faudra synchroniser le niveau avant de créer une classe. Aucune classe
+              ni inscription n'est créée automatiquement.
+            </p>
+          )}
+          {catalog.status === "ready" && catalog.resolution.state === "classes_missing" && (
+            <p role="status" className="mt-2 text-xs leading-5 text-amber-800">
+              Le niveau est configuré dans la gestion scolaire, mais aucune classe
+              n'a encore été créée pour ce niveau. L'établissement doit ouvrir
+              une classe réelle avant toute affectation.
+            </p>
+          )}
+          {catalog.status === "ready" && catalog.resolution.state === "classes_other_school_year" && (
+            <p role="status" className="mt-2 text-xs leading-5 text-amber-800">
+              Des classes existent pour ce niveau, mais aucune pour l'année scolaire
+              courante. Ne pas affecter un apprenant à une classe d'une autre année.
+            </p>
+          )}
+          {catalog.status === "ready" && (
+            catalog.resolution.state === "public_catalog_missing" ||
+            catalog.resolution.state === "public_catalog_missing_for_academic" ||
+            catalog.resolution.state === "academic_catalog_ambiguous" ||
+            catalog.resolution.state === "missing_request"
+          ) && (
+            <p role="alert" className="mt-2 text-xs leading-5 text-amber-800">
+              {catalog.resolution.state === "missing_request"
+                ? "Niveau scolaire non renseigné dans la demande."
+                : catalog.resolution.state === "academic_catalog_ambiguous"
+                  ? "Plusieurs niveaux de gestion correspondent au même niveau : correction administrative nécessaire."
+                  : catalog.resolution.state === "public_catalog_missing_for_academic"
+                    ? "Ce niveau existe dans la gestion scolaire mais pas dans le catalogue public : cohérence à vérifier."
+                    : "Niveau introuvable dans les catalogues public et scolaire : vérification nécessaire."}
+            </p>
+          )}
+          {catalog.status === "ready" && catalog.resolution.state === "classes_available" && (
             <ul className="mt-2 space-y-1 text-xs text-slate-700">
-              {catalog.classes.slice(0, 8).map((item) => (
-                <li key={item.id}>
-                  • {item.name} — {item.school_year}
-                  {catalog.currentYears.includes(item.school_year)
-                    ? " (année courante)"
-                    : " (année différente de l'année courante : à vérifier)"}
-                </li>
+              {catalog.resolution.currentClasses.slice(0, 8).map((item) => (
+                <li key={item.id}>• {item.name} — {item.school_year} (année courante)</li>
               ))}
-              {catalog.classes.length > 8 && (
-                <li>Et {catalog.classes.length - 8} autre(s) classe(s)…</li>
+              {catalog.resolution.currentClasses.length > 8 && (
+                <li>Et {catalog.resolution.currentClasses.length - 8} autre(s) classe(s) pour l'année courante…</li>
               )}
+            </ul>
+          )}
+          {catalog.status === "ready" && catalog.resolution.state === "classes_other_school_year" && (
+            <ul className="mt-2 space-y-1 text-xs text-slate-600">
+              {catalog.resolution.classes.slice(0, 5).map((item) => (
+                <li key={item.id}>• {item.name} — {item.school_year} (autre année, non proposée)</li>
+              ))}
             </ul>
           )}
         </div>
