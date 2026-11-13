@@ -4,6 +4,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
+import { isSchoolnetNoEmailStudent } from "@/features/auth/lib/schoolnetStudentInviteGuards";
 import {
   AuthContext,
   type AuthContextValue,
@@ -84,6 +85,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Un lien d'invitation Auth ne donne PAS accès aux espaces scolaires.
+        // Vérifier en base le statut réel de l'apprenant, et refuser toute
+        // erreur réseau, RPC manquante ou réponse autre que true.
+        if (isSchoolnetNoEmailStudent(session.user)) {
+          const { data: enabled, error: checkError } = await withTimeout(
+            supabase.rpc("schoolnet_no_email_my_session_enabled"),
+            6000,
+            "schoolnet_no_email_my_session_enabled",
+          );
+          if (checkError || enabled !== true) {
+            throw new Error("SCHOOLNET_STUDENT_ACCOUNT_NOT_ENABLED");
+          }
+        }
         const profile = await fetchProfileSafe(session.user.id);
 
         if (!profile?.role) {
