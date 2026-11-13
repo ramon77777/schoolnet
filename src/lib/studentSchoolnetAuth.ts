@@ -2,18 +2,26 @@
 // Aucun secret serveur ni e-mail technique n'est demandé par le navigateur.
 import { supabase } from '@/lib/supabaseClient';
 import { buildAndCacheAuthUserFromSupabaseUser, clearAuthUser } from '@/lib/auth';
+import { resolveStudentLoginFormMode, type StudentLoginFormMode } from '@/lib/studentLoginPreviewValidation';
 
-const SANDBOX_URL = 'https://onqlsvphmrqhelislpry.supabase.co';
+export function studentSchoolnetLoginMode(): StudentLoginFormMode {
+  // Vite local development is UI preview only: it never sends credentials.
+  return resolveStudentLoginFormMode({
+    isDev: import.meta.env.DEV,
+    projectUrl: import.meta.env.VITE_SUPABASE_URL ?? '',
+    sandboxEnabled: import.meta.env.VITE_SCHOOLNET_STUDENT_LOGIN_ENABLED === 'true',
+  });
+}
 
 export function studentSchoolnetLoginAvailable(): boolean {
-  return import.meta.env.VITE_SUPABASE_URL === SANDBOX_URL &&
-    import.meta.env.VITE_SCHOOLNET_STUDENT_LOGIN_ENABLED === 'true';
+  return studentSchoolnetLoginMode() !== 'hidden';
 }
 
 export async function signInWithSchoolnetStudent(
   phone: string, studentCode: string, password: string,
 ) {
-  if (!studentSchoolnetLoginAvailable()) {
+  // Real logins are only allowed in the explicit sandbox build mode.
+  if (studentSchoolnetLoginMode() !== 'sandbox') {
     throw new Error('Connexion scolaire non disponible dans cet environnement.');
   }
   if (!phone.trim() || !studentCode.trim() || !password) {

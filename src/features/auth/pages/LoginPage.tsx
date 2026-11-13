@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getDefaultPathByRole, signInWithPassword } from "@/lib/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { studentSchoolnetLoginAvailable } from "@/lib/studentSchoolnetAuth";
+import { studentSchoolnetLoginMode } from "@/lib/studentSchoolnetAuth";
 import StudentSchoolnetLoginForm from "../components/StudentSchoolnetLoginForm";
 
 function loginErrorMessage(error: unknown): string {
@@ -68,7 +68,8 @@ export default function LoginPage() {
     }
   };
 
-  const enableStudentLogin = studentSchoolnetLoginAvailable();
+  const formMode = studentSchoolnetLoginMode();
+  const enableStudentLogin = formMode !== "hidden";
 
   if (enableStudentLogin && loginMode === "schoolnet") {
     return (
@@ -83,7 +84,7 @@ export default function LoginPage() {
             Identifiant SCHOOLNET
           </button>
         </div>
-        <StudentSchoolnetLoginForm />
+        <StudentSchoolnetLoginForm preview={formMode === "local-preview"} />
       </div>
     );
   }
