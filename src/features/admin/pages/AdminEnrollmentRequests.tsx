@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import AdminRequestResolutionPanel, { type RequestResolution } from '@/features/enrollments/components/AdminRequestResolutionPanel';
+import AdminStudentNoEmailPanel from '@/features/enrollments/components/AdminStudentNoEmailPanel';
 
 type RequestStatus = 'new' | 'contacted' | 'processed' | 'rejected';
 type RequestType = 'student_enrollment' | 'parent_access';
@@ -268,6 +269,7 @@ export default function AdminEnrollmentRequests() {
               </details>
             </div>
             <div className="min-w-0">
+          <AdminStudentNoEmailPanel request={selected} />
           <AdminRequestResolutionPanel
             key={selected.id}
             request={selected}
