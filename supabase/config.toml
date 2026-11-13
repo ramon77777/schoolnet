@@ -43,3 +43,11 @@ entrypoint = "./functions/schoolnet-admin-invitation/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/schoolnet-family-invitation/index.ts"
+
+# Lot 5.C-B.2 — public login endpoint, protected inside the function by:
+# Cloudflare Turnstile, rate-limited SQL gate, signed-in Auth password and
+# single authorized pilot request. Public function only; NEVER anonymous admin.
+[functions.schoolnet-student-login-release]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/schoolnet-student-login-release/index.ts"
