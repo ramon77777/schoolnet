@@ -5,6 +5,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getDefaultPathByRole, signInWithPassword } from "@/lib/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { studentSchoolnetLoginAvailable } from "@/lib/studentSchoolnetAuth";
+import StudentSchoolnetLoginForm from "../components/StudentSchoolnetLoginForm";
 
 function loginErrorMessage(error: unknown): string {
   const raw =
@@ -39,6 +41,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginMode, setLoginMode] = useState<"email" | "schoolnet">("email");
 
   useEffect(() => {
     if (loading || !user) return;
@@ -65,8 +68,40 @@ export default function LoginPage() {
     }
   };
 
+  const enableStudentLogin = studentSchoolnetLoginAvailable();
+
+  if (enableStudentLogin && loginMode === "schoolnet") {
+    return (
+      <div className="w-full max-w-md space-y-5">
+        <div className="flex gap-2 rounded-xl bg-slate-100 p-1" role="group" aria-label="Mode de connexion">
+          <button type="button" onClick={() => setLoginMode("email")}
+            className="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-white">
+            Adresse e-mail
+          </button>
+          <button type="button" aria-pressed="true"
+            className="flex-1 rounded-lg bg-white px-3 py-2.5 text-sm font-bold text-blue-700 shadow-sm">
+            Identifiant SCHOOLNET
+          </button>
+        </div>
+        <StudentSchoolnetLoginForm />
+      </div>
+    );
+  }
+
   return (
     <form className="w-full max-w-md space-y-5" onSubmit={(event) => void handleLogin(event)}>
+      {enableStudentLogin && (
+        <div className="flex gap-2 rounded-xl bg-slate-100 p-1" role="group" aria-label="Mode de connexion">
+          <button type="button" aria-pressed="true"
+            className="flex-1 rounded-lg bg-white px-3 py-2.5 text-sm font-bold text-blue-700 shadow-sm">
+            Adresse e-mail
+          </button>
+          <button type="button" onClick={() => setLoginMode("schoolnet")}
+            className="flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-600 hover:bg-white">
+            Identifiant SCHOOLNET
+          </button>
+        </div>
+      )}
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
         <div className="font-bold text-blue-700">Bienvenue dans votre espace SCHOOLNET</div>
         <p className="mt-1">
