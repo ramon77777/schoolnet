@@ -1,6 +1,6 @@
 // SCHOOLNET 5.C-B.2 - pure, server-only validation for a child's new Auth identity.
 // No SQL, network requests or secrets. Never derive authorization from user_metadata.
-import {normalizeSchoolnetFamilyPhone} from './schoolnetStudentIdentity.ts';
+import {normalizeSchoolnetFamilyPhone,SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN} from './schoolnetStudentIdentity.ts';
 
 export type StudentRequest = {
   id: string;
@@ -37,13 +37,11 @@ export function validateStudentNoEmailRequest(
   return {parentId:parent.user_id!,familyPhone:normalizeSchoolnetFamilyPhone(request.guardian_phone),studentName};
 }
 
-export function technicalSchoolnetAlias(requestId: string, domain: string): string {
+export function technicalSchoolnetAlias(requestId: string, domain = SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN): string {
   if (!uuid.test(requestId)) throw new Error('INVALID_REQUEST_ID');
-  // Never a personal email, not gmail/yahoo nor the .invalid sandbox domain.
-  if (!/^[a-z0-9][a-z0-9.-]{2,80}\.[a-z]{2,20}$/.test(domain) ||
-      /(?:^|\.)(gmail|yahoo|outlook|hotmail)\./.test(domain) ||
-      domain.endsWith('.invalid') || domain.endsWith('.test') ||
-      domain.endsWith('.localhost')) throw new Error('TECHNICAL_DOMAIN_NOT_APPROVED');
+  // Uniquement le domaine interne convenu ; jamais une adresse pouvant recevoir un e-mail.
+  if (domain !== SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN)
+    throw new Error('TECHNICAL_DOMAIN_NOT_APPROVED');
   return `sn-${requestId.replace(/-/g,'').toLowerCase()}@${domain}`;
 }
 

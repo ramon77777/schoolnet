@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runSchoolnetNoEmailLogin,keyedLoginDigest} from '../supabase/functions/_shared/studentNoEmailLoginCore.ts';
-const domain='identites.ecole.example.org';
+const domain='schoolnet.invalid';
 const account='sn-8c3e7e58df4942498b908a57868cf3a4@'+domain;
 const id='e270362f-18a2-4f6e-a8b9-57ded300e3bb';
 const data={phone:'07 12 34 56 78',studentCode:'SN-ABCD-EFGH-JKMN',password:'Correct-Password-2026!'};
@@ -68,4 +68,12 @@ test('HMAC cryptographique varie selon domaine, telephone et IP',async()=>{
  const repeated=await keyedLoginDigest('phone','+2250712345678',secret);
  const different=await keyedLoginDigest('ip','+2250712345678',secret);
  assert.equal(phone,repeated);assert.notEqual(phone,different);
+});
+test('tout autre domaine Auth, même en .invalid, est refusé',async()=>{
+ const {dep}=createDeps();
+ for(const wrong of ['identites.ecole.example.org','fake.invalid','gmail.com','schoolnet.invalid.evil.com','']){
+  const r=await runSchoolnetNoEmailLogin(data,ip,secret,wrong,dep);
+  assert.equal(r.status,503);
+  assert.equal(r.body.access_token,undefined);
+ }
 });

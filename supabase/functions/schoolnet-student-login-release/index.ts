@@ -4,6 +4,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.90.1';
 import {runSchoolnetNoEmailLogin,type NoEmailLoginDeps}
  from '../_shared/studentNoEmailLoginCore.ts';
+import {SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN} from '../_shared/schoolnetStudentIdentity.ts';
 
 const PROD='https://anttmbhaphkhmkoqsofd.supabase.co';
 const ORIGIN='https://schoolnet-snowy.vercel.app';
@@ -43,12 +44,12 @@ Deno.serve(async(req:Request)=>{
  const anon=Deno.env.get('SUPABASE_ANON_KEY')||'';
  const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
  const pepper=Deno.env.get('SCHOOLNET_STUDENT_CODE_PEPPER')||'';
- const domain=Deno.env.get('SCHOOLNET_STUDENT_ALIAS_DOMAIN')||'';
+ const domain=SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN;
  const captchaSecret=Deno.env.get('SCHOOLNET_STUDENT_TURNSTILE_SECRET')||'';
  const enabled=Deno.env.get('SCHOOLNET_STUDENT_LOGIN_ENABLED')==='true';
  const ipTrust=Deno.env.get('SCHOOLNET_STUDENT_TRUSTED_IP_VERIFIED')==='true';
  if(!enabled||!ipTrust||url!==PROD||!anon||!secret||!captchaSecret||
-   new TextEncoder().encode(pepper).length<32||!domain)
+   new TextEncoder().encode(pepper).length<32)
   return json(503,{ok:false,message:'Connexion scolaire non disponible.'},true);
  // The network team MUST have confirmed Cloudflare overwrites this header.
  // Fail closed if it might be user-supplied. Never use x-forwarded-for as fallback.

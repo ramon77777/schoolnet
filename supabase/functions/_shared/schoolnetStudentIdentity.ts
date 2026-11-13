@@ -2,6 +2,8 @@
 // Serveur uniquement : ne jamais importer ce module dans une page React.
 // Aucune creation Auth, aucune notification, aucune ecriture SQL ici.
 
+// Adresse non routable : identifiant Auth interne sans boîte de réception.
+export const SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN = "schoolnet.invalid";
 export const STUDENT_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_PATTERN = /^SN-([A-HJ-NP-Z2-9]{4})-([A-HJ-NP-Z2-9]{4})-([A-HJ-NP-Z2-9]{4})$/;
 const INVALID_CODE = "Identifiant scolaire invalide.";

@@ -24,10 +24,12 @@ test('preuve parent obligatoire, strictement le meme dossier et adresse',()=>{
   assert.throws(()=>validateStudentNoEmailRequest(request,{...parent,...patch}),/PARENT_PROOF_REQUIRED/);
 });
 test('code technique deterministic et domaine controle, jamais email parent',()=>{
- const a=technicalSchoolnetAlias(request.id,'identites.ecole.example.org');
- assert.equal(a,'sn-8c3e7e58df4942498b908a57868cf3a4@identites.ecole.example.org');
+ const a=technicalSchoolnetAlias(request.id);
+ assert.equal(a,'sn-8c3e7e58df4942498b908a57868cf3a4@schoolnet.invalid');
+ assert.equal(a,technicalSchoolnetAlias(request.id,'schoolnet.invalid'));
  assert.notEqual(a,parent.email);
- for(const domain of ['schoolnet.invalid','gmail.com','localhost','schoolnet.test',''])
+ for(const domain of ['identites.ecole.example.org','gmail.com','localhost','schoolnet.test',
+  'autre.invalid','schoolnet.invalid.evil.com',''])
   assert.throws(()=>technicalSchoolnetAlias(request.id,domain),/TECHNICAL_DOMAIN_NOT_APPROVED/);
 });
 test('transitions refusees : pas de lien sans preuve ni reactivation de revoke',()=>{

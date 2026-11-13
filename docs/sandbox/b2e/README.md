@@ -5,7 +5,7 @@
 ## Parcours réutilisant les modules actuels
 
 1. L'administration vérifie une demande `student_enrollment` où `student_email` est absent. Le compte du parent, dans **la même demande**, doit déjà posséder une invitation familiale **activée**, avec un profil `parent` et un e-mail Auth identique au contact parental.
-2. Le nouveau service Admin (`schoolnet-student-no-email-admin`) réserve une seule opération par demande, génère un e-mail technique propre à l'enfant (sous domaine géré), crée une invitation Supabase Auth **sans envoi automatique**, confirme le marqueur dans `app_metadata`, renseigne le profil `student` et génère un code opaque `SN-XXXX-XXXX-XXXX`.
+2. Le nouveau service Admin (`schoolnet-student-no-email-admin`) réserve une seule opération par demande, génère un alias Auth interne `@schoolnet.invalid` propre à l'enfant (non distribuable), crée une invitation Supabase Auth **sans envoi automatique**, confirme le marqueur dans `app_metadata`, renseigne le profil `student` et génère un code opaque `SN-XXXX-XXXX-XXXX`.
 3. Seule l'empreinte HMAC-SHA256 du code est conservée en base, jamais le code ni le lien. La réponse ponctuelle du service permet à l'Admin de copier un message à transmettre au parent vérifié, qui accompagne son enfant pour choisir son mot de passe.
 4. L'Admin confirme **après remise effective**. Le compte passe de `prepared` à `sent_declared` ; tant que cette étape n'est pas réalisée, le login est bloqué.
 5. L'apprenant se connecte avec **téléphone familial + code scolaire + son propre mot de passe**. L'Edge `schoolnet-student-login-release` vérifie un jeton Turnstile et l'IP fournie par un proxy *vérifié*, compte les tentatives de façon atomique, vérifie le mot de passe avec Supabase Auth, vérifie le jeton Auth, puis active le compte dans une RPC à usage serveur. Aucun e-mail technique n'est affiché au navigateur.
@@ -52,7 +52,7 @@ Si `git status` signale des fichiers modifiés, ne pas utiliser `reset --hard` e
 ## Conditions préalables à une activation/déploiement
 
 - **Migration SQL déjà approuvée, appliquée et contrôlée** ; ne pas la réexécuter. Effectuer la recette UI des champs personnels `profiles` après la restriction des droits et l'audit des sessions `pending`.
-- Fournir un **domaine technique effectivement contrôlé** pour les identités Auth. Le prototype `@schoolnet.invalid` n'est pas un domaine de production. Configurer les redirections Supabase Auth autorisées vers `/auth/reset-password?mode=student-invite`.
+- **Domaine interne validé :** `schoolnet.invalid`, exclusivement pour les identifiants Auth, sans e-mail ni achat de domaine. La remise et la récupération des liens sont manuelles, par l'administration au parent vérifié. Autoriser `/auth/reset-password?mode=student-invite` dans Supabase Auth et tester `generateLink('invite')` sur un compte fictif avant les clients.
 - Fournir un secret HMAC stable (`SCHOOLNET_STUDENT_CODE_PEPPER`, longueur >=32) **uniquement** dans les secrets serveur, jamais `VITE_` ou GitHub. Éviter toute rotation non planifiée : elle invaliderait la correspondance des codes déjà émis.
 - Installer la migration sur **un environnement de préproduction** et valider la création de deux enfants partageant un téléphone, les liens uniques de récupération, l'activation Auth et le lien familial via la RPC existante.
 - Vérifier avec l'infrastructure que `cf-connecting-ip` est émis/écrasé par le **proxy de confiance**. Sans preuve, ne pas définir `SCHOOLNET_STUDENT_TRUSTED_IP_VERIFIED=true`. Ajouter une protection WAF. Aucune relecture d'IP fournie par le client.
@@ -66,7 +66,7 @@ Si `git status` signale des fichiers modifiés, ne pas utiliser `reset --hard` e
 
 - `SCHOOLNET_STUDENT_ACCOUNTS_ENABLED` : `false` tant que la création Admin est fermée.
 - `SCHOOLNET_STUDENT_LOGIN_ENABLED` : `false` tant que le login public est fermé.
-- `SCHOOLNET_STUDENT_ALIAS_DOMAIN` : sous-domaine technique contrôlé.
+- Aucun `SCHOOLNET_STUDENT_ALIAS_DOMAIN` à renseigner : l'alias est fixé à `schoolnet.invalid` côté serveur.
 - `SCHOOLNET_STUDENT_CODE_PEPPER` : clé secrète HMAC.
 - `SCHOOLNET_STUDENT_TURNSTILE_SECRET` : clé privée Turnstile (distincte de la clé publique Vite).
 - `SCHOOLNET_STUDENT_TRUSTED_IP_VERIFIED` : `false` jusqu'à preuve du chemin proxy.

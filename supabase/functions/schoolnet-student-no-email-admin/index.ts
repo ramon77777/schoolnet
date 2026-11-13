@@ -31,7 +31,6 @@ Deno.serve(async(req:Request)=>{
  const url=Deno.env.get('SUPABASE_URL')||'';
  const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
  const anon=Deno.env.get('SUPABASE_ANON_KEY')||'';
- const domain=Deno.env.get('SCHOOLNET_STUDENT_ALIAS_DOMAIN')||'';
  const pepper=Deno.env.get('SCHOOLNET_STUDENT_CODE_PEPPER')||'';
  if(url!==PROD_PROJECT||!secret||!anon ||
     Deno.env.get('SCHOOLNET_STUDENT_ACCOUNTS_ENABLED')!=='true')
@@ -114,7 +113,7 @@ Deno.serve(async(req:Request)=>{
  if(record)return deny(origin,409,'Un compte a deja ete reserve pour cette demande. Aucun doublon autorise.');
  let technicalEmail:string;
  try{
-  technicalEmail=technicalSchoolnetAlias(requestId,domain);
+  technicalEmail=technicalSchoolnetAlias(requestId);
   if(new TextEncoder().encode(pepper).length<32)throw Error('secret');
  }catch{return deny(origin,503,'Configuration serveur incomplete.');}
  const destination=`${PROD_ORIGIN}/auth/reset-password?mode=student-invite`;

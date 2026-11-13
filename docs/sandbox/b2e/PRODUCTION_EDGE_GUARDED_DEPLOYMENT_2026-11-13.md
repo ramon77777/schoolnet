@@ -19,7 +19,7 @@ Chaque fonction a été déployée à partir des fichiers GitHub existants, avec
 ## Configuration indispensable pour les inscriptions réelles
 
 1. Dans Supabase principal → **Edge Functions → Secrets**, enregistrer uniquement côté serveur :
-   - `SCHOOLNET_STUDENT_ALIAS_DOMAIN` : un domaine technique réellement maîtrisé par SCHOOLNET (alias du compte enfant, pas l'e-mail de son parent). Ne pas utiliser `.invalid`, `.test`, un fournisseur de messagerie tiers ni un domaine arbitraire.
+   - **Aucun domaine à acheter ni à configurer** : seul `schoolnet.invalid` est autorisé comme identifiant Auth interne. Ces adresses ne reçoivent aucun e-mail. Le lien d'invitation et toute récupération sont remis manuellement au parent vérifié ; les autres domaines sont refusés.
    - `SCHOOLNET_STUDENT_CODE_PEPPER` : secret HMAC aléatoire, durable, d'au moins 32 octets. **Le sauvegarder dans un gestionnaire de secrets sûr** ; aucune copie dans un dépôt GitHub ou une variable Vite.
    - Laisser `SCHOOLNET_STUDENT_ACCOUNTS_ENABLED=false` tant que le compte Parent et les parcours d'invitation n'ont pas été validés.
 2. Pour la connexion publique, en plus des précédents, configurer un widget Cloudflare Turnstile lié au domaine exact `schoolnet-snowy.vercel.app` et le secret `SCHOOLNET_STUDENT_TURNSTILE_SECRET`. Ajouter la clé publique `VITE_TURNSTILE_SITE_KEY` dans le projet Vercel, uniquement au moment du déploiement approuvé.

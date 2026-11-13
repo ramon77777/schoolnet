@@ -1,6 +1,7 @@
 // SCHOOLNET - generic real student login logic; password stays exclusively in Supabase Auth.
 // Release rollout requires Turnstile, a trusted IP source, SQL migration and secrets.
-import {normalizeSchoolnetFamilyPhone,normalizeSchoolnetStudentCode,studentCodeLookupDigest}
+import {normalizeSchoolnetFamilyPhone,normalizeSchoolnetStudentCode,studentCodeLookupDigest,
+ SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN}
  from './schoolnetStudentIdentity.ts';
 
 export type NoEmailLoginOutcome='denied'|'rate_limited'|'authenticated'|'server_error';
@@ -30,9 +31,7 @@ export async function keyedLoginDigest(kind:'ip'|'phone',value:string,pepper:str
 export async function runSchoolnetNoEmailLogin(
  input:unknown, trustedIp:string, pepper:string, allowedDomain:string, deps:NoEmailLoginDeps,
 ):Promise<NoEmailLoginResponse>{
- if(!allowedDomain || !/^[a-z0-9.-]+\.[a-z]{2,20}$/.test(allowedDomain)||
-    /(?:^|\.)(gmail|outlook|hotmail|yahoo)\./.test(allowedDomain)||
-    /\.(invalid|test|localhost)$/.test(allowedDomain)||
+ if(allowedDomain!==SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN ||
     !trustedIp || trustedIp.length>64 ||
     new TextEncoder().encode(pepper||'').length<32)
   return fail(503,UNAVAILABLE);
