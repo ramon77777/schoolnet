@@ -11,6 +11,8 @@ Le test se déroulera donc sur un PC de confiance avec Node.js 22, depuis le dé
 
 ## Fichiers
 
+Les nouveaux scripts sont livrés dans l'archive ZIP téléchargeable avec cette conversation ; ils ne sont pas encore ajoutés à GitHub. Extraire uniquement ces fichiers dans la racine du dépôt local SCHOOLNET, sans remplacer les fichiers existants.
+
 - `scripts/schoolnet-student-auth-sandbox-local.mjs` : précontrôle en lecture seule puis recette Auth explicite.
 - `scripts/test-schoolnet-student-auth-sandbox-local.mjs` : six tests hors ligne du verrou de projet et du roster.
 - `scripts/test-schoolnet-student-identity.mjs` : six tests précédents sur les identifiants SCHOOLNET.
@@ -41,7 +43,7 @@ Résultat : **6/6 nouveaux tests réussis** et **6/6 tests d'identifiants réuss
 
 ## Instructions Windows PowerShell — UNIQUEMENT à l'étape de recette autorisée
 
-Ouvrir un terminal PowerShell à la racine du dépôt SCHOOLNET, après `git status` et synchronisation prudente de la branche de travail. Installer les dépendances existantes du dépôt avec `npm ci` si nécessaire. Ne pas coller les clés dans la conversation, ne pas enregistrer de fichier `.env` dans Git.
+Télécharger puis extraire le ZIP fourni dans cette conversation à la racine du dépôt SCHOOLNET : les dossiers `scripts/` et `docs/` se fusionnent sans écraser les fichiers déjà versionnés. Ouvrir ensuite un terminal PowerShell à cette racine, après `git status` et synchronisation prudente de la branche de travail. Installer les dépendances existantes du dépôt avec `npm ci` si nécessaire. Ne pas coller les clés dans la conversation, ne pas enregistrer de fichier `.env` dans Git.
 
 ```powershell
 $env:SCHOOLNET_SANDBOX_URL = 'https://onqlsvphmrqhelislpry.supabase.co'
