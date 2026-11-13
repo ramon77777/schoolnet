@@ -4,6 +4,8 @@
 -- Works with existing public_enrollment_requests, schoolnet_family_invitation_records,
 -- public_enrollment_request_resolutions and admin_finalize_public_enrollment_request.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '30s';
 
 -- CRITICAL: previous self-update policy permits updates of role and child_ids.
 -- RLS restricts the row, not the columns; protect both parent associations and roles.
@@ -214,35 +216,95 @@ $body$;
 REVOKE ALL ON FUNCTION public.schoolnet_no_email_my_session_enabled() FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.schoolnet_no_email_my_session_enabled() TO authenticated;
 
--- Reuse existing verified admin finalization; a staged no-email student cannot be linked.
+-- Finalization writes parent_links and profiles.child_ids BEFORE the resolution;
+-- protect all three paths. Existing non-no-email students are unaffected.
 CREATE FUNCTION schoolnet_student_private.require_activated_before_parent_link()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $body$
 BEGIN
- IF EXISTS(SELECT 1 FROM public.schoolnet_student_no_email_requests i
-  WHERE i.request_id=NEW.request_id
-    AND (i.student_auth_user_id IS DISTINCT FROM NEW.student_id
-      OR i.parent_id IS DISTINCT FROM NEW.parent_id
-      OR i.status<>'enabled'))
- THEN RAISE EXCEPTION 'Student must complete password login before family finalization' USING ERRCODE='23514';
+ IF EXISTS (
+   SELECT 1 FROM public.schoolnet_student_no_email_requests i
+   WHERE (i.request_id=NEW.request_id OR i.student_auth_user_id=NEW.student_id)
+     AND (
+       i.status<>'enabled' OR i.activated_at IS NULL
+       OR (i.request_id=NEW.request_id AND
+          (i.student_auth_user_id IS DISTINCT FROM NEW.student_id
+           OR i.parent_id IS DISTINCT FROM NEW.parent_id))
+     )
+ ) THEN
+   RAISE EXCEPTION 'Student must complete password login before family finalization'
+     USING ERRCODE='23514';
  END IF;
  RETURN NEW;
 END;
 $body$;
 REVOKE ALL ON FUNCTION schoolnet_student_private.require_activated_before_parent_link()
  FROM PUBLIC,anon,authenticated;
-CREATE TRIGGER schoolnet_student_no_email_link_guard BEFORE INSERT
- ON public.public_enrollment_request_resolutions FOR EACH ROW
+CREATE TRIGGER schoolnet_student_no_email_resolution_guard
+ BEFORE INSERT OR UPDATE ON public.public_enrollment_request_resolutions FOR EACH ROW
  EXECUTE FUNCTION schoolnet_student_private.require_activated_before_parent_link();
+
+-- Independently protect direct admin writes to parent_links.
+CREATE FUNCTION schoolnet_student_private.guard_no_email_parent_links()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $body$
+BEGIN
+ IF EXISTS (
+   SELECT 1 FROM public.schoolnet_student_no_email_requests i
+   WHERE i.student_auth_user_id=NEW.student_id
+     AND (i.status<>'enabled' OR i.activated_at IS NULL)
+ ) THEN
+   RAISE EXCEPTION 'Unactivated no-email student cannot be linked'
+     USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$body$;
+REVOKE ALL ON FUNCTION schoolnet_student_private.guard_no_email_parent_links()
+ FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER schoolnet_student_no_email_parent_links_guard
+ BEFORE INSERT OR UPDATE ON public.parent_links FOR EACH ROW
+ EXECUTE FUNCTION schoolnet_student_private.guard_no_email_parent_links();
+
+-- Legacy features also read profiles.child_ids. Reject newly added pending IDs,
+-- preserving existing parent relationships unchanged.
+CREATE FUNCTION schoolnet_student_private.guard_no_email_child_ids()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $body$
+BEGIN
+ IF NEW.child_ids IS DISTINCT FROM OLD.child_ids
+    AND EXISTS (
+      SELECT 1 FROM public.schoolnet_student_no_email_requests i
+      WHERE i.student_auth_user_id=ANY(COALESCE(NEW.child_ids, ARRAY[]::uuid[]))
+        AND NOT (i.student_auth_user_id=ANY(COALESCE(OLD.child_ids, ARRAY[]::uuid[])))
+        AND (i.status<>'enabled' OR i.activated_at IS NULL)
+    )
+ THEN
+   RAISE EXCEPTION 'Unactivated no-email student cannot be added to child_ids'
+     USING ERRCODE='23514';
+ END IF;
+ RETURN NEW;
+END;
+$body$;
+REVOKE ALL ON FUNCTION schoolnet_student_private.guard_no_email_child_ids()
+ FROM PUBLIC,anon,authenticated;
+CREATE TRIGGER schoolnet_student_no_email_child_ids_guard
+ BEFORE UPDATE OF child_ids ON public.profiles FOR EACH ROW
+ EXECUTE FUNCTION schoolnet_student_private.guard_no_email_child_ids();
 
 -- Check defense after DDL, without reading or changing family data.
 DO $verify$
 BEGIN
  IF has_column_privilege('authenticated','public.profiles','role','UPDATE')
  OR has_column_privilege('authenticated','public.profiles','child_ids','UPDATE')
+ OR has_column_privilege('anon','public.profiles','role','UPDATE')
+ OR has_column_privilege('anon','public.profiles','child_ids','UPDATE')
+ OR NOT has_column_privilege('authenticated','public.profiles','full_name','UPDATE')
+ OR NOT has_column_privilege('authenticated','public.profiles','phone','UPDATE')
+ OR NOT has_column_privilege('authenticated','public.profiles','avatar_url','UPDATE')
  OR has_table_privilege('anon','public.schoolnet_student_no_email_requests','SELECT')
  OR has_table_privilege('authenticated','public.schoolnet_student_no_email_requests','SELECT')
  OR has_function_privilege('anon','public.schoolnet_no_email_login_gate(text,text,text,text)','EXECUTE')
  OR has_function_privilege('authenticated','public.schoolnet_no_email_login_gate(text,text,text,text)','EXECUTE')
+ OR has_schema_privilege('anon','schoolnet_student_private','USAGE')
+ OR has_schema_privilege('authenticated','schoolnet_student_private','USAGE')
  THEN RAISE EXCEPTION 'SECURITY_CHECK_FAILED'; END IF;
 END;
 $verify$;
