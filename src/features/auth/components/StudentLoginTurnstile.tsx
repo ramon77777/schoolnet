@@ -8,7 +8,8 @@ const SITE_KEY=import.meta.env.VITE_TURNSTILE_SITE_KEY??'';
 export default function StudentLoginTurnstile({onToken,nonce=0}:{onToken:(token:string)=>void;nonce?:number}){
  const target=useRef<HTMLDivElement|null>(null);
  const callback=useRef(onToken);
- callback.current=onToken;
+ // React: les refs ne sont modifiées que dans un effet, jamais pendant le rendu.
+ useEffect(()=>{callback.current=onToken;},[onToken]);
  useEffect(()=>{
   if(!SITE_KEY)return;
   let cancelled=false;let widget:string|number|null=null;
