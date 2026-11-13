@@ -41,3 +41,12 @@ test('At least 12 password chars required for preview; passwords are not returne
   const result = validateStudentLoginPreview(valid);
   assert.equal('password' in result,false);
 });
+
+
+test('production hidden by default; explicit flag never unlocks wrong project', () => {
+ const prod='https://anttmbhaphkhmkoqsofd.supabase.co';
+ assert.equal(resolveStudentLoginFormMode({isDev:false,projectUrl:prod,sandboxEnabled:false}),'hidden');
+ assert.equal(resolveStudentLoginFormMode({isDev:false,projectUrl:prod,sandboxEnabled:false,productionEnabled:true}),'production');
+ assert.equal(resolveStudentLoginFormMode({isDev:false,projectUrl:'https://unknown.supabase.co',sandboxEnabled:false,productionEnabled:true}),'hidden');
+ assert.equal(resolveStudentLoginFormMode({isDev:true,projectUrl:prod,sandboxEnabled:false,productionEnabled:true}),'local-preview');
+});

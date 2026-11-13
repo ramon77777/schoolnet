@@ -10,6 +10,7 @@ export function studentSchoolnetLoginMode(): StudentLoginFormMode {
     isDev: import.meta.env.DEV,
     projectUrl: import.meta.env.VITE_SUPABASE_URL ?? '',
     sandboxEnabled: import.meta.env.VITE_SCHOOLNET_STUDENT_LOGIN_ENABLED === 'true',
+    productionEnabled: import.meta.env.VITE_SCHOOLNET_STUDENT_LOGIN_RELEASE_ENABLED === 'true',
   });
 }
 
@@ -18,10 +19,11 @@ export function studentSchoolnetLoginAvailable(): boolean {
 }
 
 export async function signInWithSchoolnetStudent(
-  phone: string, studentCode: string, password: string,
+  phone: string, studentCode: string, password: string, captchaToken?: string,
 ) {
-  // Real logins are only allowed in the explicit sandbox build mode.
-  if (studentSchoolnetLoginMode() !== 'sandbox') {
+  // Never submit credentials from local UI preview or unapproved production builds.
+  const mode = studentSchoolnetLoginMode();
+  if (mode !== 'sandbox' && mode !== 'production') {
     throw new Error('Connexion scolaire non disponible dans cet environnement.');
   }
   if (!phone.trim() || !studentCode.trim() || !password) {
@@ -30,9 +32,14 @@ export async function signInWithSchoolnetStudent(
   if (phone.length > 64 || studentCode.length > 60 || password.length > 256) {
     throw new Error('Identifiants scolaires invalides.');
   }
-  const { data, error } = await supabase.functions.invoke('schoolnet-student-login', {
-    body: { phone: phone.trim(), studentCode: studentCode.trim(), password },
-  });
+  if (mode === 'production' && (!captchaToken || captchaToken.length > 2048)) {
+    throw new Error('Vérification de sécurité requise.');
+  }
+  const action = mode === 'production' ? 'schoolnet-student-login-release' : 'schoolnet-student-login';
+  const body = mode === 'production'
+    ? { phone:phone.trim(), studentCode:studentCode.trim(), password, captchaToken }
+    : { phone:phone.trim(), studentCode:studentCode.trim(), password };
+  const { data, error } = await supabase.functions.invoke(action, { body });
   const payload = data as {
     ok?: boolean;
     access_token?: unknown;

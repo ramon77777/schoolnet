@@ -9,6 +9,9 @@ export default function ResetPasswordPage() {
   const [familyInviteMode] = useState(() =>
     new URLSearchParams(window.location.search).get("mode") === "family-invite",
   );
+  const [studentInviteMode] = useState(() =>
+    new URLSearchParams(window.location.search).get("mode") === "student-invite",
+  );
   const [checking, setChecking] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [password, setPassword] = useState("");
@@ -25,7 +28,9 @@ export default function ResetPasswordPage() {
     const eligibleSession = (session: Session | null): boolean =>
       Boolean(session?.user) &&
       (!familyInviteMode ||
-        session?.user.app_metadata?.schoolnet_family_invitation === true);
+        session?.user.app_metadata?.schoolnet_family_invitation === true) &&
+      (!studentInviteMode ||
+        session?.user.app_metadata?.schoolnet_no_email_student === true);
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
@@ -54,7 +59,7 @@ export default function ResetPasswordPage() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [familyInviteMode]);
+  }, [familyInviteMode, studentInviteMode]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -71,12 +76,12 @@ export default function ResetPasswordPage() {
     setBusy(true);
     setError(null);
     try {
-      if (familyInviteMode) {
-        // Vérification indépendante de la session en mémoire : le marqueur
-        // provient d'app_metadata, réservé au serveur Auth.
+      if (familyInviteMode || studentInviteMode) {
+        // Only app_metadata, never user_metadata, may certify an invitation.
         const { data: verified, error: verifyError } = await supabase.auth.getUser();
         if (verifyError || !verified.user ||
-          verified.user.app_metadata?.schoolnet_family_invitation !== true) {
+          (familyInviteMode && verified.user.app_metadata?.schoolnet_family_invitation !== true) ||
+          (studentInviteMode && verified.user.app_metadata?.schoolnet_no_email_student !== true)) {
           throw new Error("INVITATION_ACCOUNT_NOT_VERIFIED");
         }
       }
@@ -103,8 +108,10 @@ export default function ResetPasswordPage() {
       <div className="space-y-5">
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
           <strong className="block text-lg">Mot de passe enregistr&eacute;</strong>
-          <p className="mt-2 leading-6">Vous pouvez maintenant vous connecter avec votre adresse e-mail et ce nouveau mot de passe.</p>
-          {familyInviteMode && (
+          <p className="mt-2 leading-6">{studentInviteMode
+            ? "Vous pouvez maintenant vous connecter avec votre téléphone familial, votre code SCHOOLNET et votre mot de passe personnel."
+            : "Vous pouvez maintenant vous connecter avec votre adresse e-mail et ce nouveau mot de passe."}</p>
+          {(familyInviteMode || studentInviteMode) && (
             <p className="mt-2 leading-6">Votre première connexion permettra à SCHOOLNET de contrôler l'activation de votre accès.</p>
           )}
         </div>
@@ -121,11 +128,11 @@ export default function ResetPasswordPage() {
     return (
       <div className="space-y-4">
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          {familyInviteMode
-            ? "Aucune session d'invitation familiale valide pour ce compte. Demandez à l'administration un nouveau lien personnel."
+          {familyInviteMode || studentInviteMode
+            ? "Aucune session d'invitation valide pour ce compte. Demandez à l'administration un nouveau lien personnel."
             : "Ce lien n'est pas valide ou a expiré. Demandez un nouveau lien pour choisir votre mot de passe."}
         </p>
-        {familyInviteMode ? (
+        {familyInviteMode || studentInviteMode ? (
           <Link to="/auth/login" className="inline-flex rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Retour à la connexion</Link>
         ) : (
           <Link to="/auth/forgot-password" className="inline-flex rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700">Demander un nouveau lien</Link>

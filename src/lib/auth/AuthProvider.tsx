@@ -84,6 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // A temporary recovery/invite Auth session must not unlock school pages.
+        // The server-only registry will answer only for this Auth UUID.
+        if (session.user.app_metadata?.schoolnet_no_email_student === true) {
+          const {data:allowed,error:statusError} = await supabase.rpc('schoolnet_no_email_my_session_enabled');
+          if(statusError || allowed !== true) throw new Error('SCHOOLNET_STUDENT_INVITE_PENDING');
+        }
         const profile = await fetchProfileSafe(session.user.id);
 
         if (!profile?.role) {

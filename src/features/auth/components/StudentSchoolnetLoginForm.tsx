@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getDefaultPathByRole } from '@/lib/auth';
-import { signInWithSchoolnetStudent } from '@/lib/studentSchoolnetAuth';
+import { signInWithSchoolnetStudent, studentSchoolnetLoginMode } from '@/lib/studentSchoolnetAuth';
+import StudentLoginTurnstile from './StudentLoginTurnstile';
 import { validateStudentLoginPreview } from '@/lib/studentLoginPreviewValidation';
 
 export default function StudentSchoolnetLoginForm({ preview = false }: { preview?: boolean }) {
@@ -13,6 +14,9 @@ export default function StudentSchoolnetLoginForm({ preview = false }: { preview
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [captchaToken,setCaptchaToken] = useState('');
+  const [captchaNonce,setCaptchaNonce] = useState(0);
+  const requiresCaptcha = !preview && studentSchoolnetLoginMode()==='production';
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,7 +33,7 @@ export default function StudentSchoolnetLoginForm({ preview = false }: { preview
         setNotice("Formulaire de demonstration valide. Aucune connexion et aucune modification Supabase n'ont ete effectuees.");
         return;
       }
-      const user = await signInWithSchoolnetStudent(phone, schoolCode, password);
+      const user = await signInWithSchoolnetStudent(phone, schoolCode, password, requiresCaptcha ? captchaToken : undefined);
       setPassword('');
       navigate(getDefaultPathByRole(user.role), {replace:true});
     } catch {
@@ -37,6 +41,7 @@ export default function StudentSchoolnetLoginForm({ preview = false }: { preview
         ? "Verification locale impossible : controlez le telephone, le code SCHOOLNET et un mot de passe fictif de 12 caracteres minimum."
         : "Connexion impossible. Verifiez vos identifiants ou contactez votre etablissement.");
     } finally {
+      if(requiresCaptcha){setCaptchaToken('');setCaptchaNonce(x=>x+1);}
       setBusy(false);
     }
   };
@@ -85,9 +90,10 @@ export default function StudentSchoolnetLoginForm({ preview = false }: { preview
       <p className="text-right text-xs leading-5 text-slate-500">
         Code oublié ou première connexion ? Demandez un lien personnel à l'administration. Le parent ne doit pas communiquer son propre mot de passe.
       </p>
+      {requiresCaptcha && <StudentLoginTurnstile nonce={captchaNonce} onToken={setCaptchaToken} />}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{notice}</p>}
-      <button type="submit" disabled={busy || !phone.trim() || !schoolCode.trim() || !password}
+      <button type="submit" disabled={busy || !phone.trim() || !schoolCode.trim() || !password || (requiresCaptcha && !captchaToken)}
         className="w-full rounded-xl bg-blue-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
         {busy ? 'Verification...' : preview ? 'Verifier le formulaire (sans connexion)' : 'Acceder a mon espace Apprenant'}
       </button>

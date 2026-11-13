@@ -1,13 +1,15 @@
 // SCHOOLNET 5.C-B.2 - Pure UI validation and visibility policy.
 // No client-side credential verification or network calls here.
-export type StudentLoginFormMode = "hidden" | "local-preview" | "sandbox";
+export type StudentLoginFormMode = "hidden" | "local-preview" | "sandbox" | "production";
 
 export function resolveStudentLoginFormMode(input: {
   isDev: boolean;
   projectUrl: string;
   sandboxEnabled: boolean;
+  productionEnabled?: boolean;
 }): StudentLoginFormMode {
   if (input.isDev) return "local-preview";
+  if (input.productionEnabled && input.projectUrl === "https://anttmbhaphkhmkoqsofd.supabase.co") return "production";
   if (input.sandboxEnabled && input.projectUrl === "https://onqlsvphmrqhelislpry.supabase.co") {
     return "sandbox";
   }
