@@ -6,7 +6,9 @@ type RequestInfo={
  id:string;reference:string;student_full_name:string;student_email:string|null;
  request_type:string;guardian_email:string|null;
 };
-export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}){
+export default function AdminStudentNoEmailPanel({
+ request,onOpenFamily,
+}:{request:RequestInfo;onOpenFamily?:()=>void}){
  const [inspection,setInspection]=useState<StudentNoEmailResponse|null>(null);
  const [draft,setDraft]=useState<StudentNoEmailResponse|null>(null);
  const [note,setNote]=useState('');
@@ -54,6 +56,17 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
   catch{setError('Copie impossible : utilisez un navigateur sécurisé.');}
  }
  const status=inspection?.status??null;
+ const previewOnly=!studentNoEmailAdminEnabled;
+ const nextAction=status==='enabled'
+  ? (inspection?.family_linked===true?'Consulter le résultat familial':'Vérifier le rattachement familial')
+  : status==='sent_declared'?'Vérifier l’activation'
+  : status==='prepared'?'Invitation préparée : vérifier la remise'
+  : status==='not_prepared'
+   ? (inspection?.admin_enabled?'Vérifier la famille puis préparer le compte':'Préparation non autorisée pour ce dossier')
+   : status==='requires_review'?'Examiner l’incident avec l’administration technique'
+   : status==='revoked'?'Accès révoqué : revue administrative nécessaire'
+   : status==='auth_created'||status==='reserved'?'Création en cours : ne pas recommencer'
+   : 'Vérifier le compte Parent et le dossier';
  const statusLabels:Record<StudentNoEmailResponse['status'],string>={
   not_prepared:'Compte à préparer',reserved:'Création en cours',
   auth_created:'Compte créé, invitation en cours',prepared:'Invitation prête',
@@ -70,9 +83,18 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
    <p className="text-xs leading-5 text-slate-600">
     Compte individuel de {request.student_full_name}, distinct de celui du Parent.
    </p>
-  {!studentNoEmailAdminEnabled ? <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-   Prévisualisation locale uniquement. Aucun compte ni lien ne sera généré depuis cet environnement.
+  {previewOnly ? <div role="status" className="rounded-xl border border-blue-200 bg-white p-3 text-xs leading-5 text-slate-700">
+   <strong className="text-blue-800">Prévisualisation en lecture seule.</strong> La vérification du compte est réservée au domaine principal SCHOOLNET.
+   Aucun compte, invitation ou lien familial ne peut être créé depuis cet aperçu.
   </div> : <>
+   <div className="rounded-xl border border-indigo-100 bg-white px-3 py-3 text-xs" aria-live="polite">
+    <p className="font-bold text-slate-900">Prochaine étape</p>
+    <p className="mt-1 text-slate-700">{nextAction}</p>
+    {(status==='enabled'||status==='requires_review')&&onOpenFamily&&
+     <button type="button" onClick={onOpenFamily} className="mt-3 rounded-lg border border-indigo-200 px-3 py-2 font-semibold text-indigo-800">
+      {status==='enabled'?'Voir la famille':'Consulter le dossier familial'}
+     </button>}
+   </div>
    <button type="button" disabled={busy||inspecting} onClick={()=>void act('inspect')}
     className="rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-800">
     {busy||inspecting?'Vérification…':'Actualiser la vérification'}</button>
