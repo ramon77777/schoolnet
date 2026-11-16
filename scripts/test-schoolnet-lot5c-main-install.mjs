@@ -72,3 +72,43 @@ test('06 - preflight et post-install refusent les configurations inconnues',()=>
  assert.match(sql,/schoolnet_sibling_approval_guard/);
  assert.match(sql,/schoolnet_student_no_email_autolink_family_after_activation/);
 });
+
+
+const preflight=readFileSync(new URL(
+ '../supabase/checks/20261116_schoolnet_lot5c_MAIN_PREFLIGHT_READ_ONLY.sql',
+ import.meta.url,
+),'utf8');
+const postinstall=readFileSync(new URL(
+ '../supabase/checks/20261116_schoolnet_lot5c_MAIN_POSTINSTALL_READ_ONLY.sql',
+ import.meta.url,
+),'utf8');
+
+test('07 - never install when an existing enabled child has no coherent family',()=>{
+ assert.match(sql,/SCHOOLNET_LOT5C_MAIN_PREEXISTING_ACTIVE_FAMILY_INCONSISTENT/);
+ assert.match(sql,/LEFT JOIN public\.parent_links AS l/);
+ assert.match(sql,/parent\.role::text<>'parent'/);
+ assert.match(sql,/child\.role::text<>'student'/);
+ assert.match(sql,/other\.parent_id<>s\.parent_id/);
+});
+
+test('08 - both audit scripts contain only read-only SQL',()=>{
+ for(const [name,source] of [['preflight',preflight],['post-install',postinstall]]){
+  assert.match(source,/BEGIN TRANSACTION READ ONLY;/,name);
+  assert.match(source,/^COMMIT;/m,name);
+  // Ignore comments when checking that no DML/DDL is accidentally introduced.
+  const noComments=source.split('\n').filter(s=>!/^\s*--/.test(s)).join('\n');
+  assert.doesNotMatch(noComments,/\b(?:CREATE|ALTER|DROP|TRUNCATE|VACUUM|REINDEX)\b\s+(?:TABLE|FUNCTION|TRIGGER|INDEX|SCHEMA)\b/i,name);
+  assert.doesNotMatch(noComments,/\b(?:INSERT\s+INTO|DELETE\s+FROM|UPDATE\s+[\w.]+\s+SET|MERGE\s+INTO|GRANT\s+|REVOKE\s+)\b/i,name);
+ }
+});
+
+test('09 - postinstall checks RLS, both triggers, privileges, and existing rows',()=>{
+ assert.match(preflight,/enabled_conflicting_parent_links/);
+ assert.match(preflight,/unique_parent_student_present/);
+ assert.match(preflight,/anonymous_cannot_activate/);
+ assert.match(postinstall,/approval_table_rls_forced/);
+ assert.match(postinstall,/no_signed_approval_write/);
+ assert.match(postinstall,/autolink_trigger_enabled/);
+ assert.match(postinstall,/inconsistent_enabled_family_count/);
+ assert.match(postinstall,/already_enabled/);
+});
