@@ -18,7 +18,7 @@ function validSandboxOrigin(value:string):boolean{
   const url=new URL(value);
   if(url.origin!==value||url.username||url.password||url.pathname!=='/'||
      url.search||url.hash)return false;
-  const browserPreview=url.protocol==='https:'&&
+  const browserPreview=url.protocol==='https:'&&url.port===''&&
    url.hostname.startsWith('schoolnet-')&&
    url.hostname.endsWith('.vercel.app')&&
    value!==STUDENT_PRODUCTION_ORIGIN;
