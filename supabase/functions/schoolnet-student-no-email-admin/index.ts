@@ -10,7 +10,7 @@ import {validateStudentNoEmailRequest,technicalSchoolnetAlias,validateAdminVerif
 
 const MAX_BODY=3500;
 const OPTIONS={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}};
-type Action='inspect'|'prepare'|'declare_sent';
+type Action='inspect'|'approve_parent_reuse'|'prepare'|'declare_sent';
 type Body={action?:unknown;request_id?:unknown;verified?:unknown;delivery_confirmed?:unknown;verification_note?:unknown};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function reply(origin:string,status:number,body:Record<string,unknown>) {
@@ -59,7 +59,7 @@ Deno.serve(async(req:Request)=>{
  }catch{return deny(origin,400,'Requete invalide.');}
  const action=body.action as Action;
  const requestId=body.request_id;
- if(!['inspect','prepare','declare_sent'].includes(action)||
+ if(!['inspect','approve_parent_reuse','prepare','declare_sent'].includes(action)||
     typeof requestId!=='string'||!UUID.test(requestId))
    return deny(origin,400,'Demande ou action invalide.');
  // Fail-closed. Pilot and canary are isolated until a separate release flag.
@@ -79,15 +79,49 @@ Deno.serve(async(req:Request)=>{
  if(roleErr||actorProfile?.role!=='admin')return deny(origin,403,'Super Administrateur uniquement.');
 
  const {data:request,error:requestErr}=await service.from('public_enrollment_requests')
-  .select('id,request_type,status,student_full_name,student_email,guardian_email,guardian_phone')
+  .select('id,request_type,status,student_full_name,student_email,guardian_email,guardian_phone,guardian_relationship')
   .eq('id',requestId).maybeSingle();
  if(requestErr)return deny(origin,503,'Demande non disponible.');
  if(!request)return deny(origin,404,'Demande introuvable.');
- const {data:parentRecord,error:parentErr}=await service.from('schoolnet_family_invitation_records')
-  .select('recipient,expected_role,status,email,user_id').eq('request_id',requestId)
+ const {data:currentParentRecord,error:parentErr}=await service.from('schoolnet_family_invitation_records')
+  .select('recipient,expected_role,status,email,user_id,request_id').eq('request_id',requestId)
   .eq('recipient','parent').maybeSingle();
  if(parentErr)return deny(origin,503,'Preuve parent indisponible.');
- if(!parentRecord)return deny(origin,409,'Le compte Parent doit etre active en premier.');
+
+ // For a subsequent child, reuse the previously activated Parent invitation
+ // without duplicating the protected email/Auth identity. Browser supplies
+ // neither the Parent ID nor authority to approve the new request.
+ let parentRecord:ParentInvitation|null=currentParentRecord;
+ let parentReuseAvailable=false;
+ let parentReuseApproved=false;
+ if(!parentRecord){
+  const email=request.guardian_email?.trim().toLowerCase()||'';
+  if(!email)return deny(origin,409,'Adresse Parent manquante.');
+  const {data:previous,error:previousErr}=await service.from('schoolnet_family_invitation_records')
+   .select('recipient,expected_role,status,email,user_id,request_id')
+   .eq('email',email).eq('recipient','parent').maybeSingle();
+  if(previousErr)return deny(origin,503,'Verification du Parent existant indisponible.');
+  if(!previous||previous.request_id===requestId||previous.status!=='activated'||
+     previous.expected_role!=='parent'||!previous.user_id)
+   return deny(origin,409,'Le compte Parent doit etre active en premier.');
+  const [previousRequest,priorLinks,approval]=await Promise.all([
+   service.from('public_enrollment_requests').select('status')
+    .eq('id',previous.request_id).maybeSingle(),
+   service.from('parent_links').select('id').eq('parent_id',previous.user_id).limit(1),
+   service.from('schoolnet_sibling_parent_approvals')
+    .select('request_id,parent_id,guardian_relationship')
+    .eq('request_id',requestId).maybeSingle(),
+  ]);
+  if(previousRequest.error||priorLinks.error||approval.error)
+   return deny(origin,503,'Verification du rattachement existant indisponible.');
+  if(!previousRequest.data||previousRequest.data.status==='rejected'||
+      !priorLinks.data?.length)
+   return deny(origin,409,'Aucun acces Parent familial precedent eligible.');
+  parentRecord=previous;
+  parentReuseAvailable=true;
+  parentReuseApproved=approval.data?.parent_id===previous.user_id&&
+   approval.data?.guardian_relationship===request.guardian_relationship;
+ }
  let check:{parentId:string;familyPhone:string;studentName:string};
  try{check=validateStudentNoEmailRequest(request as StudentRequest,parentRecord as ParentInvitation);}
  catch{return deny(origin,409,'Demande sans e-mail ou lien Parent non verifie.');}
@@ -119,6 +153,7 @@ Deno.serve(async(req:Request)=>{
      parentChildren.data.child_ids.includes(record.student_auth_user_id);
   }
   return reply(origin,200,{success:true,status:record?.status??'not_prepared',
+   parent_reuse_available:parentReuseAvailable,parent_reuse_approved:parentReuseApproved,
    student_id:record?.student_auth_user_id??null,family_linked:familyLinked,
    has_delivery:Boolean(record?.sent_at),is_activated:Boolean(record?.activated_at),
    parent_verified:true,admin_enabled:rolloutAllowed,request_id:requestId});
@@ -133,6 +168,24 @@ Deno.serve(async(req:Request)=>{
   note=validateAdminVerification(body.verification_note);
  }catch{return deny(origin,422,'Verification administrative et note de 10 caracteres requises.');}
 
+ if(action==='approve_parent_reuse'){
+  if(!parentReuseAvailable||parentReuseApproved||record)
+   return deny(origin,409,'Approbation deja presente ou dossier non admissible.');
+  // The database trigger independently verifies Admin, Parent Auth, request
+  // identity and existing link, and prevents subsequent edits to the proof.
+  const {data:proof,error:proofErr}=await service.from('schoolnet_sibling_parent_approvals')
+   .insert({request_id:requestId,parent_id:check.parentId,
+    verified_by:actor,guardian_relationship:request.guardian_relationship,
+    verification_note:note})
+   .select('request_id,parent_id').maybeSingle();
+  if(proofErr||!proof||proof.parent_id!==check.parentId)
+   return deny(origin,409,'Approbation impossible : actualisez et verifiez le dossier.');
+  return reply(origin,200,{success:true,status:'not_prepared',request_id:requestId,
+   parent_verified:true,parent_reuse_available:true,parent_reuse_approved:true,
+   admin_enabled:rolloutAllowed});
+ }
+ if(parentReuseAvailable&&!parentReuseApproved)
+  return deny(origin,409,'Approbation familiale propre a cet enfant requise.');
  if(action==='declare_sent'){
   if(!record||record.status!=='prepared'||body.delivery_confirmed!==true)
    return deny(origin,409,'Invitation non preparee ou transmission non attestee.');
