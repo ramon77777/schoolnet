@@ -4,7 +4,7 @@ import {schoolnetStudentRolloutAllowed as allowed,schoolnetStudentRequestIdIsVal
  from '../supabase/functions/_shared/schoolnetStudentRolloutGuard.ts';
 const P='4082dab6-8fbf-493a-8de7-06153fbd26e6';
 const C='e43b7841-fb5a-434c-a3e7-a9f7565de350';
-const X='6d86ca89-ae92-4b96-8387-1695b2f066a';
+const X='6d86ca89-ae92-4b96-8387-1695b2f066ab';
 const call=(options)=>allowed({enabled:true,generalReleaseEnabled:false,pilotRequestId:P,canaryRequestId:C,requestId:X,...options});
 test('01 - default rejects outside cohort',()=>assert.equal(call({}),false));
 test('02 - pilot admitted',()=>assert.equal(call({requestId:P}),true));
