@@ -51,7 +51,7 @@ async function syntheticCodeDigest(){
  return Array.from(hmac,x=>x.toString(16).padStart(2,"0")).join("");
 }
 async function total(client:ReturnType<typeof srv>,table:string){
- const {count,error}=await client.from(table).select("id",{head:true,count:"exact"});
+ const {count,error}=await client.from(table).select("*",{head:true,count:"exact"});
  if(error || count===null)throw Error("Cannot verify table count");
  return count;
 }
