@@ -40,7 +40,13 @@ jobs:
 
       - name: Compilation TypeScript et Vite
         run: npm run build
-      
+
+      - name: Tester les verrous sandbox et la liste pilote
+        run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
+
+      - name: Tester le rattachement et les protections du parcours
+        run: node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs
+
       # Validation statique de la fonction Edge sans deployment ni connexion Supabase.
       - name: Preparer Deno
         uses: denoland/setup-deno@v2
@@ -55,3 +61,6 @@ jobs:
 
       - name: Verifier la recette Auth sandbox B3 (sans deploiement)
         run: deno check --node-modules-dir=auto docs/sandbox/b3/edge/index.ts
+
+      - name: Verifier la compilation des Edge Functions Apprenant (sans deploiement)
+        run: deno check --node-modules-dir=auto supabase/functions/schoolnet-student-no-email-admin/index.ts supabase/functions/schoolnet-student-login-release/index.ts
