@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {studentNoEmailAdminEnabled,studentNoEmailAdminAction,formatStudentNoEmailMessage,
+import {studentNoEmailAdminEnabled,studentNoEmailAdminCanInspect,studentNoEmailAdminAction,formatStudentNoEmailMessage,
  type StudentNoEmailResponse} from '@/features/enrollments/lib/adminStudentNoEmailApi';
 
 type RequestInfo={
@@ -23,7 +23,7 @@ export default function AdminStudentNoEmailPanel({
   let cancelled=false;
   setDraft(null);setInspection(null);setMessage(null);setError(null);
   setVerified(false);setDelivered(false);setNote('');
-  if(!eligible||!studentNoEmailAdminEnabled)return;
+  if(!eligible||!studentNoEmailAdminCanInspect)return;
   setInspecting(true);
   void studentNoEmailAdminAction({action:'inspect',requestId:request.id})
    .then(result=>{if(!cancelled)setInspection(result);})
@@ -33,7 +33,7 @@ export default function AdminStudentNoEmailPanel({
  },[request.id,eligible]);
  if(!eligible)return null;
  async function act(action:'inspect'|'approve_parent_reuse'|'prepare'|'declare_sent'){
-  if(busy||!studentNoEmailAdminEnabled)return;
+  if(busy || (action==='inspect' ? !studentNoEmailAdminCanInspect : !studentNoEmailAdminEnabled))return;
   if(action==='approve_parent_reuse'&&!window.confirm(
    'Confirmez-vous avoir personnellement vérifié l’autorité de ce Parent pour ce nouvel enfant ? '+ 
    'Son compte existant sera réutilisé sans seconde invitation Parent.'
@@ -95,9 +95,22 @@ export default function AdminStudentNoEmailPanel({
    <p className="text-xs leading-5 text-slate-600">
     Compte individuel de {request.student_full_name}, distinct de celui du Parent.
    </p>
-  {previewOnly ? <div role="status" className="rounded-xl border border-blue-200 bg-white p-3 text-xs leading-5 text-slate-700">
-   <strong className="text-blue-800">Prévisualisation en lecture seule.</strong> La vérification du compte est réservée au domaine principal SCHOOLNET.
-   Aucun compte, invitation ou lien familial ne peut être créé depuis cet aperçu.
+  {previewOnly ? <div role="status" className="space-y-2 rounded-xl border border-blue-200 bg-white p-3 text-xs leading-5 text-slate-700">
+   <p><strong className="text-blue-800">Prévisualisation en lecture seule.</strong> Aucune création de compte,
+    invitation, approbation ou liaison familiale n'est autorisée depuis ce navigateur.</p>
+   {studentNoEmailAdminCanInspect
+     ? <div className="space-y-2">
+       <p>Vérification serveur : <strong>{inspecting?'En cours…':status?statusLabels[status]:'Non disponible'}</strong>.</p>
+       {inspection?.parent_reuse_available &&
+         <p>{inspection.parent_reuse_approved
+           ? 'Compte Parent existant : nouveau dossier approuvé.'
+           : 'Compte Parent existant : approbation individuelle nécessaire.'}</p>}
+       <button type="button" disabled={busy||inspecting}
+        onClick={()=>void act('inspect')} className="rounded-lg border border-blue-200 px-3 py-2 font-semibold text-blue-800 disabled:opacity-50">
+        {inspecting?'Vérification…':'Actualiser la vérification (lecture seule)'}
+       </button>
+      </div>
+     : <p>La vérification réelle est désactivée en local tant que le contrôle serveur n'est pas explicitement autorisé.</p>}
   </div> : <>
    <div className="rounded-xl border border-indigo-100 bg-white px-3 py-3 text-xs" aria-live="polite">
     <p className="font-bold text-slate-900">Prochaine étape</p>
