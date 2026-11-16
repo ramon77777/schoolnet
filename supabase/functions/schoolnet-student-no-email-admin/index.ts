@@ -4,11 +4,10 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.90.1';
 import {generateSchoolnetStudentCode,studentCodeLookupDigest} from '../_shared/schoolnetStudentIdentity.ts';
 import {schoolnetStudentRolloutAllowed} from '../_shared/schoolnetStudentRolloutGuard.ts';
+import {schoolnetStudentAllowedOrigin} from '../_shared/schoolnetStudentRuntimeGate.ts';
 import {validateStudentNoEmailRequest,technicalSchoolnetAlias,validateAdminVerification,
   type StudentRequest,type ParentInvitation} from '../_shared/studentNoEmailPolicy.ts';
 
-const PROD_PROJECT='https://anttmbhaphkhmkoqsofd.supabase.co';
-const PROD_ORIGIN='https://schoolnet-snowy.vercel.app';
 const MAX_BODY=3500;
 const OPTIONS={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}};
 type Action='inspect'|'prepare'|'declare_sent';
@@ -25,18 +24,24 @@ function deny(origin:string,code:number,message:string){return reply(origin,code
 
 Deno.serve(async(req:Request)=>{
  const origin=req.headers.get('origin')||'';
- // Strict administrative origin. Origin is not authorization; server JWT validation follows.
- if(origin!==PROD_ORIGIN) return new Response('Forbidden',{status:403});
+ const url=Deno.env.get('SUPABASE_URL')||'';
+ // A strict, explicit project+Origin pair. Never treat Origin as authentication.
+ const trustedOrigin=schoolnetStudentAllowedOrigin({
+  projectUrl:url,requestOrigin:origin,
+  executionMode:Deno.env.get('SCHOOLNET_STUDENT_EXECUTION_MODE'),
+  sandboxEnabled:Deno.env.get('SCHOOLNET_STUDENT_SANDBOX_ENABLED'),
+  sandboxOrigin:Deno.env.get('SCHOOLNET_STUDENT_SANDBOX_ORIGIN'),
+ });
+ if(!trustedOrigin)return new Response('Forbidden',{status:403});
  if(req.method==='OPTIONS') return new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, apikey, content-type, x-client-info','cache-control':'no-store','vary':'Origin'}});
  if(req.method!=='POST') return deny(origin,405,'Methode non autorisee.');
- const url=Deno.env.get('SUPABASE_URL')||'';
  const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
  const anon=Deno.env.get('SUPABASE_ANON_KEY')||'';
  const pepper=Deno.env.get('SCHOOLNET_STUDENT_CODE_PEPPER')||'';
  const creationEnabled=Deno.env.get('SCHOOLNET_STUDENT_ACCOUNTS_ENABLED')==='true';
  // Consultation Admin permise en lecture seule même avant l'activation :
  // aucun secret HMAC ni écriture Auth/SQL dans l'action "inspect".
- if(url!==PROD_PROJECT||!secret||!anon)
+ if(!secret||!anon)
    return deny(origin,503,'Service Apprenant sans e-mail indisponible.');
  if(req.headers.get('content-type')?.split(';')[0].trim()!=='application/json')
    return deny(origin,415,'Format non pris en charge.');
@@ -145,7 +150,7 @@ Deno.serve(async(req:Request)=>{
   technicalEmail=technicalSchoolnetAlias(requestId);
   if(new TextEncoder().encode(pepper).length<32)throw Error('secret');
  }catch{return deny(origin,503,'Configuration serveur incomplete.');}
- const destination=`${PROD_ORIGIN}/auth/reset-password?mode=student-invite`;
+ const destination=`${trustedOrigin}/auth/reset-password?mode=student-invite`;
 
  // Commit the unique request reservation BEFORE calling Auth; never silently retry on timeouts.
  const {error:reserveError}=await service.from('schoolnet_student_no_email_requests').insert({
