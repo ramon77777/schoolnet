@@ -70,3 +70,6 @@ jobs:
 
       - name: Verifier la recette SQL Auth vers famille (sandbox, sans deploiement)
         run: deno check --node-modules-dir=auto docs/sandbox/lot5c/autolink/edge/index.ts
+
+      - name: Verifier la cohorte negative et concurrence (sans deploiement)
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/negative/edge/index.ts
