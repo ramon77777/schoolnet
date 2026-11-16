@@ -3,7 +3,8 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 
 const sql=readFileSync(new URL('../supabase/proposals/20261116_schoolnet_sibling_parent_reuse_SANDBOX_REVIEW_ONLY.sql',import.meta.url),'utf8');
-const edge=readFileSync(new URL('../docs/sandbox/lot5c/siblings/edge/index.ts',import.meta.url),'utf8');
+const admin=readFileSync(new URL('../supabase/functions/schoolnet-student-no-email-admin/index.ts',import.meta.url),'utf8');
+const panel=readFileSync(new URL('../src/features/enrollments/components/AdminStudentNoEmailPanel.tsx',import.meta.url),'utf8');
 test('1 - schema is sandbox guarded and does not change invitations uniqueness',()=>{
  assert.match(sql,/SCHOOLNET_SIBLING_SANDBOX_ONLY_PREFLIGHT_FAILED/);
  assert.match(sql,/CREATE TABLE public\.schoolnet_sibling_parent_approvals/);
@@ -31,21 +32,21 @@ test('5 - sibling needs an existing activated parent invitation and family link'
  assert.match(sql,/prior_link\.parent_id=NEW\.parent_id/);
  assert.match(sql,/student_auth\.raw_app_meta_data->>'schoolnet_no_email_request_id'/);
 });
-test('6 - sandbox test creates only 3 synthetic Auth users',()=>{
- assert.match(edge,/const PROJECT="https:\/\/onqlsvphmrqhelislpry\.supabase\.co"/);
- assert.match(edge,/const R1="DEM-L5C-SIB-01",R2="DEM-L5C-SIB-02"/);
- assert.match(edge,/jwtVerify\(/);
- assert.match(edge,/schoolnet_lot5c_sibling_fixture:true/);
- assert.match(edge,/if\(users\.error\|\|users\.data\?\.users\.length!==19/);
+test('6 - second child reuses verified Parent instead of duplicating invitation',()=>{
+ assert.match(admin,/previous\.status!=='activated'/);
+ assert.match(admin,/\.eq\('email',email\)\.eq\('recipient','parent'\)/);
+ assert.match(admin,/\.eq\('parent_id',previous\.user_id\)/);
+ assert.match(admin,/\.from\('schoolnet_sibling_parent_approvals'\)/);
+ assert.doesNotMatch(admin,/\.insert\(\{.*recipient:'parent'/);
 });
-test('7 - test refuses sibling without admin approval and verifies rollback',()=>{
- assert.match(edge,/block_second_child_without_per_request_approval/);
- assert.match(edge,/second_child_failed_activation_not_rolled_back/);
- assert.match(edge,/reject_unverified_approval_actor/);
+test('7 - second child is blocked until individual approval is recorded',()=>{
+ assert.match(admin,/if\(parentReuseAvailable&&!parentReuseApproved\)/);
+ assert.match(admin,/if\(action==='approve_parent_reuse'\)/);
+ assert.match(admin,/verified_by:actor,guardian_relationship:request\.guardian_relationship/);
+ assert.match(panel,/Approuver ce nouvel enfant pour le Parent existant/);
 });
-test('8 - test verifies 2 links, unique invitation and actual parent JWT RLS',()=>{
- assert.match(edge,/duplicate_parent_invitation_blocked:true/);
- assert.match(edge,/parent_links_for_both_children:2/);
- assert.match(edge,/parent_jwt_reads_two_children:true/);
- assert.match(edge,/child_jwt_cannot_read_sibling:true/);
+test('8 - non-production Admin UI remains read-only and approval is immutable',()=>{
+ assert.match(panel,/Prévisualisation en lecture seule/);
+ assert.match(sql,/SCHOOLNET_SIBLING_PROOF_IMMUTABLE/);
+ assert.match(sql,/parent_links AS prior_link/);
 });
