@@ -1,23 +1,22 @@
 // SCHOOLNET - release candidate of the school code / family phone / password login.
 // Production PILOT for one authorized student request. Public endpoint is guarded
 // by Turnstile, server-side rate limits, verified Auth password and request allowlist.
-// Emergency disable: SCHOOLNET_STUDENT_LOGIN_ENABLED=false (Supabase Edge secret).
+// Explicit enable ONLY: SCHOOLNET_STUDENT_LOGIN_ENABLED=true (Supabase Edge secret).
 import {createClient} from 'npm:@supabase/supabase-js@2.90.1';
 import {runSchoolnetNoEmailLogin,type NoEmailLoginDeps}
  from '../_shared/studentNoEmailLoginCore.ts';
 import {SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN} from '../_shared/schoolnetStudentIdentity.ts';
 import {schoolnetStudentRequestIdIsValid,schoolnetStudentRolloutAllowed} from '../_shared/schoolnetStudentRolloutGuard.ts';
+import {schoolnetStudentAllowedOrigin} from '../_shared/schoolnetStudentRuntimeGate.ts';
 
-const PROD='https://anttmbhaphkhmkoqsofd.supabase.co';
-const ORIGIN='https://schoolnet-snowy.vercel.app';
 const MAX_LENGTH=2600;
 const CLIENT={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}};
-function json(status:number,body:Record<string,unknown>,allowOrigin=false){
+function json(status:number,body:Record<string,unknown>,allowOrigin:string|null=null){
  return new Response(JSON.stringify(body),{status,headers:{
   'content-type':'application/json; charset=utf-8',
   'cache-control':'no-store','pragma':'no-cache',
   'x-content-type-options':'nosniff','referrer-policy':'no-referrer','vary':'Origin',
-  ...(allowOrigin?{'access-control-allow-origin':ORIGIN}:{}),
+  ...(allowOrigin?{'access-control-allow-origin':allowOrigin}:{}),
  }});
 }
 function validIp(value:string|null):string|null{
@@ -31,17 +30,23 @@ function validIp(value:string|null):string|null{
 
 Deno.serve(async(req:Request)=>{
  const origin=req.headers.get('origin')||'';
- if(origin!==ORIGIN)return json(403,{ok:false,message:'Origine non autorisee.'});
+ const url=Deno.env.get('SUPABASE_URL')||'';
+ const trustedOrigin=schoolnetStudentAllowedOrigin({
+  projectUrl:url,requestOrigin:origin,
+  executionMode:Deno.env.get('SCHOOLNET_STUDENT_EXECUTION_MODE'),
+  sandboxEnabled:Deno.env.get('SCHOOLNET_STUDENT_SANDBOX_ENABLED'),
+  sandboxOrigin:Deno.env.get('SCHOOLNET_STUDENT_SANDBOX_ORIGIN'),
+ });
+ if(!trustedOrigin)return json(403,{ok:false,message:'Origine non autorisee.'});
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{
-  'access-control-allow-origin':ORIGIN,
+  'access-control-allow-origin':trustedOrigin,
   'access-control-allow-methods':'OPTIONS,POST',
   'access-control-allow-headers':'apikey,authorization,x-client-info,content-type',
   'access-control-max-age':'600','vary':'Origin','cache-control':'no-store',
  }});
- if(req.method!=='POST')return json(405,{ok:false,message:'Methode non autorisee.'},true);
+ if(req.method!=='POST')return json(405,{ok:false,message:'Methode non autorisee.'},trustedOrigin);
  if(req.headers.get('content-type')?.split(';')[0].trim()!=='application/json')
-  return json(415,{ok:false,message:'Format JSON requis.'},true);
- const url=Deno.env.get('SUPABASE_URL')||'';
+  return json(415,{ok:false,message:'Format JSON requis.'},trustedOrigin);
  const anon=Deno.env.get('SUPABASE_ANON_KEY')||'';
  const secret=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
  const pepper=Deno.env.get('SCHOOLNET_STUDENT_CODE_PEPPER')||'';
@@ -49,17 +54,17 @@ Deno.serve(async(req:Request)=>{
  // Reuse the verified Turnstile configuration already active on public requests.
  const captchaSecret=Deno.env.get('SCHOOLNET_STUDENT_TURNSTILE_SECRET')||
    Deno.env.get('TURNSTILE_SECRET_KEY')||'';
- // This pilot is explicitly authorized. Flag 'false' is the emergency stop.
- const enabled=Deno.env.get('SCHOOLNET_STUDENT_LOGIN_ENABLED')!=='false';
+ // Fail-closed: missing secret NEVER enables login.
+ const enabled=Deno.env.get('SCHOOLNET_STUDENT_LOGIN_ENABLED')==='true';
  const pilotId=Deno.env.get('SCHOOLNET_STUDENT_PILOT_REQUEST_ID');
  const canaryId=Deno.env.get('SCHOOLNET_STUDENT_CANARY_REQUEST_ID');
  const generalReleaseEnabled=Deno.env.get('SCHOOLNET_STUDENT_GENERAL_RELEASE_ENABLED')==='true';
  const cohortAuthorized=generalReleaseEnabled||
    schoolnetStudentRequestIdIsValid(pilotId)||
    schoolnetStudentRequestIdIsValid(canaryId);
- if(!enabled||url!==PROD||!anon||!secret||!captchaSecret||!cohortAuthorized||
+ if(!enabled||!anon||!secret||!captchaSecret||!cohortAuthorized||
    new TextEncoder().encode(pepper).length<32)
-  return json(503,{ok:false,message:'Connexion scolaire non disponible.'},true);
+  return json(503,{ok:false,message:'Connexion scolaire non disponible.'},trustedOrigin);
  // This header is not the security boundary. Do not assume a user-supplied
  // header is unforgeable. Rate limits for global/phone/code are independent.
  const cfIp=validIp(req.headers.get('cf-connecting-ip'));
@@ -75,7 +80,7 @@ Deno.serve(async(req:Request)=>{
     Object.keys(body).sort().join(',')!=='captchaToken,password,phone,studentCode'||
     typeof body.captchaToken!=='string'||body.captchaToken.length>2048)
    throw Error('bad');
- }catch{return json(400,{ok:false,message:'Requete invalide.'},true);}
+ }catch{return json(400,{ok:false,message:'Requete invalide.'},trustedOrigin);}
  // Turnstile is verified server-side; browser-origin checks alone are spoofable.
  try{
   const form=new FormData();
@@ -85,9 +90,9 @@ Deno.serve(async(req:Request)=>{
   const res=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',
    {method:'POST',body:form,signal:AbortSignal.timeout(8500)});
   const result=await res.json() as {success?:boolean;hostname?:string};
-  if(!res.ok||result.success!==true||result.hostname!==new URL(ORIGIN).hostname)
-   return json(403,{ok:false,message:'Verification de securite non valide.'},true);
- }catch{return json(503,{ok:false,message:'Verification de securite indisponible.'},true);}
+  if(!res.ok||result.success!==true||result.hostname!==new URL(trustedOrigin).hostname)
+   return json(403,{ok:false,message:'Verification de securite non valide.'},trustedOrigin);
+ }catch{return json(503,{ok:false,message:'Verification de securite indisponible.'},trustedOrigin);}
 
  const svc=createClient(url,secret,CLIENT);
  const pub=()=>createClient(url,anon,CLIENT);
@@ -155,5 +160,5 @@ Deno.serve(async(req:Request)=>{
  const r=await runSchoolnetNoEmailLogin({
   phone:body.phone,studentCode:body.studentCode,password:body.password,
  },ip,pepper,domain,deps);
- return json(r.status,r.body,true);
+ return json(r.status,r.body,trustedOrigin);
 });
