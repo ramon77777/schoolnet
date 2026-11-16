@@ -12,6 +12,16 @@ export const studentNoEmailAdminEnabled =
   import.meta.env.PROD && import.meta.env.VITE_SUPABASE_URL === PROD &&
   !schoolnetAdminPreviewOnly;
 
+// Optional local diagnostics against the main backend, never available by default.
+// The server also requires a separate, private opt-in and verifies the Admin JWT.
+// localhost can ONLY inspect. It cannot approve, prepare or declare delivery.
+export const studentNoEmailLocalInspectEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_SUPABASE_URL === PROD &&
+  import.meta.env.VITE_SCHOOLNET_ADMIN_LOCAL_INSPECT === 'true' &&
+  typeof window !== 'undefined' && window.location.origin === 'http://localhost:5173';
+export const studentNoEmailAdminCanInspect =
+  studentNoEmailAdminEnabled || studentNoEmailLocalInspectEnabled;
+
 export type StudentNoEmailStatus='not_prepared'|'reserved'|'auth_created'|'prepared'|
  'sent_declared'|'enabled'|'requires_review'|'revoked';
 export type StudentNoEmailResponse={
@@ -39,7 +49,8 @@ export async function studentNoEmailAdminAction(input:{
   action:StudentAdminAction;requestId:string;verified?:boolean;
   verificationNote?:string;deliveryConfirmed?:boolean;
 }):Promise<StudentNoEmailResponse>{
- if(!studentNoEmailAdminEnabled)throw Error('MODE_PREVISUALISATION_SANS_ECRITURE');
+ if(input.action==='inspect' ? !studentNoEmailAdminCanInspect : !studentNoEmailAdminEnabled)
+   throw Error('MODE_PREVISUALISATION_SANS_ECRITURE');
  const {data,error}=await supabase.functions.invoke('schoolnet-student-no-email-admin',{
   body:{action:input.action,request_id:input.requestId,verified:input.verified??false,
    verification_note:input.verificationNote??'',delivery_confirmed:input.deliveryConfirmed??false},
