@@ -43,3 +43,20 @@ export function schoolnetStudentAllowedOrigin(input:StudentRuntimeGateInput):str
     input.requestOrigin!==input.sandboxOrigin)return null;
  return input.sandboxOrigin;
 }
+
+ 
+// Distinct admin-only pathway: never broadens the public student-login endpoint.
+// Opt-in permits only HTTP read-only inspection from the exact Vite localhost origin.
+// The Edge Admin handler MUST separately reject non-inspect actions from this origin.
+export const STUDENT_LOCAL_ADMIN_INSPECT_ORIGIN='http://localhost:5173';
+export function schoolnetStudentAdminAllowedOrigin(
+ input:StudentRuntimeGateInput & {localAdminInspectEnabled?:string|null},
+):string|null {
+ const normal=schoolnetStudentAllowedOrigin(input);
+ if(normal)return normal;
+ const productionMode=!input.executionMode||input.executionMode==='production';
+ return input.projectUrl===STUDENT_PRODUCTION_PROJECT && productionMode &&
+   input.localAdminInspectEnabled==='true' &&
+   input.requestOrigin===STUDENT_LOCAL_ADMIN_INSPECT_ORIGIN
+   ? STUDENT_LOCAL_ADMIN_INSPECT_ORIGIN:null;
+}
