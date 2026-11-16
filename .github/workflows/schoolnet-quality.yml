@@ -64,3 +64,6 @@ jobs:
 
       - name: Verifier la compilation des Edge Functions Apprenant (sans deploiement)
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-student-no-email-admin/index.ts supabase/functions/schoolnet-student-login-release/index.ts
+
+      - name: Verifier le test Auth fictif OIDC de la sandbox (sans deploiement)
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/edge/index.ts
