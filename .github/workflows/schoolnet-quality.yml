@@ -32,6 +32,8 @@ jobs:
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
         run: node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs
+      - name: Controler la proposition SQL principale (hors ligne, aucune execution)
+        run: node --test scripts/test-schoolnet-lot5c-main-install.mjs
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
