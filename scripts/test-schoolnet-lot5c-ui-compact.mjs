@@ -43,3 +43,27 @@ test('08 - family and classroom reviews remain available as accordions',()=>{
  assert.match(family,/Reconnaissance des comptes et classes/);
  assert.match(family,/admin_finalize_public_enrollment_request/);
 });
+
+const api=source('src/features/enrollments/lib/adminStudentNoEmailApi.ts');
+test('09 - preview never invokes student admin and displays read-only explanation',()=>{
+ assert.match(api,/window\.location\.origin !== PROD_ORIGIN/);
+ assert.match(api,/!schoolnetAdminPreviewOnly/);
+ assert.match(student,/Prévisualisation en lecture seule/);
+ assert.match(modal,/disabled=\{Boolean\(user\?\.isDemo\) \|\| previewOnly\}/);
+});
+test('10 - preview disables review mutations and hides destructive actions',()=>{
+ assert.match(modal,/saving \|\| resolving \|\| schoolnetAdminPreviewOnly/);
+ assert.match(modal,/!previewOnly && selected\.status !== 'processed'/);
+ assert.match(modal,/Aperçu en lecture seule/);
+});
+test('11 - mobile steps remain legible without horizontal clipping',()=>{
+ assert.match(modal,/grid-cols-2/);
+ assert.match(modal,/col-span-2/);
+ assert.match(modal,/sm:overflow-x-auto/);
+});
+test('12 - next step is based on inspected server status',()=>{
+ assert.match(student,/const nextAction=status==='enabled'/);
+ assert.match(student,/inspection\?\.family_linked===true/);
+ assert.match(modal,/onOpenFamily=\{openFamily\}/);
+ assert.match(student,/status==='requires_review'/);
+});
