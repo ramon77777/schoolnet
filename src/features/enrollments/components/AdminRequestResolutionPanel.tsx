@@ -227,6 +227,9 @@ export default function AdminRequestResolutionPanel({
         </p>
       </div>
       {!loading && !migrationPending && request.status !== "rejected" && (
+        <details className="rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-slate-800">Gérer les invitations Parent / Tuteur</summary>
+        <div className="border-t border-slate-100 p-3">
         <AdminFamilyInvitationManager
           request={request}
           disabled={disabled}
@@ -253,8 +256,12 @@ export default function AdminRequestResolutionPanel({
             setLinkExists(null);
           }}
         />
+        </div></details>
       )}
       {!disabled && !loading && !error && !resolution && request.status !== "rejected" && (
+        <details className="rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-slate-800">Reconnaissance des comptes et classes</summary>
+        <div className="border-t border-slate-100 p-3">
         <AdminEnrollmentRequestPreflight
           request={request}
           users={users}
@@ -273,6 +280,7 @@ export default function AdminRequestResolutionPanel({
             setLinkExists(null);
           }}
         />
+        </div></details>
       )}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p>}
