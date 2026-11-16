@@ -1,0 +1,97 @@
+name: SCHOOLNET — Lot 5.C (recette sécurité cohorte 2 sandbox)
+
+on:
+  push:
+    branches:
+      - feature/schoolnet-lot5c-fiche-compacte-finalisation
+    paths:
+      - ".github/workflows/schoolnet-lot5c-negative-sandbox-once.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: schoolnet-lot5c-negative-sandbox-once
+  cancel-in-progress: false
+
+jobs:
+  prepare-synthetic-only:
+    name: Cas négatifs et activation concurrente (sandbox seule)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ENDPOINT: https://onqlsvphmrqhelislpry.supabase.co/functions/v1/schoolnet-lot5c-negative-sandbox-once
+      AUDIENCE: schoolnet-lot5c-negative-once
+    steps:
+      - name: Checkout de la branche
+        uses: actions/checkout@v4
+
+      - name: Installer Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verifier le programme avant tout appel
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/negative/edge/index.ts
+
+      - name: Verifier que les appels anonymes sont refuses
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --max-time 25 \
+            --output /dev/null --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --data '{"mode":"preflight"}' "$ENDPOINT")
+          [ "$code" = "401" ] || { echo "Refus anonyme non confirme (HTTP $code)"; exit 1; }
+          echo "Connexion anonyme rejetee (HTTP 401)."
+
+      - name: Recette unique cas négatifs et concurrence
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw=$(curl --fail --silent --show-error --max-time 30 \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE")
+          oidc_token=$(printf '%s' "$raw" | jq -er '.value')
+          [ -n "$oidc_token" ] || exit 1
+
+          invoke() {
+            local mode="$1"
+            local expected="$2"
+            local tmp code stage
+            tmp=$(mktemp)
+            code=$(curl --silent --show-error --max-time 210 \
+              --output "$tmp" --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' \
+              --header "Authorization: Bearer $oidc_token" \
+              --data "{\"mode\":\"$mode\"}" \
+              "$ENDPOINT")
+            if [ "$code" != "200" ] || ! jq -e "$expected" "$tmp" >/dev/null; then
+              stage=$(jq -r '.stage // "response_inattendue"' "$tmp" 2>/dev/null || true)
+              echo "SCHOOLNET Lot 5.C $mode ECHEC : HTTP $code ; etape=$stage"
+              rm -f "$tmp"
+              return 1
+            fi
+            rm -f "$tmp"
+            echo "SCHOOLNET Lot 5.C $mode : OK"
+          }
+
+          invoke preflight '.ok == true and .sandbox_only == true and .baseline_auth == 7 and .baseline_profiles == 3 and .baseline_requests == 1 and .baseline_family_links == 1 and .ready_for_negative_cohort == true'
+          invoke run '.ok == true and .sandbox_only == true and .created_synthetic_auth_accounts == 12 and .created_negative_requests == 6 and .inactive_parent_rejected == true and .guardian_identity_mismatch_rejected == true and .rejected_application_blocked == true and .forged_user_metadata_ignored == true and .conflicting_parent_child_id_rejected == true and .failed_activations_rolled_back == true and .unauthenticated_rpc_forbidden == true and .concurrent_calls_result == "one_true_one_false" and .concurrent_family_links == 1 and .real_parent_jwt_can_read_child == true and .unrelated_parent_jwt_cannot_read_child == true and .original_success_unchanged == true and .no_annual_school_record_required == true and .no_real_emails_sent == true'
+          # Un second appel ne doit ni recréer le lien ni réactiver.
+          repeat_file=$(mktemp)
+          repeat_code=$(curl --silent --show-error --max-time 40 \
+            --output "$repeat_file" --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --header "Authorization: Bearer $oidc_token" \
+            --data '{"mode":"run"}' "$ENDPOINT")
+          if [ "$repeat_code" != "409" ] || ! jq -e \
+            '.ok == false and .stage == "baseline_changed"' \
+            "$repeat_file" >/dev/null; then
+            echo "La seconde execution n'a pas ete refusee comme attendu (HTTP $repeat_code)"
+            rm -f "$repeat_file"
+            exit 1
+          fi
+          rm -f "$repeat_file"
+          echo "Recette negative validee : 5 refus, 1 activation concurrente sans doublon."
