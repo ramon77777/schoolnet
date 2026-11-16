@@ -281,14 +281,14 @@ Deno.serve(async(req:Request)=>{
 
   stage="real_parent_rls_reads_both_children";
   const signed=publicClient(anon,parentJwt),signedChild=publicClient(anon,childJwt);
-  const [visible,links,unrelated]=await Promise.all([
+  const [visible,visibleLinks,unrelated]=await Promise.all([
    signed.from("profiles").select("id,role").in("id",[child1,child2]),
    signed.from("parent_links").select("student_id").eq("parent_id",parentId),
    signedChild.from("profiles").select("id").eq("id",child2).maybeSingle()
   ]);
   if(visible.error||visible.data?.length!==2||
      visible.data.some(x=>x.role!=="student"||!expected.has(x.id))||
-     links.error||links.data?.length!==2||
+     visibleLinks.error||visibleLinks.data?.length!==2||
      unrelated.error||unrelated.data!==null)
    return fail(stage);
 
