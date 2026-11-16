@@ -32,6 +32,17 @@ Si la branche existe déjà en local, utiliser `git switch integration/schoolnet
 
 4. Vérifier les fonctionnalités **sans lancer de publication** :
 
+La commande rapide disponible à partir de la dernière version GitHub lance le lint, la compilation et **tous les tests locaux du Lot 5.C**, dont les contrôles de la proposition SQL principale :
+
+```powershell
+git pull --ff-only
+npm run qa:lot5c
+```
+
+Tu n'as besoin ni de Docker, ni de `pg_dump`, ni d'installer un serveur PostgreSQL pour développer et vérifier cette branche.
+
+La version détaillée reste disponible :
+
 ```powershell
 npm ci
 npm run lint
@@ -51,6 +62,14 @@ npm run dev
 Ouvrir l'URL Vite affichée dans le terminal (habituellement `http://localhost:5173`), se connecter avec un compte autorisé et contrôler la fenêtre « Administration → Demandes publiques → Examiner », ses trois onglets, la mise en page mobile et le message de lecture seule en développement.
 
 **Important :** la fiche « Apprenant sans e-mail » est volontairement **en lecture seule hors du domaine de production**. Les tests locaux à cette étape sont principalement des tests de code et d'interface ; aucune action réelle d'approbation, d'activation, de refus ou de rattachement ne doit être tentée depuis le navigateur local. Les tests métier sur la base principale auront leur propre phase autorisée et contrôlée.
+
+## Proposition SQL intégrée au dépôt (non exécutée)
+
+`supabase/proposals/20261116_schoolnet_lot5c_MAIN_INSTALL_REVIEW_ONLY.sql` réunit dans **une seule transaction** le déclencheur d'activation familiale et le registre privé d'approbation du Parent existant. Le précontrôle a été adapté après lecture de la structure réelle de `schoolnet_2.0` : les fonctions privées existent, mais la table `schoolnet_student_private.identities` utilisée dans l'ancienne sandbox n'existe pas sur le principal. Les tests contrôlent cette différence.
+
+Cette proposition SQL **n'est pas exécutée pendant un build, les tests ou un git pull**. Elle ne doit pas être appliquée depuis la CI ni automatiquement au déploiement Vercel.
+
+Le dépôt GitHub sauvegarde le **code et son historique**, pas les enregistrements Auth, PostgreSQL ou les fichiers Storage d'un projet Supabase hébergé.
 
 ## Contrôles avant toute utilisation réelle
 - Vérifier les sauvegardes Supabase principal (Dashboard → Database → Backups) et disposer d'un plan de restauration. Selon le plan, une exportation logique séparée peut être nécessaire.
