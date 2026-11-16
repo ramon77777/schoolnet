@@ -1,0 +1,97 @@
+name: SCHOOLNET — Lot 5.C (recette rattachement sandbox unique)
+
+on:
+  push:
+    branches:
+      - feature/schoolnet-lot5c-fiche-compacte-finalisation
+    paths:
+      - ".github/workflows/schoolnet-lot5c-autolink-sandbox-once.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: schoolnet-lot5c-autolink-sandbox-once
+  cancel-in-progress: false
+
+jobs:
+  prepare-synthetic-only:
+    name: Rattachement et activation fictifs (sandbox seule)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ENDPOINT: https://onqlsvphmrqhelislpry.supabase.co/functions/v1/schoolnet-lot5c-autolink-sandbox-once
+      AUDIENCE: schoolnet-lot5c-autolink-once
+    steps:
+      - name: Checkout de la branche
+        uses: actions/checkout@v4
+
+      - name: Installer Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verifier le programme avant tout appel
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/autolink/edge/index.ts
+
+      - name: Verifier que les appels anonymes sont refuses
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --max-time 25 \
+            --output /dev/null --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --data '{"mode":"preflight"}' "$ENDPOINT")
+          [ "$code" = "401" ] || { echo "Refus anonyme non confirme (HTTP $code)"; exit 1; }
+          echo "Connexion anonyme rejetee (HTTP 401)."
+
+      - name: Recette unique activation et lien atomique
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw=$(curl --fail --silent --show-error --max-time 30 \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE")
+          oidc_token=$(printf '%s' "$raw" | jq -er '.value')
+          [ -n "$oidc_token" ] || exit 1
+
+          invoke() {
+            local mode="$1"
+            local expected="$2"
+            local tmp code stage
+            tmp=$(mktemp)
+            code=$(curl --silent --show-error --max-time 160 \
+              --output "$tmp" --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' \
+              --header "Authorization: Bearer $oidc_token" \
+              --data "{\"mode\":\"$mode\"}" \
+              "$ENDPOINT")
+            if [ "$code" != "200" ] || ! jq -e "$expected" "$tmp" >/dev/null; then
+              stage=$(jq -r '.stage // "response_inattendue"' "$tmp" 2>/dev/null || true)
+              echo "SCHOOLNET Lot 5.C $mode ECHEC : HTTP $code ; etape=$stage"
+              rm -f "$tmp"
+              return 1
+            fi
+            rm -f "$tmp"
+            echo "SCHOOLNET Lot 5.C $mode : OK"
+          }
+
+          invoke preflight '.ok == true and .sandbox_only == true and .fixture_ready == true and .parent_invitation == "prepared" and .student == "auth_created" and .family_links == 0 and .auth_existing == 7'
+          invoke run '.ok == true and .sandbox_only == true and .parent_and_student_password_login_verified == true and .auth_jwts_checked_against_server == true and .premature_activation_rejected_and_rolled_back == true and .parent_verification_recorded == true and .invalid_code_rejected == true and .actual_student_activation == true and .atomic_family_link_count == 1 and .parent_child_ids_count == 1 and .second_activation_rejected_without_duplicate == true and .parent_can_read_child_with_real_jwt == true and .school_enrollment_not_required == true'
+          # Un second appel ne doit ni recréer le lien ni réactiver.
+          repeat_file=$(mktemp)
+          repeat_code=$(curl --silent --show-error --max-time 40 \
+            --output "$repeat_file" --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --header "Authorization: Bearer $oidc_token" \
+            --data '{"mode":"run"}' "$ENDPOINT")
+          if [ "$repeat_code" != "409" ] || ! jq -e \
+            '.ok == false and .stage == "fixture_not_at_preparation_stage"' \
+            "$repeat_file" >/dev/null; then
+            echo "La seconde execution n'a pas ete refusee comme attendu (HTTP $repeat_code)"
+            rm -f "$repeat_file"
+            exit 1
+          fi
+          rm -f "$repeat_file"
+          echo "Recette validee : 1 lien familial, pas de doublon, aucune inscription annuelle requise."
