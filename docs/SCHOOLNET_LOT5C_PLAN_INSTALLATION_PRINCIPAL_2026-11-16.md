@@ -1,3 +1,5 @@
+**MISE À JOUR (16/11/2026) :** la migration SQL décrite ci-dessous **a été installée sur le Supabase principal** et la fonction administrative est passée en **v8**. Ce fichier reste une archive du plan *avant installation*. Voir le compte rendu actuel : [Installation backend du Lot 5.C](releases/SCHOOLNET_LOT5C_PRINCIPAL_DEPLOIEMENT_BACKEND_2026-11-16.md). Ne pas réexécuter les SQL de proposition sur le principal.
+
 # SCHOOLNET — Lot 5.C : plan d'installation contrôlée sur le Supabase principal
 
 **Date :** 16 novembre 2026  
