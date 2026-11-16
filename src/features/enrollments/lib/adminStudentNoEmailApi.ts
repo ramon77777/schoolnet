@@ -21,6 +21,8 @@ export type StudentNoEmailResponse={
  request_id?:string;
  student_id?:string|null;
  family_linked?:boolean;
+ parent_reuse_available?:boolean;
+ parent_reuse_approved?:boolean;
  schoolnet_code?:string;
  family_phone?:string;
  invitation_url?:string;
@@ -31,7 +33,7 @@ export type StudentNoEmailResponse={
  parent_verified?:boolean;
  message?:string;
 };
-export type StudentAdminAction='inspect'|'prepare'|'declare_sent';
+export type StudentAdminAction='inspect'|'approve_parent_reuse'|'prepare'|'declare_sent';
 
 export async function studentNoEmailAdminAction(input:{
   action:StudentAdminAction;requestId:string;verified?:boolean;
