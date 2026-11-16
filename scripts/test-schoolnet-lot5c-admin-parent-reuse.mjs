@@ -9,7 +9,7 @@ const panel=read('src/features/enrollments/components/AdminStudentNoEmailPanel.t
 const sql=read('supabase/proposals/20261116_schoolnet_sibling_parent_reuse_SANDBOX_REVIEW_ONLY.sql');
 
 test('01 - admin JWT, admin role, strict origin and rollout guard remain mandatory',()=>{
- assert.match(server,/schoolnetStudentAllowedOrigin/);
+ assert.match(server,/schoolnetStudentAdminAllowedOrigin/);
  assert.match(server,/schoolnetStudentRolloutAllowed/);
  assert.match(server,/service\.auth\.getUser\(authorization\.slice\(7\)\)/);
  assert.match(server,/actorProfile\?\.role!=='admin'/);
