@@ -13,11 +13,22 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
  const [verified,setVerified]=useState(false);
  const [delivered,setDelivered]=useState(false);
  const [busy,setBusy]=useState(false);
+ const [inspecting,setInspecting]=useState(false);
  const [message,setMessage]=useState<string|null>(null);
  const [error,setError]=useState<string|null>(null);
  const eligible=request.request_type==='student_enrollment'&&!request.student_email;
- useEffect(()=>{setDraft(null);setInspection(null);setMessage(null);setError(null);
-  setVerified(false);setDelivered(false);setNote('');},[request.id]);
+ useEffect(()=>{
+  let cancelled=false;
+  setDraft(null);setInspection(null);setMessage(null);setError(null);
+  setVerified(false);setDelivered(false);setNote('');
+  if(!eligible||!studentNoEmailAdminEnabled)return;
+  setInspecting(true);
+  void studentNoEmailAdminAction({action:'inspect',requestId:request.id})
+   .then(result=>{if(!cancelled)setInspection(result);})
+   .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Vérification indisponible.');})
+   .finally(()=>{if(!cancelled)setInspecting(false);});
+  return ()=>{cancelled=true;};
+ },[request.id,eligible]);
  if(!eligible)return null;
  async function act(action:'inspect'|'prepare'|'declare_sent'){
   if(busy||!studentNoEmailAdminEnabled)return;
@@ -42,21 +53,34 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
    setMessage('Message personnel copié. Transmettez-le uniquement au contact Parent/Tuteur vérifié.');}
   catch{setError('Copie impossible : utilisez un navigateur sécurisé.');}
  }
- const status=inspection?.status??'not_prepared';
- return <section className="mt-4 space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4" aria-label="Accès Apprenant sans e-mail">
-  <div className="text-sm font-bold text-indigo-900">Compte Apprenant sans e-mail personnel</div>
-  <p className="text-xs leading-5 text-slate-700">
-   Pour {request.student_full_name}, l’identifiant SCHOOLNET et le mot de passe sont distincts de ceux du Parent.
-   Le rattachement familial reste contrôlé par la finalisation administrative du dossier.
-  </p>
+ const status=inspection?.status??null;
+ const statusLabels:Record<StudentNoEmailResponse['status'],string>={
+  not_prepared:'Compte à préparer',reserved:'Création en cours',
+  auth_created:'Compte créé, invitation en cours',prepared:'Invitation prête',
+  sent_declared:'Invitation transmise',enabled:'Compte activé',
+  requires_review:'Vérification technique nécessaire',revoked:'Accès révoqué'
+ };
+ return <section className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4" aria-label="Accès Apprenant sans e-mail">
+   <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="text-sm font-bold text-indigo-900">Accès Apprenant sans e-mail</div>
+    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-800">
+     {inspecting?'Vérification…':status?statusLabels[status]:'À vérifier'}
+    </span>
+   </div>
+   <p className="text-xs leading-5 text-slate-600">
+    Compte individuel de {request.student_full_name}, distinct de celui du Parent.
+   </p>
   {!studentNoEmailAdminEnabled ? <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
    Prévisualisation locale uniquement. Aucun compte ni lien ne sera généré depuis cet environnement.
   </div> : <>
-   <button type="button" disabled={busy} onClick={()=>void act('inspect')}
+   <button type="button" disabled={busy||inspecting} onClick={()=>void act('inspect')}
     className="rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-800">
-    {busy?'Vérification…':'Vérifier le dossier sans e-mail'}</button>
-   <p className="text-xs text-slate-600">État serveur : <strong>{status}</strong></p>
-   {inspection && !inspection.admin_enabled && <p role="status"
+    {busy||inspecting?'Vérification…':'Actualiser la vérification'}</button>
+   <details className="rounded-lg border border-indigo-100 bg-white text-xs">
+    <summary className="cursor-pointer px-3 py-2 font-semibold text-slate-600">Diagnostic technique</summary>
+    <p className="px-3 pb-3 text-slate-600">État serveur : {status??'chargement'}. Le serveur contrôle toutes les mutations.</p>
+   </details>
+   {status==='not_prepared' && inspection && !inspection.admin_enabled && <p role="status"
      className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
      Dossier consultable, mais création des comptes désactivée par le serveur.
      Contactez l'administrateur technique avant de préparer une invitation.
@@ -83,7 +107,8 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
     <button type="button" onClick={()=>void act('declare_sent')} disabled={!delivered||busy||!verified||note.trim().length<10}
      className="rounded-lg bg-blue-600 px-3 py-2 font-bold text-white disabled:opacity-50">Déclarer la remise</button>
    </div>}
-   {status==='enabled' && <p className="text-xs text-emerald-800">Compte activé par une vraie connexion Auth. Finalisez ensuite l’inscription et le lien Parent–Enfant dans le panneau existant.</p>}
+   {status==='enabled' && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">Compte activé. Vérifiez le lien familial dans « Famille & finalisation ». L'affectation scolaire pourra être faite ultérieurement.</p>}
+   {status==='requires_review' && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Vérification technique nécessaire. Ne relancez pas la création du compte.</p>}
   </>}
   {message&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{message}</p>}
   {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
