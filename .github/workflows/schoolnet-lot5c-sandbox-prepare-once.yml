@@ -1,0 +1,82 @@
+name: SCHOOLNET — Lot 5.C sandbox (preparation unique)
+
+on:
+  push:
+    branches:
+      - feature/schoolnet-lot5c-fiche-compacte-finalisation
+    paths:
+      - ".github/workflows/schoolnet-lot5c-sandbox-prepare-once.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: schoolnet-lot5c-sandbox-prepare-once
+  cancel-in-progress: false
+
+jobs:
+  prepare-synthetic-only:
+    name: Auth et profils fictifs (sandbox seule)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ENDPOINT: https://onqlsvphmrqhelislpry.supabase.co/functions/v1/schoolnet-lot5c-sandbox-prepare-once
+      AUDIENCE: schoolnet-lot5c-sandbox-prepare
+    steps:
+      - name: Checkout de la branche
+        uses: actions/checkout@v4
+
+      - name: Installer Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verifier le programme avant tout appel
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/edge/index.ts
+
+      - name: Verifier que les appels anonymes sont refuses
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --max-time 25 \
+            --output /dev/null --write-out '%{http_code}' \
+            --request POST --header 'content-type: application/json' \
+            --data '{"mode":"preflight"}' "$ENDPOINT")
+          [ "$code" = "401" ] || { echo "Refus anonyme non confirme (HTTP $code)"; exit 1; }
+          echo "Connexion anonyme rejetee (HTTP 401)."
+
+      - name: Preparer une fois les comptes synthetiques sans activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw=$(curl --fail --silent --show-error --max-time 30 \
+            --header "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE")
+          oidc_token=$(printf '%s' "$raw" | jq -er '.value')
+          [ -n "$oidc_token" ] || exit 1
+
+          invoke() {
+            local mode="$1"
+            local expected="$2"
+            local tmp code stage
+            tmp=$(mktemp)
+            code=$(curl --silent --show-error --max-time 160 \
+              --output "$tmp" --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' \
+              --header "Authorization: Bearer $oidc_token" \
+              --data "{\"mode\":\"$mode\"}" \
+              "$ENDPOINT")
+            if [ "$code" != "200" ] || ! jq -e "$expected" "$tmp" >/dev/null; then
+              stage=$(jq -r '.stage // "response_inattendue"' "$tmp" 2>/dev/null || true)
+              echo "SCHOOLNET Lot 5.C $mode ECHEC : HTTP $code ; etape=$stage"
+              rm -f "$tmp"
+              return 1
+            fi
+            rm -f "$tmp"
+            echo "SCHOOLNET Lot 5.C $mode : OK"
+          }
+
+          invoke preflight '.ok == true and .sandbox_only == true and .auth_baseline == 4 and .empty_fixture_tables == true'
+          invoke prepare '.ok == true and .sandbox_only == true and .created_auth_accounts == 3 and .passwords_verified_with_supabase_auth == true and .new_public_requests == 1 and .parent_invitation_state == "prepared" and .student_state == "prepared" and .family_links == 0 and .activated_students == 0 and .email_delivery_requested == false'
+          echo "Preparation sandbox reussie : aucun rattachement ni activation."
