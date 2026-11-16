@@ -16,7 +16,6 @@ const TEST_REFERENCE="DEM-L5C-SBX-TEST01";
 const PARENT_EMAIL="schoolnet-lot5c-parent-01@example.test";
 const ADMIN_EMAIL="schoolnet-lot5c-admin-01@example.test";
 const TEST_PHONE="+2250700000044";
-const TEST_CODE="SN-ABCD-EFGH-JKLM";
 const CLIENT_OPTIONS={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}};
 
 function json(status:number,body:Record<string,unknown>){
@@ -32,13 +31,6 @@ function fail(stage:string,status=409){
 function password(){
  const bytes=crypto.getRandomValues(new Uint8Array(32));
  return "T!9s"+Array.from(bytes,v=>v.toString(16).padStart(2,"0")).join("");
-}
-async function codeHmac(pepper:string){
- const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(pepper),
-  {name:"HMAC",hash:"SHA-256"},false,["sign"]);
- const value=new TextEncoder().encode("schoolnet/student-code/v1:"+TEST_CODE);
- const signed=new Uint8Array(await crypto.subtle.sign("HMAC",key,value));
- return Array.from(signed,v=>v.toString(16).padStart(2,"0")).join("");
 }
 async function authorized(req:Request):Promise<boolean>{
  const bearer=req.headers.get("authorization")||"";
@@ -61,9 +53,9 @@ Deno.serve(async(req:Request)=>{
  const url=Deno.env.get("SUPABASE_URL")||"";
  const serviceKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"";
  const anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"";
- const pepper=Deno.env.get("SCHOOLNET_STUDENT_CODE_PEPPER")||"";
- if(url!==PROJECT_URL||!serviceKey||!anonKey||
-    new TextEncoder().encode(pepper).length<32)return fail("sandbox_config",503);
+ if(url!==PROJECT_URL)return fail("wrong_project",503);
+ if(!serviceKey)return fail("server_auth_unavailable",503);
+ if(!anonKey)return fail("public_auth_unavailable",503);
  let mode:string;
  try{
   const raw=await req.text();
@@ -98,7 +90,6 @@ Deno.serve(async(req:Request)=>{
  try{
   const requestId=crypto.randomUUID();
   const studentEmail="sn-"+requestId.replaceAll("-","")+"@schoolnet.invalid";
-  const hashedCode=await codeHmac(pepper);
   const actors=[
    {email:ADMIN_EMAIL,role:"admin",name:"TEST Lot5C Administrateur",
     app:{schoolnet_lot5c_fixture:true}},
@@ -165,11 +156,11 @@ Deno.serve(async(req:Request)=>{
   const studentRecord=await service.from("schoolnet_student_no_email_requests").insert({
    request_id:requestId,parent_id:ids[1],student_auth_user_id:ids[2],
    technical_email:studentEmail,family_phone_e164:TEST_PHONE,
-   student_code_hmac:hashedCode,status:"prepared",
+   student_code_hmac:null,status:"auth_created",
    verification_note:"Test Lot 5C : preuve fictive de verification.",
    prepared_by:ids[0],last_action_by:ids[0],
   }).select("request_id,status").single();
-  if(studentRecord.error||studentRecord.data?.status!=="prepared")return fail(stage);
+  if(studentRecord.error||studentRecord.data?.status!=="auth_created")return fail(stage);
 
   stage="verify_no_activation";
   const [family,profile,records]=await Promise.all([
@@ -180,14 +171,14 @@ Deno.serve(async(req:Request)=>{
   ]);
   if(family.error||family.count!==0||profile.error||
    !Array.isArray(profile.data?.child_ids)||profile.data.child_ids.length!==0||
-   records.error||records.data?.status!=="prepared"||
+   records.error||records.data?.status!=="auth_created"||
    records.data?.activated_at!==null||records.data?.sent_at!==null)return fail(stage);
 
   return json(200,{ok:true,sandbox_only:true,
    created_auth_accounts:3,
    passwords_verified_with_supabase_auth:true,
    new_public_requests:1,parent_invitation_state:"prepared",
-   student_state:"prepared",family_links:0,activated_students:0,
+   student_state:"auth_created",family_links:0,activated_students:0,
    email_delivery_requested:false,students_without_class:true,
   });
  }catch{
