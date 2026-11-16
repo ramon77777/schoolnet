@@ -221,9 +221,9 @@ export default function AdminRequestResolutionPanel({
   return (
     <div className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4" aria-label="Rattachement vérifié">
       <div>
-        <h3 className="font-extrabold text-slate-950">🔗 Rattachement vérifié</h3>
+        <h3 className="font-extrabold text-slate-950">Famille et inscription scolaire</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-600">
-          Retrouvez les comptes puis confirmez le lien familial avant toute finalisation.
+          Le rattachement familial et l'affectation scolaire sont deux opérations distinctes. Un enfant activé peut être lié à son parent avant la création de sa classe.
         </p>
       </div>
       {!loading && !migrationPending && request.status !== "rejected" && (

@@ -15,6 +15,7 @@ export type StudentNoEmailResponse={
  admin_enabled?:boolean;
  request_id?:string;
  student_id?:string|null;
+ family_linked?:boolean;
  schoolnet_code?:string;
  family_phone?:string;
  invitation_url?:string;

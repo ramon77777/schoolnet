@@ -107,7 +107,11 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
     <button type="button" onClick={()=>void act('declare_sent')} disabled={!delivered||busy||!verified||note.trim().length<10}
      className="rounded-lg bg-blue-600 px-3 py-2 font-bold text-white disabled:opacity-50">Déclarer la remise</button>
    </div>}
-   {status==='enabled' && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">Compte activé. Vérifiez le lien familial dans « Famille & finalisation ». L'affectation scolaire pourra être faite ultérieurement.</p>}
+   {status==='enabled' && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">
+    {inspection?.family_linked===true
+     ? 'Compte activé et lien familial confirmé. L’affectation à une classe reste indépendante.'
+     : 'Compte activé. Le rattachement familial reste à vérifier dans « Famille & finalisation ».'}
+   </p>}
    {status==='requires_review' && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Vérification technique nécessaire. Ne relancez pas la création du compte.</p>}
   </>}
   {message&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{message}</p>}

@@ -100,12 +100,26 @@ Deno.serve(async(req:Request)=>{
   .select('request_id,parent_id,student_auth_user_id,status,sent_at,activated_at')
   .eq('request_id',requestId).maybeSingle();
  if(recordErr)return deny(origin,503,'Registre scolaire non disponible.');
- if(action==='inspect')return reply(origin,200,{success:true,status:record?.status??'not_prepared',
-  student_id:record?.student_auth_user_id??null,
-  has_delivery:Boolean(record?.sent_at),is_activated:Boolean(record?.activated_at),
-  parent_verified:true,admin_enabled:rolloutAllowed,request_id:requestId});
- // Strictly allow mutations on the single explicitly authorized pilot request.
- // All other requests remain inspect-only even when the global flag is true.
+ if(action==='inspect'){
+  let familyLinked=false;
+  if(record?.status==='enabled'&&record.student_auth_user_id){
+   const [link,parentChildren]=await Promise.all([
+    service.from('parent_links').select('id')
+      .eq('parent_id',check.parentId).eq('student_id',record.student_auth_user_id).maybeSingle(),
+    service.from('profiles').select('child_ids').eq('id',check.parentId).maybeSingle(),
+   ]);
+   if(link.error||parentChildren.error)
+    return deny(origin,503,'Verification du rattachement indisponible.');
+   familyLinked=Boolean(link.data?.id)&&Array.isArray(parentChildren.data?.child_ids)&&
+     parentChildren.data.child_ids.includes(record.student_auth_user_id);
+  }
+  return reply(origin,200,{success:true,status:record?.status??'not_prepared',
+   student_id:record?.student_auth_user_id??null,family_linked:familyLinked,
+   has_delivery:Boolean(record?.sent_at),is_activated:Boolean(record?.activated_at),
+   parent_verified:true,admin_enabled:rolloutAllowed,request_id:requestId});
+ }
+ // Cohort authorization: pilot and canary only until separate approval
+ // explicitly enables the general release flag.
  if(!rolloutAllowed)
    return deny(origin,403,'Demande non autorisee pour cette etape de mise en service.');
  let note:string;
