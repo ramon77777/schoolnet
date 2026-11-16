@@ -37,6 +37,7 @@ BEGIN
   JOIN public.schoolnet_family_invitation_records AS f
     ON f.request_id=r.id
    AND f.recipient='parent'
+   AND f.expected_role='parent'
    AND f.user_id=NEW.parent_id
    AND f.status='activated'
   JOIN public.profiles AS parent ON parent.id=NEW.parent_id
@@ -59,6 +60,8 @@ BEGIN
     AND student_auth.email=NEW.technical_email
     AND parent_auth.raw_app_meta_data->>'schoolnet_family_invitation'='true'
     AND student_auth.raw_app_meta_data->>'schoolnet_no_email_student'='true'
+    AND student_auth.raw_app_meta_data->>'schoolnet_no_email_request_id'
+        =NEW.request_id::text
   FOR UPDATE OF r,parent,student;
 
   IF NOT FOUND OR v_relation NOT IN ('father','mother','guardian') THEN
