@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
  schoolnetStudentAllowedOrigin as allowed,
+ schoolnetStudentAdminAllowedOrigin as adminAllowed,
  STUDENT_PRODUCTION_PROJECT as prod,
  STUDENT_SANDBOX_PROJECT as sandbox,
  STUDENT_PRODUCTION_ORIGIN as productionOrigin,
@@ -61,4 +62,24 @@ test('08 - optional local development only on exact localhost:5173',()=>{
 test('09 - typo or missing mode blocks production and sandbox',()=>{
  assert.equal(allowed(args({executionMode:'snaodbox'})),null);
  assert.equal(allowed(args({projectUrl:sandbox,executionMode:'production',sandboxEnabled:'true',requestOrigin:preview,sandboxOrigin:preview})),null);
+});
+
+test('10 - production Admin localhost inspect requires a separate explicit opt-in',()=>{
+ const localhost='http://localhost:5173';
+ const base=args({requestOrigin:localhost});
+ assert.equal(adminAllowed(base),null);
+ assert.equal(adminAllowed({...base,localAdminInspectEnabled:'false'}),null);
+ assert.equal(adminAllowed({...base,localAdminInspectEnabled:'true'}),localhost);
+ assert.equal(allowed({...base,localAdminInspectEnabled:'true'}),null);
+});
+test('11 - local Admin inspect never enables other origins, unknown projects or sandbox mode',()=>{
+ for(const origin of ['http://127.0.0.1:5173','http://localhost:5174',
+  'http://localhost:5173.evil.test','https://localhost:5173',
+  'https://schoolnet-feature.vercel.app']) {
+  assert.equal(adminAllowed(args({requestOrigin:origin,localAdminInspectEnabled:'true'})),null,origin);
+ }
+ assert.equal(adminAllowed(args({projectUrl:sandbox,requestOrigin:'http://localhost:5173',
+  localAdminInspectEnabled:'true'})),null);
+ assert.equal(adminAllowed(args({executionMode:'sandbox',requestOrigin:'http://localhost:5173',
+  localAdminInspectEnabled:'true'})),null);
 });
