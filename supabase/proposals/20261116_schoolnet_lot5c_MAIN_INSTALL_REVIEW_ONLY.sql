@@ -46,6 +46,37 @@ BEGIN
  OR to_regprocedure('schoolnet_student_private.guard_no_email_parent_links()') IS NULL
  OR to_regprocedure('schoolnet_student_private.guard_no_email_child_ids()') IS NULL
  THEN RAISE EXCEPTION 'SCHOOLNET_LOT5C_MAIN_EXISTING_GUARDS_MISSING'; END IF;
+
+ -- Existing enabled accounts were linked manually or by earlier tooling.
+ -- The new trigger is future-only: it must NEVER be used to silently repair
+ -- an already-enabled but disconnected child. Block if one is found.
+ IF EXISTS (
+  SELECT 1
+  FROM public.schoolnet_student_no_email_requests AS s
+  LEFT JOIN public.parent_links AS l
+    ON l.parent_id=s.parent_id AND l.student_id=s.student_auth_user_id
+  LEFT JOIN public.profiles AS parent
+    ON parent.id=s.parent_id
+  LEFT JOIN public.profiles AS child
+    ON child.id=s.student_auth_user_id
+  WHERE s.status='enabled'
+    AND (
+       s.student_auth_user_id IS NULL OR s.activated_at IS NULL
+       OR l.student_id IS NULL OR parent.id IS NULL OR child.id IS NULL
+       OR parent.role::text<>'parent' OR child.role::text<>'student'
+       OR NOT (s.student_auth_user_id=ANY(
+         COALESCE(parent.child_ids,ARRAY[]::uuid[])
+       ))
+       OR EXISTS (
+        SELECT 1 FROM public.parent_links AS other
+        WHERE other.student_id=s.student_auth_user_id
+          AND other.parent_id<>s.parent_id
+       )
+    )
+ ) THEN
+  RAISE EXCEPTION 'SCHOOLNET_LOT5C_MAIN_PREEXISTING_ACTIVE_FAMILY_INCONSISTENT'
+    USING ERRCODE='23514';
+ END IF;
 END;
 $preflight$;
 
