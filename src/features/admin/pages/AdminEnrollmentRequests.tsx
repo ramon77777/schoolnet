@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import AdminRequestResolutionPanel, { type RequestResolution } from '@/features/enrollments/components/AdminRequestResolutionPanel';
 import AdminStudentNoEmailPanel from '@/features/enrollments/components/AdminStudentNoEmailPanel';
+import { schoolnetAdminPreviewOnly } from '@/features/enrollments/lib/adminStudentNoEmailApi';
 
 type RequestStatus = 'new' | 'contacted' | 'processed' | 'rejected';
 type RequestType = 'student_enrollment' | 'parent_access';
@@ -136,7 +137,7 @@ export default function AdminEnrollmentRequests() {
   }), [rows]);
 
   async function review(status: 'contacted' | 'rejected') {
-    if (!selected || saving || resolving) return;
+    if (!selected || saving || resolving || schoolnetAdminPreviewOnly) return;
     if (status === 'rejected' && !window.confirm('Refuser définitivement cette demande ?')) return;
     setSaving(true);
     try {
@@ -166,6 +167,8 @@ export default function AdminEnrollmentRequests() {
 
   const noEmailAccess = selected?.request_type === 'student_enrollment' && !selected.student_email;
   const currentTab = !noEmailAccess && activeTab === 'access' ? 'family' : activeTab;
+  const openFamily = () => { setFamilyVisited(true); setActiveTab('family'); };
+  const previewOnly = schoolnetAdminPreviewOnly;
 
   const badge = (status: RequestStatus) => status === 'new' ?
     'border-blue-200 bg-blue-50 text-blue-700' : status === 'contacted' ?
@@ -263,25 +266,26 @@ export default function AdminEnrollmentRequests() {
               <p className="min-w-0 break-words"><span className="text-slate-500">E-mail parent : </span>{selected.guardian_email || 'Non renseigné'}</p>
               <p><span className="text-slate-500">Accès : </span><strong>{noEmailAccess ? 'Apprenant sans e-mail' : 'Compte classique'}</strong></p>
             </div>
-            <nav aria-label="Étapes du dossier" className="flex shrink-0 gap-2 overflow-x-auto border-b border-slate-100 px-4 py-3 sm:px-6">
+            <nav aria-label="Étapes du dossier" className="grid shrink-0 grid-cols-2 gap-2 border-b border-slate-100 px-4 py-3 sm:flex sm:overflow-x-auto sm:px-6">
+
               {noEmailAccess && <button type="button" onClick={() => setActiveTab('access')} aria-current={currentTab === 'access' ? 'step' : undefined}
-                className={currentTab === 'access' ? 'shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white' : 'shrink-0 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700'}>
+                className={currentTab === 'access' ? 'min-w-0 rounded-xl bg-blue-600 px-2 py-2 text-xs font-bold text-white sm:shrink-0 sm:px-4' : 'min-w-0 rounded-xl bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 sm:shrink-0 sm:px-4'}>
                 1. Accès Apprenant</button>}
-              <button type="button" onClick={() => { setFamilyVisited(true); setActiveTab('family'); }} aria-current={currentTab === 'family' ? 'step' : undefined}
-                className={currentTab === 'family' ? 'shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white' : 'shrink-0 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700'}>
+              <button type="button" onClick={openFamily} aria-current={currentTab === 'family' ? 'step' : undefined}
+                className={currentTab === 'family' ? 'min-w-0 rounded-xl bg-blue-600 px-2 py-2 text-xs font-bold text-white sm:shrink-0 sm:px-4' : 'min-w-0 rounded-xl bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 sm:shrink-0 sm:px-4'}>
                 {noEmailAccess ? '2. Famille & finalisation' : 'Famille & finalisation'}</button>
               <button type="button" onClick={() => setActiveTab('details')} aria-current={currentTab === 'details' ? 'step' : undefined}
-                className={currentTab === 'details' ? 'shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white' : 'shrink-0 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700'}>
+                className={currentTab === 'details' ? 'col-span-2 min-w-0 rounded-xl bg-blue-600 px-2 py-2 text-xs font-bold text-white sm:col-span-1 sm:shrink-0 sm:px-4' : 'col-span-2 min-w-0 rounded-xl bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 sm:col-span-1 sm:shrink-0 sm:px-4'}>
                 Dossier & suivi</button>
             </nav>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-6">
               <div className={currentTab === 'access' ? 'block' : 'hidden'} aria-hidden={currentTab !== 'access'}>
-                <AdminStudentNoEmailPanel request={selected} />
+                <AdminStudentNoEmailPanel request={selected} onOpenFamily={openFamily} />
               </div>
               <div className={currentTab === 'family' ? 'block' : 'hidden'} aria-hidden={currentTab !== 'family'}>
                 {(familyVisited || currentTab === 'family') && (
                   <AdminRequestResolutionPanel key={selected.id} request={selected}
-                    disabled={Boolean(user?.isDemo)} onFinalized={handleFinalized} onBusyChange={setResolving} />
+                    disabled={Boolean(user?.isDemo) || previewOnly} onFinalized={handleFinalized} onBusyChange={setResolving} />
                 )}
               </div>
               <div className={currentTab === 'details' ? 'space-y-3' : 'hidden'} aria-hidden={currentTab !== 'details'}>
@@ -307,14 +311,15 @@ export default function AdminEnrollmentRequests() {
               </div>
             </div>
             <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:px-6">
+              {previewOnly && <span className="mr-auto self-center text-xs font-semibold text-slate-500">Aperçu en lecture seule</span>}
               <button type="button" onClick={closeRequest} disabled={saving || resolving}
                 className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
-              {selected.status !== 'processed' ? <>
+              {!previewOnly && selected.status !== 'processed' ? <>
                 <button type="button" onClick={() => void review('rejected')} disabled={saving || resolving}
                   className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
                 <button type="button" onClick={() => void review('contacted')} disabled={saving || resolving}
                   className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactée</button>
-              </> : <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Traité</span>}
+              </> : selected.status === 'processed' ? <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Traité</span> : null}
             </footer>
           </section>
         </div>
