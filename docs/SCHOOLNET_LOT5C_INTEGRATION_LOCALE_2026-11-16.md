@@ -1,3 +1,5 @@
+**MISE À JOUR (16/11/2026) :** la migration du rattachement et la fonction administrative v8 **sont désormais installées sur Supabase principal**. Le frontend reste sur la PR #13 et n'est pas publié sur Vercel ; les tests locaux conservent leurs protections lecture seule. Consultez [le compte rendu backend actuel](releases/SCHOOLNET_LOT5C_PRINCIPAL_DEPLOIEMENT_BACKEND_2026-11-16.md). Certaines indications ci-dessous décrivent l'état antérieur à l'installation.
+
 # SCHOOLNET — Workflow principal et tests locaux (Lot 5.C)
 **16 novembre 2026 — intégration de développement, pas mise en production.**
 
