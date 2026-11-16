@@ -41,6 +41,7 @@ export default function AdminEnrollmentRequests() {
   const [filter, setFilter] = useState<'all' | RequestStatus>('all');
   const [selected, setSelected] = useState<EnrollmentRequest | null>(null);
   const [activeTab, setActiveTab] = useState<'access' | 'family' | 'details'>('access');
+  const [familyVisited, setFamilyVisited] = useState(false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [resolving, setResolving] = useState(false);
@@ -51,6 +52,7 @@ export default function AdminEnrollmentRequests() {
     if (resolving) return;
     setSelected(null);
     setActiveTab('access');
+    setFamilyVisited(false);
     if (requestIdFromUrl) {
       const next = new URLSearchParams(searchParams);
       next.delete('request');
@@ -265,7 +267,7 @@ export default function AdminEnrollmentRequests() {
               {noEmailAccess && <button type="button" onClick={() => setActiveTab('access')} aria-current={currentTab === 'access' ? 'step' : undefined}
                 className={currentTab === 'access' ? 'shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white' : 'shrink-0 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700'}>
                 1. Accès Apprenant</button>}
-              <button type="button" onClick={() => setActiveTab('family')} aria-current={currentTab === 'family' ? 'step' : undefined}
+              <button type="button" onClick={() => { setFamilyVisited(true); setActiveTab('family'); }} aria-current={currentTab === 'family' ? 'step' : undefined}
                 className={currentTab === 'family' ? 'shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white' : 'shrink-0 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700'}>
                 {noEmailAccess ? '2. Famille & finalisation' : 'Famille & finalisation'}</button>
               <button type="button" onClick={() => setActiveTab('details')} aria-current={currentTab === 'details' ? 'step' : undefined}
@@ -277,8 +279,10 @@ export default function AdminEnrollmentRequests() {
                 <AdminStudentNoEmailPanel request={selected} />
               </div>
               <div className={currentTab === 'family' ? 'block' : 'hidden'} aria-hidden={currentTab !== 'family'}>
-                <AdminRequestResolutionPanel key={selected.id} request={selected}
-                  disabled={Boolean(user?.isDemo)} onFinalized={handleFinalized} onBusyChange={setResolving} />
+                {(familyVisited || currentTab === 'family') && (
+                  <AdminRequestResolutionPanel key={selected.id} request={selected}
+                    disabled={Boolean(user?.isDemo)} onFinalized={handleFinalized} onBusyChange={setResolving} />
+                )}
               </div>
               <div className={currentTab === 'details' ? 'space-y-3' : 'hidden'} aria-hidden={currentTab !== 'details'}>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
