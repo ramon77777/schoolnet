@@ -17,10 +17,12 @@ test('02 - production login keeps captcha mandatory',()=>{
  assert.match(edge,/challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
  assert.match(edge,/result\.hostname!==new URL\(ORIGIN\)\.hostname/);
 });
-test('03 - pilot UUID is required before any credential verification',()=>{
+test('03 - server rollout must use explicit canary or general release',()=>{
  assert.match(edge,/SCHOOLNET_STUDENT_PILOT_REQUEST_ID/);
- assert.match(edge,/!isUuid\(pilotId\)/);
- assert.match(edge,/record\.request_id\.toLowerCase\(\)===pilotId/);
+ assert.match(edge,/SCHOOLNET_STUDENT_CANARY_REQUEST_ID/);
+ assert.match(edge,/SCHOOLNET_STUDENT_GENERAL_RELEASE_ENABLED/);
+ assert.match(edge,/!cohortAuthorized/);
+ assert.match(edge,/schoolnetStudentRolloutAllowed/);
  assert.ok(edge.indexOf('if(!enabled||url!==PROD') < edge.indexOf('const svc=createClient'));
 });
 test('04 - login will not be enabled by fabricated or malformed JWT',()=>{

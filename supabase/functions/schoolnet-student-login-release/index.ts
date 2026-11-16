@@ -6,6 +6,7 @@ import {createClient} from 'npm:@supabase/supabase-js@2.90.1';
 import {runSchoolnetNoEmailLogin,type NoEmailLoginDeps}
  from '../_shared/studentNoEmailLoginCore.ts';
 import {SCHOOLNET_STUDENT_INTERNAL_ALIAS_DOMAIN} from '../_shared/schoolnetStudentIdentity.ts';
+import {schoolnetStudentRequestIdIsValid,schoolnetStudentRolloutAllowed} from '../_shared/schoolnetStudentRolloutGuard.ts';
 
 const PROD='https://anttmbhaphkhmkoqsofd.supabase.co';
 const ORIGIN='https://schoolnet-snowy.vercel.app';
@@ -50,9 +51,13 @@ Deno.serve(async(req:Request)=>{
    Deno.env.get('TURNSTILE_SECRET_KEY')||'';
  // This pilot is explicitly authorized. Flag 'false' is the emergency stop.
  const enabled=Deno.env.get('SCHOOLNET_STUDENT_LOGIN_ENABLED')!=='false';
- const pilotId=(Deno.env.get('SCHOOLNET_STUDENT_PILOT_REQUEST_ID')||'').trim().toLowerCase();
- const isUuid=(value:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value);
- if(!enabled||url!==PROD||!anon||!secret||!captchaSecret||!isUuid(pilotId)||
+ const pilotId=Deno.env.get('SCHOOLNET_STUDENT_PILOT_REQUEST_ID');
+ const canaryId=Deno.env.get('SCHOOLNET_STUDENT_CANARY_REQUEST_ID');
+ const generalReleaseEnabled=Deno.env.get('SCHOOLNET_STUDENT_GENERAL_RELEASE_ENABLED')==='true';
+ const cohortAuthorized=generalReleaseEnabled||
+   schoolnetStudentRequestIdIsValid(pilotId)||
+   schoolnetStudentRequestIdIsValid(canaryId);
+ if(!enabled||url!==PROD||!anon||!secret||!captchaSecret||!cohortAuthorized||
    new TextEncoder().encode(pepper).length<32)
   return json(503,{ok:false,message:'Connexion scolaire non disponible.'},true);
  // This header is not the security boundary. Do not assume a user-supplied
@@ -105,9 +110,11 @@ Deno.serve(async(req:Request)=>{
      .eq('student_auth_user_id',candidate)
      .maybeSingle();
    if(recordError)throw Error('pilot unavailable');
-   const pilotMatch=typeof record?.request_id==='string' &&
-     record.request_id.toLowerCase()===pilotId;
-   return {allowed:true,id:pilotMatch?candidate:null};
+   const requestAllowed=schoolnetStudentRolloutAllowed({
+    enabled,generalReleaseEnabled,pilotRequestId:pilotId,
+    canaryRequestId:canaryId,requestId:record?.request_id,
+   });
+   return {allowed:true,id:requestAllowed?candidate:null};
   },
   async getUser(id){
    const {data,error}=await svc.auth.admin.getUserById(id);
