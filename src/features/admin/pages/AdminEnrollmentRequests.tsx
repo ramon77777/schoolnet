@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 import AdminRequestResolutionPanel, { type RequestResolution } from '@/features/enrollments/components/AdminRequestResolutionPanel';
 import AdminStudentNoEmailPanel from '@/features/enrollments/components/AdminStudentNoEmailPanel';
+import { schoolnetAdminPreviewOnly } from '@/features/enrollments/lib/adminStudentNoEmailApi';
 
 type RequestStatus = 'new' | 'contacted' | 'processed' | 'rejected';
 type RequestType = 'student_enrollment' | 'parent_access';
@@ -40,6 +41,8 @@ export default function AdminEnrollmentRequests() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | RequestStatus>('all');
   const [selected, setSelected] = useState<EnrollmentRequest | null>(null);
+  const [activeTab, setActiveTab] = useState<'access' | 'family' | 'details'>('access');
+  const [familyVisited, setFamilyVisited] = useState(false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [resolving, setResolving] = useState(false);
@@ -49,6 +52,8 @@ export default function AdminEnrollmentRequests() {
   const closeRequest = useCallback(() => {
     if (resolving) return;
     setSelected(null);
+    setActiveTab('access');
+    setFamilyVisited(false);
     if (requestIdFromUrl) {
       const next = new URLSearchParams(searchParams);
       next.delete('request');
@@ -132,7 +137,8 @@ export default function AdminEnrollmentRequests() {
   }), [rows]);
 
   async function review(status: 'contacted' | 'rejected') {
-    if (!selected || saving || resolving) return;
+    if (!selected || saving || resolving || schoolnetAdminPreviewOnly) return;
+    if (status === 'rejected' && !window.confirm('Refuser définitivement cette demande ?')) return;
     setSaving(true);
     try {
       const { error: mutationError } = await supabase.rpc(
@@ -158,6 +164,11 @@ export default function AdminEnrollmentRequests() {
     setSuccess('Demande finalisée et comptes liés : ' + selected?.reference + '.');
     await load(true);
   }
+
+  const noEmailAccess = selected?.request_type === 'student_enrollment' && !selected.student_email;
+  const currentTab = !noEmailAccess && activeTab === 'access' ? 'family' : activeTab;
+  const openFamily = () => { setFamilyVisited(true); setActiveTab('family'); };
+  const previewOnly = schoolnetAdminPreviewOnly;
 
   const badge = (status: RequestStatus) => status === 'new' ?
     'border-blue-200 bg-blue-50 text-blue-700' : status === 'contacted' ?
@@ -226,70 +237,93 @@ export default function AdminEnrollmentRequests() {
           </div>}
       </div>
 
-      {selected && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="presentation" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving && !resolving) closeRequest(); }}>
-        <section role="dialog" aria-modal="true" aria-label="Examen de la demande" className="max-h-[94dvh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-6 lg:p-7">
-          <div className="flex items-start justify-between gap-4">
-            <div><div className="text-xs font-bold tracking-wide text-blue-600">{selected.reference}</div>
-              <p className="mt-2 text-xs font-bold text-indigo-700">{selected.request_type === 'parent_access' ? 'Demande de compte parent / tuteur' : 'Demande inscription apprenant'}</p>
-              <h2 className="mt-2 text-2xl font-black">{selected.student_full_name}</h2>
-              <p className="mt-2 text-sm text-slate-500">{selected.request_type === 'parent_access' ? 'Enfant a rattacher apres verification' : `${selected.requested_level ?? '--'} - ${selected.student_gender === 'male' ? 'Masculin' : selected.student_gender === 'female' ? 'Feminin' : '--'}`}</p>
-            </div>
-            <button onClick={closeRequest} disabled={saving || resolving} aria-label="Fermer" className="rounded-lg bg-slate-100 px-3 py-2">&#10005;</button>
-          </div>
-          <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-            <div className="min-w-0 space-y-4">
-          <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
-            <div><div className="text-slate-500">Responsable</div><strong>{selected.guardian_full_name}</strong></div>
-            <div><div className="text-slate-500">Lien</div><strong>{selected.guardian_relationship === 'father' ? 'Pere' : selected.guardian_relationship === 'mother' ? 'Mere' : 'Tuteur'}</strong></div>
-            <div><div className="text-slate-500">Telephone</div><a className="font-bold text-blue-700 underline" href={`tel:${selected.guardian_phone.replace(/[^+\d]/g, '')}`}>{selected.guardian_phone}</a></div>
-            <div><div className="text-slate-500">E-mail parent / tuteur</div><div className="break-all">{selected.guardian_email || 'Non renseigne (ancien dossier)'}</div></div>
-            {selected.request_type === 'student_enrollment' && <div className="sm:col-span-2"><div className="text-slate-500">E-mail de l'apprenant</div>{selected.student_email || 'Non renseigne (facultatif)'}</div>}
-            <div className="sm:col-span-2"><div className="text-slate-500">Observations</div>{selected.message || 'Aucune'}</div>
-          </div>
-          <p className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">
-            La demande ne crée pas encore de compte. La vérification du lien familial
-            reste obligatoire avant tout rattachement.{" "}
-            <Link className="font-semibold underline" to="/app/admin/users">Utilisateurs</Link>
-            {selected.request_type === 'student_enrollment' && (
-              <> et <Link className="font-semibold underline" to="/app/admin/enrollments">Inscriptions</Link></>
-            )} restent disponibles pour les démarches manuelles.
-          </p>
-
-              <details className="rounded-xl border border-slate-200 bg-white">
-                <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-800">
-                  Note de suivi (facultatif) · Afficher / masquer
-                </summary>
-                <div className="border-t border-slate-100 px-4 pb-4 pt-3">
-          <label className="block text-sm font-semibold text-slate-700">Note interne (facultatif)
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000}
-              className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
-          </label>
-
+      {selected && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-0 sm:p-4"
+          role="presentation" onMouseDown={event => {
+            if(event.currentTarget === event.target && !saving && !resolving) closeRequest();
+          }}>
+          <section role="dialog" aria-modal="true" aria-label={'Dossier ' + selected.reference}
+            className="flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[88dvh] sm:rounded-3xl">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-blue-700">{selected.reference} · {selected.request_type === 'parent_access' ? 'Accès Parent' : 'Inscription Apprenant'}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black text-slate-950 sm:text-2xl">{selected.student_full_name}</h2>
+                  <span className={'rounded-full border px-2 py-0.5 text-xs font-bold ' + badge(selected.status)}>{statusLabels[selected.status]}</span>
                 </div>
-              </details>
+                <p className="text-xs text-slate-500">{selected.requested_level || 'Niveau non renseigné'}
+                  {selected.student_gender === 'male' ? ' · Masculin' : selected.student_gender === 'female' ? ' · Féminin' : ''}
+                </p>
+              </div>
+              <button type="button" aria-label="Fermer la fiche" onClick={closeRequest} disabled={saving || resolving}
+                className="shrink-0 rounded-xl bg-slate-100 px-3 py-2 hover:bg-slate-200">✕</button>
+            </header>
+            <div className="grid shrink-0 gap-x-6 gap-y-2 border-b border-slate-100 bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2 sm:px-6">
+              <p className="min-w-0"><span className="text-slate-500">Responsable : </span><strong>{selected.guardian_full_name}</strong>
+                <span className="text-slate-500"> · {selected.guardian_relationship === 'father' ? 'Père' : selected.guardian_relationship === 'mother' ? 'Mère' : 'Tuteur'}</span></p>
+              <p><span className="text-slate-500">Téléphone : </span>
+                <a className="font-bold text-blue-700 underline" href={'tel:' + selected.guardian_phone.replace(/[^+\d]/g, '')}>{selected.guardian_phone}</a></p>
+              <p className="min-w-0 break-words"><span className="text-slate-500">E-mail parent : </span>{selected.guardian_email || 'Non renseigné'}</p>
+              <p><span className="text-slate-500">Accès : </span><strong>{noEmailAccess ? 'Apprenant sans e-mail' : 'Compte classique'}</strong></p>
             </div>
-            <div className="min-w-0">
-          <AdminStudentNoEmailPanel request={selected} />
-          <AdminRequestResolutionPanel
-            key={selected.id}
-            request={selected}
-            disabled={Boolean(user?.isDemo)}
-            onFinalized={handleFinalized}
-            onBusyChange={setResolving}
-          />
+            <nav aria-label="Étapes du dossier" className="grid shrink-0 grid-cols-2 gap-2 border-b border-slate-100 px-4 py-3 sm:flex sm:overflow-x-auto sm:px-6">
 
+              {noEmailAccess && <button type="button" onClick={() => setActiveTab('access')} aria-current={currentTab === 'access' ? 'step' : undefined}
+                className={currentTab === 'access' ? 'min-w-0 rounded-xl bg-blue-600 px-2 py-2 text-xs font-bold text-white sm:shrink-0 sm:px-4' : 'min-w-0 rounded-xl bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 sm:shrink-0 sm:px-4'}>
+                1. Accès Apprenant</button>}
+              <button type="button" onClick={openFamily} aria-current={currentTab === 'family' ? 'step' : undefined}
+                className={currentTab === 'family' ? 'min-w-0 rounded-xl bg-blue-600 px-2 py-2 text-xs font-bold text-white sm:shrink-0 sm:px-4' : 'min-w-0 rounded-xl bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 sm:shrink-0 sm:px-4'}>
+                {noEmailAccess ? '2. Famille & finalisation' : 'Famille & finalisation'}</button>
+              <button type="button" onClick={() => setActiveTab('details')} aria-current={currentTab === 'details' ? 'step' : undefined}
+                className={currentTab === 'details' ? 'col-span-2 min-w-0 rounded-xl bg-blue-600 px-2 py-2 text-xs font-bold text-white sm:col-span-1 sm:shrink-0 sm:px-4' : 'col-span-2 min-w-0 rounded-xl bg-slate-100 px-2 py-2 text-xs font-bold text-slate-700 sm:col-span-1 sm:shrink-0 sm:px-4'}>
+                Dossier & suivi</button>
+            </nav>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-6">
+              <div className={currentTab === 'access' ? 'block' : 'hidden'} aria-hidden={currentTab !== 'access'}>
+                <AdminStudentNoEmailPanel request={selected} onOpenFamily={openFamily} />
+              </div>
+              <div className={currentTab === 'family' ? 'block' : 'hidden'} aria-hidden={currentTab !== 'family'}>
+                {(familyVisited || currentTab === 'family') && (
+                  <AdminRequestResolutionPanel key={selected.id} request={selected}
+                    disabled={Boolean(user?.isDemo) || previewOnly} onFinalized={handleFinalized} onBusyChange={setResolving} />
+                )}
+              </div>
+              <div className={currentTab === 'details' ? 'space-y-3' : 'hidden'} aria-hidden={currentTab !== 'details'}>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                  <p className="font-bold text-slate-900">Informations complémentaires</p>
+                  <p className="mt-2 text-slate-600">E-mail Apprenant : {selected.student_email || 'Aucun e-mail personnel'}</p>
+                  <p className="mt-1 text-slate-600">Date : {displayDate(selected.submitted_at)}</p>
+                  <p className="mt-1 text-slate-600">Observations : {selected.message || 'Aucune'}</p>
+                </div>
+                <details className="rounded-xl border border-slate-200">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-800">Note interne de suivi</summary>
+                  <div className="border-t border-slate-100 p-4">
+                    <label className="block text-sm font-semibold text-slate-700">Note administrative
+                      <textarea value={note} onChange={event => setNote(event.target.value)} maxLength={1000}
+                        className="mt-2 min-h-24 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-blue-500" />
+                    </label>
+                  </div>
+                </details>
+                <div className="flex flex-wrap gap-4 text-xs font-semibold text-blue-700">
+                  <Link className="underline" to="/app/admin/users">Utilisateurs</Link>
+                  <Link className="underline" to="/app/admin/enrollments">Inscriptions & affectations</Link>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="mt-6 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5">
-            <button onClick={closeRequest} disabled={saving || resolving} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
-            {selected.status !== 'processed' && <>
-              <button onClick={() => void review('rejected')} disabled={saving || resolving} className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
-              <button onClick={() => void review('contacted')} disabled={saving || resolving} className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactée</button>
-            </>}
-            {selected.status === 'processed' && <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Traitée · Rattachement contrôlé</span>}
-          </div>
-        </section>
-      </div>}
+            <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:px-6">
+              {previewOnly && <span className="mr-auto self-center text-xs font-semibold text-slate-500">Aperçu en lecture seule</span>}
+              <button type="button" onClick={closeRequest} disabled={saving || resolving}
+                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">Fermer</button>
+              {!previewOnly && selected.status !== 'processed' ? <>
+                <button type="button" onClick={() => void review('rejected')} disabled={saving || resolving}
+                  className="rounded-xl border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700">Refuser</button>
+                <button type="button" onClick={() => void review('contacted')} disabled={saving || resolving}
+                  className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-bold text-amber-700">Famille contactée</button>
+              </> : selected.status === 'processed' ? <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Traité</span> : null}
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -51,3 +51,9 @@ entrypoint = "./functions/schoolnet-family-invitation/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/schoolnet-student-login-release/index.ts"
+
+# Admin JWT required; never publicly expose this function.
+[functions.schoolnet-student-no-email-admin]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/schoolnet-student-no-email-admin/index.ts"
