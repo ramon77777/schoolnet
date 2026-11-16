@@ -57,6 +57,8 @@ test('07 - Admin form requires manual verification and double confirmation',()=>
 });
 test('08 - Vercel previews still cannot call the Admin API',()=>{
  assert.match(api,/!schoolnetAdminPreviewOnly/);
- assert.match(api,/if\(!studentNoEmailAdminEnabled\)throw Error/);
+ assert.match(api,/input\.action==='inspect' \? !studentNoEmailAdminCanInspect : !studentNoEmailAdminEnabled/);
+ assert.match(api,/import\.meta\.env\.VITE_SCHOOLNET_ADMIN_LOCAL_INSPECT === 'true'/);
+ assert.match(server,/origin!==STUDENT_PRODUCTION_ORIGIN && action!=='inspect'/);
  assert.match(panel,/Prévisualisation en lecture seule/);
 });
