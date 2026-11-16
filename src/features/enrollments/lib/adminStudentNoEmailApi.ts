@@ -1,11 +1,16 @@
 // Admin-only SCHOOLNET student access, rollout guarded. No sandbox or DEV writes.
 import {supabase} from '@/lib/supabaseClient';
 const PROD='https://anttmbhaphkhmkoqsofd.supabase.co';
-// Consultation des dossiers : disponible sur le projet principal uniquement.
- // L'API exige toujours un JWT d'Admin. La création est autorisée
- // exclusivement par SCHOOLNET_STUDENT_ACCOUNTS_ENABLED côté Edge Function.
+const PROD_ORIGIN='https://schoolnet-snowy.vercel.app';
+// Les aperçus Vercel utilisent parfois les données du projet principal.
+// Aucune opération Admin ne doit partir d'un domaine non autorisé.
+export const schoolnetAdminPreviewOnly =
+  typeof window === 'undefined' || window.location.origin !== PROD_ORIGIN;
+// La fonction Edge vérifie aussi l'Origin et le JWT Admin côté serveur.
+// La création exige en plus SCHOOLNET_STUDENT_ACCOUNTS_ENABLED.
 export const studentNoEmailAdminEnabled =
-  import.meta.env.PROD && import.meta.env.VITE_SUPABASE_URL === PROD;
+  import.meta.env.PROD && import.meta.env.VITE_SUPABASE_URL === PROD &&
+  !schoolnetAdminPreviewOnly;
 
 export type StudentNoEmailStatus='not_prepared'|'reserved'|'auth_created'|'prepared'|
  'sent_declared'|'enabled'|'requires_review'|'revoked';
@@ -15,6 +20,9 @@ export type StudentNoEmailResponse={
  admin_enabled?:boolean;
  request_id?:string;
  student_id?:string|null;
+ family_linked?:boolean;
+ parent_reuse_available?:boolean;
+ parent_reuse_approved?:boolean;
  schoolnet_code?:string;
  family_phone?:string;
  invitation_url?:string;
@@ -25,7 +33,7 @@ export type StudentNoEmailResponse={
  parent_verified?:boolean;
  message?:string;
 };
-export type StudentAdminAction='inspect'|'prepare'|'declare_sent';
+export type StudentAdminAction='inspect'|'approve_parent_reuse'|'prepare'|'declare_sent';
 
 export async function studentNoEmailAdminAction(input:{
   action:StudentAdminAction;requestId:string;verified?:boolean;

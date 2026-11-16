@@ -1,57 +1,43 @@
-name: SCHOOLNET — Vérifications du code
-
+name: SCHOOLNET - Qualite integration Lot 5.C (local-first)
 on:
   pull_request:
-    branches: [main, feature/schoolnet-notifications]
+    branches: [main]
   push:
-    branches: [feature/schoolnet-multi-etablissements]
+    branches: [integration/schoolnet-lot5c-local-first]
   workflow_dispatch:
-
-# Ce workflow vérifie uniquement le code : aucun accès à Supabase,
-# aucune donnée sensible, aucune fusion et aucun déploiement Vercel.
 permissions:
   contents: read
-
 concurrency:
-  group: schoolnet-quality-${{ github.workflow }}-${{ github.ref }}
+  group: schoolnet-local-first-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint-and-build:
-    name: ESLint et build TypeScript / Vite
+  verify:
+    name: Tests, lint, build et Edge checks sans deploiement
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 20
     steps:
-      - name: Télécharger la branche de la PR
-        uses: actions/checkout@v4
-
-      - name: Préparer Node.js 24
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
-
-      - name: Installer les dépendances du lockfile
+      - name: Installer les dependances
         run: npm ci --no-audit --no-fund
-
-      - name: Vérification ESLint
+      - name: ESLint
         run: npm run lint
-
-      - name: Compilation TypeScript et Vite
+      - name: Compiler l'application Vite/TypeScript
         run: npm run build
-      
-      # Validation statique de la fonction Edge sans deployment ni connexion Supabase.
-      - name: Preparer Deno
-        uses: denoland/setup-deno@v2
+      - name: Verifier les garde-fous de cohorte et d'environnement
+        run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
+      - name: Tester UI, login, rattachement et Parent existant (hors ligne)
+        run: node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs
+      - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-
-      - name: Verifier le code de l'Edge Function familiale
+      - name: Verification de compilation des fonctions Edge (aucun deploiement)
+        run: deno check --node-modules-dir=auto supabase/functions/schoolnet-student-no-email-admin/index.ts supabase/functions/schoolnet-student-login-release/index.ts
+      - name: Verifier les fonctions famille deja presentes
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
-
-      - name: Recette hors ligne des preuves Auth famille A.2.2
+      - name: Tests famille deja presents
         run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
-
-      - name: Verifier la recette Auth sandbox B3 (sans deploiement)
-        run: deno check --node-modules-dir=auto docs/sandbox/b3/edge/index.ts

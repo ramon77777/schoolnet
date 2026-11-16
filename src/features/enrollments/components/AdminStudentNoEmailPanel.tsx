@@ -6,27 +6,48 @@ type RequestInfo={
  id:string;reference:string;student_full_name:string;student_email:string|null;
  request_type:string;guardian_email:string|null;
 };
-export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}){
+export default function AdminStudentNoEmailPanel({
+ request,onOpenFamily,
+}:{request:RequestInfo;onOpenFamily?:()=>void}){
  const [inspection,setInspection]=useState<StudentNoEmailResponse|null>(null);
  const [draft,setDraft]=useState<StudentNoEmailResponse|null>(null);
  const [note,setNote]=useState('');
  const [verified,setVerified]=useState(false);
  const [delivered,setDelivered]=useState(false);
  const [busy,setBusy]=useState(false);
+ const [inspecting,setInspecting]=useState(false);
  const [message,setMessage]=useState<string|null>(null);
  const [error,setError]=useState<string|null>(null);
  const eligible=request.request_type==='student_enrollment'&&!request.student_email;
- useEffect(()=>{setDraft(null);setInspection(null);setMessage(null);setError(null);
-  setVerified(false);setDelivered(false);setNote('');},[request.id]);
+ useEffect(()=>{
+  let cancelled=false;
+  setDraft(null);setInspection(null);setMessage(null);setError(null);
+  setVerified(false);setDelivered(false);setNote('');
+  if(!eligible||!studentNoEmailAdminEnabled)return;
+  setInspecting(true);
+  void studentNoEmailAdminAction({action:'inspect',requestId:request.id})
+   .then(result=>{if(!cancelled)setInspection(result);})
+   .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Vérification indisponible.');})
+   .finally(()=>{if(!cancelled)setInspecting(false);});
+  return ()=>{cancelled=true;};
+ },[request.id,eligible]);
  if(!eligible)return null;
- async function act(action:'inspect'|'prepare'|'declare_sent'){
+ async function act(action:'inspect'|'approve_parent_reuse'|'prepare'|'declare_sent'){
   if(busy||!studentNoEmailAdminEnabled)return;
+  if(action==='approve_parent_reuse'&&!window.confirm(
+   'Confirmez-vous avoir personnellement vérifié l’autorité de ce Parent pour ce nouvel enfant ? '+ 
+   'Son compte existant sera réutilisé sans seconde invitation Parent.'
+  ))return;
   if(action==='prepare'&&!window.confirm('Préparer un compte Apprenant sans e-mail personnel, uniquement après vérification du Parent activé ?'))return;
   if(action==='declare_sent'&&!window.confirm('Confirmez-vous la remise réelle du lien personnel et du code SCHOOLNET à la famille vérifiée ?'))return;
   setBusy(true);setError(null);setMessage(null);
   try{
    const result=await studentNoEmailAdminAction({action,requestId:request.id,
     verified,verificationNote:note,deliveryConfirmed:delivered});
+   if(action==='approve_parent_reuse'){
+    setVerified(false);setNote('');
+    setMessage('Lien avec le Parent existant approuvé pour cet enfant. Vous pouvez maintenant préparer son compte individuel.');
+   }
    if(action==='prepare'){setDraft(result);setMessage('Invitation préparée. Copiez et transmettez le message avant de déclarer la remise.');}
    if(action==='declare_sent'){
     setDraft(null);setDelivered(false);
@@ -42,25 +63,69 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
    setMessage('Message personnel copié. Transmettez-le uniquement au contact Parent/Tuteur vérifié.');}
   catch{setError('Copie impossible : utilisez un navigateur sécurisé.');}
  }
- const status=inspection?.status??'not_prepared';
- return <section className="mt-4 space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4" aria-label="Accès Apprenant sans e-mail">
-  <div className="text-sm font-bold text-indigo-900">Compte Apprenant sans e-mail personnel</div>
-  <p className="text-xs leading-5 text-slate-700">
-   Pour {request.student_full_name}, l’identifiant SCHOOLNET et le mot de passe sont distincts de ceux du Parent.
-   Le rattachement familial reste contrôlé par la finalisation administrative du dossier.
-  </p>
-  {!studentNoEmailAdminEnabled ? <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-   Prévisualisation locale uniquement. Aucun compte ni lien ne sera généré depuis cet environnement.
+ const status=inspection?.status??null;
+ const previewOnly=!studentNoEmailAdminEnabled;
+ const nextAction=status==='enabled'
+  ? (inspection?.family_linked===true?'Consulter le résultat familial':'Vérifier le rattachement familial')
+  : status==='sent_declared'?'Vérifier l’activation'
+  : status==='prepared'?'Invitation préparée : vérifier la remise'
+  : status==='not_prepared'
+   ? (inspection?.parent_reuse_available&&!inspection?.parent_reuse_approved
+      ? 'Vérifier et approuver ce nouvel enfant avant toute préparation'
+      : inspection?.parent_reuse_approved
+       ? 'Compte Parent existant vérifié : préparer l’accès individuel de cet enfant'
+       : inspection?.admin_enabled?'Vérifier la famille puis préparer le compte':'Préparation non autorisée pour ce dossier')
+   : status==='requires_review'?'Examiner l’incident avec l’administration technique'
+   : status==='revoked'?'Accès révoqué : revue administrative nécessaire'
+   : status==='auth_created'||status==='reserved'?'Création en cours : ne pas recommencer'
+   : 'Vérifier le compte Parent et le dossier';
+ const statusLabels:Record<StudentNoEmailResponse['status'],string>={
+  not_prepared:'Compte à préparer',reserved:'Création en cours',
+  auth_created:'Compte créé, invitation en cours',prepared:'Invitation prête',
+  sent_declared:'Invitation transmise',enabled:'Compte activé',
+  requires_review:'Vérification technique nécessaire',revoked:'Accès révoqué'
+ };
+ return <section className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4" aria-label="Accès Apprenant sans e-mail">
+   <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="text-sm font-bold text-indigo-900">Accès Apprenant sans e-mail</div>
+    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-800">
+     {inspecting?'Vérification…':status?statusLabels[status]:'À vérifier'}
+    </span>
+   </div>
+   <p className="text-xs leading-5 text-slate-600">
+    Compte individuel de {request.student_full_name}, distinct de celui du Parent.
+   </p>
+  {previewOnly ? <div role="status" className="rounded-xl border border-blue-200 bg-white p-3 text-xs leading-5 text-slate-700">
+   <strong className="text-blue-800">Prévisualisation en lecture seule.</strong> La vérification du compte est réservée au domaine principal SCHOOLNET.
+   Aucun compte, invitation ou lien familial ne peut être créé depuis cet aperçu.
   </div> : <>
-   <button type="button" disabled={busy} onClick={()=>void act('inspect')}
+   <div className="rounded-xl border border-indigo-100 bg-white px-3 py-3 text-xs" aria-live="polite">
+    <p className="font-bold text-slate-900">Prochaine étape</p>
+    <p className="mt-1 text-slate-700">{nextAction}</p>
+    {(status==='enabled'||status==='requires_review')&&onOpenFamily&&
+     <button type="button" onClick={onOpenFamily} className="mt-3 rounded-lg border border-indigo-200 px-3 py-2 font-semibold text-indigo-800">
+      {status==='enabled'?'Voir la famille':'Consulter le dossier familial'}
+     </button>}
+   </div>
+   <button type="button" disabled={busy||inspecting} onClick={()=>void act('inspect')}
     className="rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-800">
-    {busy?'Vérification…':'Vérifier le dossier sans e-mail'}</button>
-   <p className="text-xs text-slate-600">État serveur : <strong>{status}</strong></p>
-   {inspection && !inspection.admin_enabled && <p role="status"
+    {busy||inspecting?'Vérification…':'Actualiser la vérification'}</button>
+   <details className="rounded-lg border border-indigo-100 bg-white text-xs">
+    <summary className="cursor-pointer px-3 py-2 font-semibold text-slate-600">Diagnostic technique</summary>
+    <p className="px-3 pb-3 text-slate-600">État serveur : {status??'chargement'}. Le serveur contrôle toutes les mutations.</p>
+   </details>
+   {status==='not_prepared' && inspection && !inspection.admin_enabled && <p role="status"
      className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
      Dossier consultable, mais création des comptes désactivée par le serveur.
      Contactez l'administrateur technique avant de préparer une invitation.
    </p>}
+   {status==='not_prepared' && inspection?.parent_reuse_available && <div role="status"
+     className="rounded-xl border border-blue-200 bg-white p-3 text-xs leading-5 text-blue-900">
+     <strong>Parent déjà connu de SCHOOLNET.</strong> Son compte activé et son lien avec un autre enfant sont vérifiés.
+     {inspection.parent_reuse_approved
+      ? ' Ce nouveau dossier a sa propre approbation administrative : aucune deuxième invitation Parent ne sera créée.'
+      : ' Une approbation administrative distincte est requise pour cet enfant, même si l’adresse e-mail du Parent est identique.'}
+    </div>}
    {status==='not_prepared' && inspection?.admin_enabled === true && <div className="space-y-3">
     <label className="block text-xs font-semibold text-slate-700">Note de vérification Parent–Enfant (10 caractères minimum)
      <textarea rows={3} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)}
@@ -68,11 +133,18 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
     </label>
     <label className="flex items-start gap-2 text-xs text-slate-700">
      <input type="checkbox" checked={verified} onChange={e=>setVerified(e.target.checked)} />
-     J’ai vérifié le dossier familial et l’identité du parent déjà activé.
+     J’ai vérifié l’identité, l’autorité parentale et le dossier propre à cet enfant.
     </label>
-    <button type="button" disabled={busy||!verified||note.trim().length<10}
-     onClick={()=>void act('prepare')} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-     Préparer le compte et le lien</button>
+    {inspection?.parent_reuse_available&&!inspection?.parent_reuse_approved
+     ? <button type="button" disabled={busy||!verified||note.trim().length<10}
+        onClick={()=>void act('approve_parent_reuse')}
+        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+        Approuver ce nouvel enfant pour le Parent existant
+       </button>
+     : <button type="button" disabled={busy||!verified||note.trim().length<10}
+        onClick={()=>void act('prepare')} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+        Préparer le compte et le lien
+       </button>}
    </div>}
    {draft?.invitation_url && <div className="space-y-2 rounded-xl border border-emerald-200 bg-white p-3 text-xs">
     <p className="font-semibold text-emerald-800">Code et lien générés une seule fois, uniquement pour le parent vérifié.</p>
@@ -83,7 +155,12 @@ export default function AdminStudentNoEmailPanel({request}:{request:RequestInfo}
     <button type="button" onClick={()=>void act('declare_sent')} disabled={!delivered||busy||!verified||note.trim().length<10}
      className="rounded-lg bg-blue-600 px-3 py-2 font-bold text-white disabled:opacity-50">Déclarer la remise</button>
    </div>}
-   {status==='enabled' && <p className="text-xs text-emerald-800">Compte activé par une vraie connexion Auth. Finalisez ensuite l’inscription et le lien Parent–Enfant dans le panneau existant.</p>}
+   {status==='enabled' && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">
+    {inspection?.family_linked===true
+     ? 'Compte activé et lien familial confirmé. L’affectation à une classe reste indépendante.'
+     : 'Compte activé. Le rattachement familial reste à vérifier dans « Famille & finalisation ».'}
+   </p>}
+   {status==='requires_review' && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">Vérification technique nécessaire. Ne relancez pas la création du compte.</p>}
   </>}
   {message&&<p role="status" className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{message}</p>}
   {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
