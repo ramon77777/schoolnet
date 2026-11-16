@@ -4,7 +4,7 @@
 import {createClient} from 'npm:@supabase/supabase-js@2.90.1';
 import {generateSchoolnetStudentCode,studentCodeLookupDigest} from '../_shared/schoolnetStudentIdentity.ts';
 import {schoolnetStudentRolloutAllowed} from '../_shared/schoolnetStudentRolloutGuard.ts';
-import {schoolnetStudentAllowedOrigin} from '../_shared/schoolnetStudentRuntimeGate.ts';
+import {schoolnetStudentAdminAllowedOrigin,STUDENT_PRODUCTION_ORIGIN} from '../_shared/schoolnetStudentRuntimeGate.ts';
 import {validateStudentNoEmailRequest,technicalSchoolnetAlias,validateAdminVerification,
   type StudentRequest,type ParentInvitation} from '../_shared/studentNoEmailPolicy.ts';
 
@@ -26,11 +26,12 @@ Deno.serve(async(req:Request)=>{
  const origin=req.headers.get('origin')||'';
  const url=Deno.env.get('SUPABASE_URL')||'';
  // A strict, explicit project+Origin pair. Never treat Origin as authentication.
- const trustedOrigin=schoolnetStudentAllowedOrigin({
+ const trustedOrigin=schoolnetStudentAdminAllowedOrigin({
   projectUrl:url,requestOrigin:origin,
   executionMode:Deno.env.get('SCHOOLNET_STUDENT_EXECUTION_MODE'),
   sandboxEnabled:Deno.env.get('SCHOOLNET_STUDENT_SANDBOX_ENABLED'),
   sandboxOrigin:Deno.env.get('SCHOOLNET_STUDENT_SANDBOX_ORIGIN'),
+  localAdminInspectEnabled:Deno.env.get('SCHOOLNET_STUDENT_LOCAL_ADMIN_INSPECT_ENABLED'),
  });
  if(!trustedOrigin)return new Response('Forbidden',{status:403});
  if(req.method==='OPTIONS') return new Response(null,{status:204,headers:{'access-control-allow-origin':origin,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, apikey, content-type, x-client-info','cache-control':'no-store','vary':'Origin'}});
@@ -59,6 +60,10 @@ Deno.serve(async(req:Request)=>{
  }catch{return deny(origin,400,'Requete invalide.');}
  const action=body.action as Action;
  const requestId=body.request_id;
+ // Local Vite may inspect authenticated Admin state only after explicit server
+ // opt-in. Even a valid Admin JWT must not mutate production from localhost.
+ if(origin!==STUDENT_PRODUCTION_ORIGIN && action!=='inspect')
+   return deny(origin,403,'Actions administratives interdites depuis cet environnement.');
  if(!['inspect','approve_parent_reuse','prepare','declare_sent'].includes(action)||
     typeof requestId!=='string'||!UUID.test(requestId))
    return deny(origin,400,'Demande ou action invalide.');
