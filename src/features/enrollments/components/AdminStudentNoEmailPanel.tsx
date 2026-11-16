@@ -32,14 +32,22 @@ export default function AdminStudentNoEmailPanel({
   return ()=>{cancelled=true;};
  },[request.id,eligible]);
  if(!eligible)return null;
- async function act(action:'inspect'|'prepare'|'declare_sent'){
+ async function act(action:'inspect'|'approve_parent_reuse'|'prepare'|'declare_sent'){
   if(busy||!studentNoEmailAdminEnabled)return;
+  if(action==='approve_parent_reuse'&&!window.confirm(
+   'Confirmez-vous avoir personnellement vérifié l’autorité de ce Parent pour ce nouvel enfant ? '+ 
+   'Son compte existant sera réutilisé sans seconde invitation Parent.'
+  ))return;
   if(action==='prepare'&&!window.confirm('Préparer un compte Apprenant sans e-mail personnel, uniquement après vérification du Parent activé ?'))return;
   if(action==='declare_sent'&&!window.confirm('Confirmez-vous la remise réelle du lien personnel et du code SCHOOLNET à la famille vérifiée ?'))return;
   setBusy(true);setError(null);setMessage(null);
   try{
    const result=await studentNoEmailAdminAction({action,requestId:request.id,
     verified,verificationNote:note,deliveryConfirmed:delivered});
+   if(action==='approve_parent_reuse'){
+    setVerified(false);setNote('');
+    setMessage('Lien avec le Parent existant approuvé pour cet enfant. Vous pouvez maintenant préparer son compte individuel.');
+   }
    if(action==='prepare'){setDraft(result);setMessage('Invitation préparée. Copiez et transmettez le message avant de déclarer la remise.');}
    if(action==='declare_sent'){
     setDraft(null);setDelivered(false);
@@ -62,7 +70,11 @@ export default function AdminStudentNoEmailPanel({
   : status==='sent_declared'?'Vérifier l’activation'
   : status==='prepared'?'Invitation préparée : vérifier la remise'
   : status==='not_prepared'
-   ? (inspection?.admin_enabled?'Vérifier la famille puis préparer le compte':'Préparation non autorisée pour ce dossier')
+   ? (inspection?.parent_reuse_available&&!inspection?.parent_reuse_approved
+      ? 'Vérifier et approuver ce nouvel enfant avant toute préparation'
+      : inspection?.parent_reuse_approved
+       ? 'Compte Parent existant vérifié : préparer l’accès individuel de cet enfant'
+       : inspection?.admin_enabled?'Vérifier la famille puis préparer le compte':'Préparation non autorisée pour ce dossier')
    : status==='requires_review'?'Examiner l’incident avec l’administration technique'
    : status==='revoked'?'Accès révoqué : revue administrative nécessaire'
    : status==='auth_created'||status==='reserved'?'Création en cours : ne pas recommencer'
@@ -107,6 +119,13 @@ export default function AdminStudentNoEmailPanel({
      Dossier consultable, mais création des comptes désactivée par le serveur.
      Contactez l'administrateur technique avant de préparer une invitation.
    </p>}
+   {status==='not_prepared' && inspection?.parent_reuse_available && <div role="status"
+     className="rounded-xl border border-blue-200 bg-white p-3 text-xs leading-5 text-blue-900">
+     <strong>Parent déjà connu de SCHOOLNET.</strong> Son compte activé et son lien avec un autre enfant sont vérifiés.
+     {inspection.parent_reuse_approved
+      ? ' Ce nouveau dossier a sa propre approbation administrative : aucune deuxième invitation Parent ne sera créée.'
+      : ' Une approbation administrative distincte est requise pour cet enfant, même si l’adresse e-mail du Parent est identique.'}
+    </div>}
    {status==='not_prepared' && inspection?.admin_enabled === true && <div className="space-y-3">
     <label className="block text-xs font-semibold text-slate-700">Note de vérification Parent–Enfant (10 caractères minimum)
      <textarea rows={3} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)}
@@ -114,11 +133,18 @@ export default function AdminStudentNoEmailPanel({
     </label>
     <label className="flex items-start gap-2 text-xs text-slate-700">
      <input type="checkbox" checked={verified} onChange={e=>setVerified(e.target.checked)} />
-     J’ai vérifié le dossier familial et l’identité du parent déjà activé.
+     J’ai vérifié l’identité, l’autorité parentale et le dossier propre à cet enfant.
     </label>
-    <button type="button" disabled={busy||!verified||note.trim().length<10}
-     onClick={()=>void act('prepare')} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
-     Préparer le compte et le lien</button>
+    {inspection?.parent_reuse_available&&!inspection?.parent_reuse_approved
+     ? <button type="button" disabled={busy||!verified||note.trim().length<10}
+        onClick={()=>void act('approve_parent_reuse')}
+        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+        Approuver ce nouvel enfant pour le Parent existant
+       </button>
+     : <button type="button" disabled={busy||!verified||note.trim().length<10}
+        onClick={()=>void act('prepare')} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+        Préparer le compte et le lien
+       </button>}
    </div>}
    {draft?.invitation_url && <div className="space-y-2 rounded-xl border border-emerald-200 bg-white p-3 text-xs">
     <p className="font-semibold text-emerald-800">Code et lien générés une seule fois, uniquement pour le parent vérifié.</p>
