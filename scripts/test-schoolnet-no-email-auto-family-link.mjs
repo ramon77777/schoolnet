@@ -21,11 +21,13 @@ test('03 - no direct execute grant for clients',()=>{
 test('04 - parent identity must match activated invitation and Auth marker',()=>{
  assert.match(sql,/f\.status='activated'/);
  assert.match(sql,/f\.user_id=NEW\.parent_id/);
+ assert.match(sql,/f\.expected_role='parent'/);
  assert.match(sql,/parent_auth\.raw_app_meta_data->>'schoolnet_family_invitation'='true'/);
  assert.match(sql,/r\.guardian_email IS NOT NULL/);
 });
 test('05 - student identity Auth must be unique and server-confirmed',()=>{
  assert.match(sql,/student_auth\.raw_app_meta_data->>'schoolnet_no_email_student'='true'/);
+ assert.match(sql,/student_auth\.raw_app_meta_data->>'schoolnet_no_email_request_id'[\s\S]*?=NEW\.request_id::text/);
  assert.match(sql,/student_auth\.email=NEW\.technical_email/);
  assert.match(sql,/student_auth\.email_confirmed_at IS NOT NULL/);
 });
