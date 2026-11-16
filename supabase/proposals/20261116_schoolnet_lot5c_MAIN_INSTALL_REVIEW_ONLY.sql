@@ -19,7 +19,7 @@ BEGIN
  OR to_regclass('public.public_enrollment_requests') IS NULL
  OR to_regclass('public.schoolnet_student_no_email_requests') IS NULL
  OR to_regclass('public.schoolnet_family_invitation_records') IS NULL
- OR to_regclass('schoolnet_student_private.identities') IS NULL
+ OR to_regnamespace('schoolnet_student_private') IS NULL
  THEN RAISE EXCEPTION 'SCHOOLNET_LOT5C_MAIN_REQUIRED_SCHEMA_MISSING'; END IF;
 
  IF to_regclass('public.schoolnet_sibling_parent_approvals') IS NOT NULL
