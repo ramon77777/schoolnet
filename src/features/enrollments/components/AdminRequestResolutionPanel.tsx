@@ -285,7 +285,7 @@ export default function AdminRequestResolutionPanel({
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p>}
       {disabled ? (
-        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Rattachements réels interdits en mode démonstration.</p>
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Actions de rattachement désactivées pour cet aperçu ou ce compte de démonstration.</p>
       ) : loading ? (
         <p className="text-sm text-slate-600">Chargement des rattachements…</p>
       ) : migrationPending ? (
