@@ -73,3 +73,9 @@ jobs:
 
       - name: Verifier la cohorte negative et concurrence (sans deploiement)
         run: deno check --node-modules-dir=auto docs/sandbox/lot5c/negative/edge/index.ts
+
+      - name: Verifier le programme Parent et deux enfants (sans deploiement)
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/siblings/edge/index.ts
+
+      - name: Tester les protections de réutilisation du Parent
+        run: node --test scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs
