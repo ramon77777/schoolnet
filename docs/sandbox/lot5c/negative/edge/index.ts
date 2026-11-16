@@ -63,7 +63,8 @@ async function hmac(){
    new TextEncoder().encode("schoolnet/student-code/v1:"+opaque)));
  return Array.from(signed,v=>v.toString(16).padStart(2,"0")).join("");
 }
-async function count(client:ReturnType<typeof createClient>,table:string){
+const serviceClient=(key:string)=>createClient(PROJECT,key,OPTIONS);
+async function count(client:ReturnType<typeof serviceClient>,table:string){
  const {count,error}=await client.from(table).select("*",{head:true,count:"exact"});
  if(error||count===null)throw Error("Unable to inspect baseline");
  return count;
@@ -89,7 +90,7 @@ Deno.serve(async(req:Request)=>{
   mode=x&&Object.keys(x).length===1&&(x.mode==="preflight"||x.mode==="run")?x.mode:"";
  }catch{return fail("invalid_request",400);}
  if(!mode)return fail("invalid_mode",400);
- const srv=createClient(PROJECT,serviceKey,OPTIONS);
+ const srv=serviceClient(serviceKey);
  let stage="preflight";
  try{
   const [users,profiles,requests,registry,invites,links,positive]=await Promise.all([
