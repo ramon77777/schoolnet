@@ -67,3 +67,6 @@ jobs:
 
       - name: Verifier le test Auth fictif OIDC de la sandbox (sans deploiement)
         run: deno check --node-modules-dir=auto docs/sandbox/lot5c/edge/index.ts
+
+      - name: Verifier la recette SQL Auth vers famille (sandbox, sans deploiement)
+        run: deno check --node-modules-dir=auto docs/sandbox/lot5c/autolink/edge/index.ts
