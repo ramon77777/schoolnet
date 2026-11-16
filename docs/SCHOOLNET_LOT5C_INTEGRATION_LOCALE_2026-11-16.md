@@ -86,3 +86,18 @@ Le dépôt GitHub sauvegarde le **code et son historique**, pas les enregistreme
 3. Vérification de configuration Vercel, validation finale, puis seulement publication.
 
 **Rappel :** aucune étape de cette branche n'est un déploiement, une activation générale ou une invitation réelle.
+
+
+## Vérification locale réelle en lecture seule (nouveau mode opt-in)
+
+Le parcours « Accès Apprenant » est désormais préparé pour une **inspection locale du serveur**, sans modifier le domaine Vercel. Cette option est désactivée par défaut :
+
+- Le navigateur local doit être exactement `http://localhost:5173` et utiliser `schoolnet_2.0`.
+- Dans le `.env.local` de Windows, `VITE_SCHOOLNET_ADMIN_LOCAL_INSPECT=true` n'autorise que l'action `inspect`. **Ne pas commiter ce fichier**.
+- **Le serveur doit séparément autoriser** `SCHOOLNET_STUDENT_LOCAL_ADMIN_INSPECT_ENABLED=true`. Il faut aussi déployer la fonction adaptée et vérifier son JWT Admin. Aucun de ces changements serveur n'est effectué dans cette PR.
+- Un navigateur local ne peut **jamais** appeler `approve_parent_reuse`, `prepare` ou `declare_sent` : le navigateur ET le serveur les refusent.
+- La fonction de connexion Apprenant `schoolnet-student-login-release` **n'hérite pas** de cette exception locale. Les aperçus Vercel restent en lecture seule.
+
+**Ne pas activer la variable locale avant que l'Edge Function et la proposition SQL aient fait l'objet de leur revue et d'une validation séparée.** Avant cette étape, le panneau conserve son mode « Prévisualisation en lecture seule », sans erreur réseau.
+
+Après mise à jour du code, la commande `npm run qa:lot5c` vérifie aussi ces autorisations d'origine, sans aucun accès aux données.
