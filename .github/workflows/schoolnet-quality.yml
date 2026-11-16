@@ -79,3 +79,6 @@ jobs:
 
       - name: Tester les protections de réutilisation du Parent
         run: node --test scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs
+
+      - name: Tester le parcours Admin Parent existant (sans acces aux donnees)
+        run: node --test scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs
