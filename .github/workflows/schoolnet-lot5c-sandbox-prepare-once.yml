@@ -78,5 +78,5 @@ jobs:
           }
 
           invoke preflight '.ok == true and .sandbox_only == true and .auth_baseline == 4 and .empty_fixture_tables == true'
-          invoke prepare '.ok == true and .sandbox_only == true and .created_auth_accounts == 3 and .passwords_verified_with_supabase_auth == true and .new_public_requests == 1 and .parent_invitation_state == "prepared" and .student_state == "prepared" and .family_links == 0 and .activated_students == 0 and .email_delivery_requested == false'
+          invoke prepare '.ok == true and .sandbox_only == true and .created_auth_accounts == 3 and .passwords_verified_with_supabase_auth == true and .new_public_requests == 1 and .parent_invitation_state == "prepared" and .student_state == "auth_created" and .family_links == 0 and .activated_students == 0 and .email_delivery_requested == false'
           echo "Preparation sandbox reussie : aucun rattachement ni activation."
