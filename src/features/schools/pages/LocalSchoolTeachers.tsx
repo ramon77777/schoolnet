@@ -244,10 +244,11 @@ export default function LocalSchoolTeachers() {
 
       {!isDemo && schoolId && activation === "pending" && (
         <div role="status" className="sn-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-bold">🔒 S3-A — Activation du module en attente</p>
+          <p className="font-bold">⚠️ S3-A — Répertoire momentanément indisponible</p>
           <p className="mt-1">
-            L'interface est préparée. Les fonctions SQL S3-A ne sont pas encore
-            installées sur Supabase ; aucune modification n'est possible.
+            S3-A est installé sur Supabase principal, mais les fonctions du
+            répertoire ne sont pas visibles par cette session. Actualisez la
+            page ou contactez l'administration SCHOOLNET si cela persiste.
           </p>
         </div>
       )}
@@ -322,8 +323,8 @@ export default function LocalSchoolTeachers() {
 
           {!ready && (
             <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-              Le répertoire apparaîtra après activation de S3-A et vérification
-              de vos droits sur l'établissement.
+              Le répertoire apparaît après son chargement et la vérification
+              des droits sur votre établissement.
             </p>
           )}
           {ready && teachers.length === 0 && (
