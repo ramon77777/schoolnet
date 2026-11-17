@@ -1,5 +1,73 @@
 # SCHOOLNET 2.0 — S3-B | Gestion des eleves par etablissement
 
+## ACTUALISATION — S3-B INSTALLE SUR SUPABASE PRINCIPAL LE 17 NOVEMBRE 2026
+
+Cette section de suivi fait foi. Les mentions « non installee » de
+l'historique de preparation conserve ci-dessous sont depassees.
+
+- **Version Supabase officielle :**
+  `20261117162853_schoolnet_s3b_school_students_roster_and_memberships`
+  (enregistree une seule fois dans `supabase_migrations.schema_migrations`).
+- **Migration canonique sur GitHub :**
+  `supabase/migrations/20261117162853_schoolnet_s3b_school_students_roster_and_memberships.sql`
+  issue de la proposition SQL verifiee et appliquee le meme jour.
+  Elle decrit une migration deja executee ; ne pas la rejouer en production.
+- **Fonctions presentes :** 3 RPC publiques `SECURITY INVOKER` et
+  3 helpers dans le schema prive `schoolnet_private` ;
+  les fonctions publiques ne sont pas executables par `anon`.
+  L'acces `authenticated` est conditionne au controle serveur
+  du role `school_admin` et de l'appartenance active a l'etablissement.
+  Pas de droits INSERT / UPDATE directs sur les affiliations.
+- **Protection des mineurs sans e-mail personnel :** la RPC de rattachement
+  par e-mail refuse les identifiants techniques et le repertoire protege
+  leurs adresses. Leur parcours familial existant reste inchange.
+- **Recette SQL post-installation : PASS avec ROLLBACK**.
+  Cas controles : ecoles A et B, un meme eleve dans deux ecoles autorisees
+  avec statuts independants, doublons, autres roles, e-mail technique,
+  Origin fausse/absente/Preview, revocation/reactivation, journal,
+  administrateur revoque.
+- **Etat APRES ROLLBACK :** 5 profils eleves, 0 affiliation eleve,
+  1 membership total, 2 ecoles actives, 2 classes legacy, 0 classe
+  officielle, 2 inscriptions et 2 affectations legacy, 5 evenements d'audit.
+  Aucun utilisateur ou lien scolaire de test n'a ete conserve.
+- **Recette Windows avant installation :** `npm run qa:s3b` **11/11**,
+  lint **0 erreur** (1 avertissement ancien), TypeScript/Vite build OK
+  et capture de la page locale lecture seule conforme.
+- **Recette Windows post-installation : a confirmer.** Les messages
+  d'attente ont ete actualises et le test automatique adapte pour verifier
+  la migration canonique. Rester en lecture seule depuis localhost.
+- **Sauvegarde :** l'archive applicative precedente S2-B existe sur
+  le PC de l'utilisateur ; aucune nouvelle sauvegarde complete ni
+  restauration testee n'a ete realisee avant S3-B. La migration SQL
+  s'est executee transactionnellement avec controles, mais cela ne remplace
+  pas une sauvegarde / PRA valide.
+- **GitHub :** PR n°14 en brouillon, sans fusion. Aucun deployement Vercel
+  Production declenche manuellement. Les Previews Git peuvent etre
+  lancees automatiquement par l'integration existante.
+
+### Prochaine recette locale apres activation
+
+```powershell
+git pull --ff-only origin feature/schoolnet-s2a-classes-tenant-qa
+npm run qa:s3b
+npm run lint
+npm run build
+npm run dev
+```
+
+Ouvrir `http://localhost:5173/app/school/students` avec le compte
+administrateur local : **plus de bandeau « activation en attente »**,
+liste 0 eleve actif/0 revoque, recherche et filtres disponibles et
+bouton de rattachement bloque en lecture seule sur localhost.
+
+Les mutations reelles sur le domaine officiel restent a valider
+lors d'une publication controlee ulterieure. Suite : S3-C,
+affectations pedagogiques, soumis a un audit et a des regles propres.
+
+---
+
+## HISTORIQUE : preparation S3-B avant installation (conserve pour tracabilite)
+
 **Date : 17 novembre 2026**  
 **Etat : code et proposition SQL prepares sur GitHub ; S3-B NON installee dans Supabase ; aucun deploiement Vercel.**
 
