@@ -73,7 +73,7 @@ test("S2-B 05 - le formulaire refuse les soumissions dans les previews", async (
   assert.match(source, /!readOnlyPreview &&/);
   assert.match(source, /if \(!canSave \|\| readOnlyPreview/);
   assert.match(source, /Prévisualisation SCHOOLNET — lecture seule/);
-  assert.match(source, /La fondation S2-A est installée sur Supabase principal/);
+  assert.match(source, /S2-B est installé sur Supabase principal/);
   assert.doesNotMatch(source, /les protections S2-A et les\s+fonctions S2-B n'ont pas encore été activées/);
 });
 
