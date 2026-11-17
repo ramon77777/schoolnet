@@ -1,4 +1,4 @@
-name: SCHOOLNET S2-B, S3-A et S3-B - QA sans deploiement
+name: SCHOOLNET S2-B, S3-A, S3-B et S3-C - QA sans deploiement
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   s2b:
-    name: S2-B/S3-A/S3-B tests, lint et build (hors ligne)
+    name: S2-B/S3-A/S3-B/S3-C tests, lint et build (hors ligne)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,6 +26,8 @@ jobs:
         run: npm run qa:s3a
       - name: Tester la preparation S3-B (sans Supabase)
         run: npm run qa:s3b
+      - name: Tester la proposition S3-C (sans Supabase)
+        run: npm run qa:s3c
       - name: Verifier ESLint
         run: npm run lint
       - name: Compiler TypeScript et Vite
