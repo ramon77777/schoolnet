@@ -67,7 +67,7 @@ test("S3-B 04 - route et menu reserves a school_admin", async () => {
 test("S3-B 05 - interface en lecture seule avant activation", async () => {
   const page = await read("../src/features/schools/pages/LocalSchoolStudents.tsx");
   assert.match(page, /Prévisualisation SCHOOLNET — lecture seule/);
-  assert.match(page, /S3-B — Activation du module en attente/);
+  assert.match(page, /S3-B — Répertoire momentanément indisponible/);
   assert.match(page, /readOnlyPreview \|\| !ready/);
   assert.match(page, /!readOnlyPreview && !isDemo/);
   assert.match(page, /window\.confirm/);
@@ -129,7 +129,7 @@ test("S3-B 10 - aucune modification directe des dossiers pedagogiques ni familia
   assert.match(sql, /INSERT INTO public\.schoolnet_school_audit/);
 });
 
-test("S3-B 11 - recette reversible, pas de migration permanente", async () => {
+test("S3-B 11 - recette reversible et migration canonique historisee", async () => {
   const check = await read("../supabase/verification/20261117_s3b_school_student_membership_rollback.sql");
   assert.match(check, /NE JAMAIS COMMIT/);
   assert.match(check, /S3B_EMAIL_STUDENT_CROSS_SCHOOL_ROSTER_REVOKE_AUDIT_NOEMAIL_ROLLBACK_PASS/);
@@ -137,7 +137,12 @@ test("S3-B 11 - recette reversible, pas de migration permanente", async () => {
   assert.match(check, /v_cross_read/);
   assert.match(check, /v_preview/);
   assert.doesNotMatch(check, /^\s*COMMIT\s*;/im);
-  assert.equal(existsSync(
-    new URL("../supabase/migrations/20261117_s3b_school_students_roster_and_memberships.sql", import.meta.url),
-  ), false);
+  const canonical = new URL(
+    "../supabase/migrations/20261117162853_schoolnet_s3b_school_students_roster_and_memberships.sql",
+    import.meta.url,
+  );
+  assert.equal(existsSync(canonical), true);
+  const canonSql = await read("../supabase/migrations/20261117162853_schoolnet_s3b_school_students_roster_and_memberships.sql");
+  assert.match(canonSql, /migration canonique deja installee/i);
+  assert.match(canonSql, /DO \$verify_s3b\$/);
 });
