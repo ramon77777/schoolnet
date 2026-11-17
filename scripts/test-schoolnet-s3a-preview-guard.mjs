@@ -94,7 +94,7 @@ test("S3-A 07 - roles anon exclus et facade SECURITY INVOKER", async () => {
   assert.match(sql, /SECURITY DEFINER/);
 });
 
-test("S3-A 08 - recette reversible et aucune migration permanente", async () => {
+test("S3-A 08 - recette reversible et migration canonique historisee", async () => {
   const check = await read("../supabase/verification/20261117_s3a_school_teacher_membership_rollback.sql");
   assert.match(check, /NE JAMAIS COMMIT/);
   assert.match(check, /S3A_CROSS_SCHOOL_ATTACH_REVOKE_REACTIVATE_AUDIT_PREVIEW_ROLLBACK_PASS/);
