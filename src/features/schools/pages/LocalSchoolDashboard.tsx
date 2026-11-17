@@ -69,9 +69,12 @@ export default function LocalSchoolDashboard() {
       <section className="sn-card space-y-3 p-5 md:p-6">
         <h2 className="text-lg font-bold text-slate-950">Modules scolaires</h2>
         <p className="text-sm leading-6 text-slate-600">
-          La gestion des classes, enseignants, apprenants, bulletins et documents sera
-          activée progressivement, après vérification de l'isolation des données
-          entre établissements. Aucun accès global n'est attribué à ce compte.
+          La fondation des classes par établissement (S2-A) est installée et
+          protège déjà leur lecture. Leur création par un administrateur local
+          nécessite encore l'activation contrôlée de S2-B. Les enseignants,
+          apprenants, bulletins et documents seront ouverts ensuite, module
+          par module, après vérification de leur isolation. Aucun accès global
+          n'est attribué à ce compte.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link to="/app/school/classes" className="sn-btn-ghost inline-flex">
