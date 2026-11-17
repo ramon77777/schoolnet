@@ -136,7 +136,7 @@ test("S3-C 10 - triggers d'integrite et affiliations actives", async () => {
   assert.match(sql,/NEW\.school_year_id/);
   assert.match(sql,/c\.learning_context='school'/);
   assert.match(sql,/m\.member_role=v_role AND m\.status='active'/);
-  assert.match(sql,/s\.is_active=true/);
+  assert.match(sql,/AND is_active=true/);
 });
 
 test("S3-C 11 - roles SQL, school_admin et origine officielle", async () => {
