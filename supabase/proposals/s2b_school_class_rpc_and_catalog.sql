@@ -1,8 +1,9 @@
 -- SCHOOLNET 2.0 — Lot S2-B : PROPOSITION NON APPLIQUEE
--- Prerequis : proposition S2-A (classes.school_id, learning_context,
---             RLS et index classes_school_unique_name_year_idx).
--- NE PAS APPLIQUER SUR SUPABASE SANS AUTORISATION DISTINCTE.
--- Pour recette : BEGIN; <S2-A>; <ce fichier>; <tests S2-B>; ROLLBACK.
+-- Prerequis : S2-A INSTALLEE depuis le 17/11/2026
+--             (classes.school_id, learning_context, RLS et indexes S2-A).
+-- PROPOSITION NON APPLIQUEE : autorisation distincte pour installer S2-B.
+-- Recette : BEGIN; <ce fichier>; <tests S2-B>; ROLLBACK.
+-- Ne pas appliquer S2-A une seconde fois.
 --
 -- Aucun droit de modification directe sur public.classes n'est accorde
 -- au role school_admin. Seule la fonction controlant explicitement
@@ -126,6 +127,7 @@ DECLARE
   v_name text;
   v_year text;
   v_class_id uuid;
+  v_request_headers text;
 BEGIN
   IF auth.uid() IS NULL
     OR (SELECT public.get_my_role())::text IS DISTINCT FROM 'school_admin'
@@ -133,6 +135,24 @@ BEGIN
     OR schoolnet_private.is_school_admin_for(p_school_id) IS DISTINCT FROM true
   THEN
     RAISE EXCEPTION 'Creation reservee a l administrateur de cet etablissement.'
+      USING ERRCODE='42501';
+  END IF;
+
+  -- Garde-fou complementaire contre une creation accidentelle depuis
+  -- localhost ou une Preview Vercel connectee a Supabase principal.
+  -- Le navigateur transmet le header Origin a PostgREST ; en son absence
+  -- ou depuis une autre origine, la creation est REFUSEE par defaut.
+  -- Origin n'est PAS une preuve d'identite (forgeable hors navigateur) :
+  -- les controles Auth et appartenance a l'ecole CI-DESSUS restent
+  -- les veritables controles d'autorisation.
+  v_request_headers := pg_catalog.nullif(
+    pg_catalog.current_setting('request.headers',true),''
+  );
+  IF v_request_headers IS NULL
+     OR (v_request_headers::jsonb ->> 'origin')
+        IS DISTINCT FROM 'https://schoolnet-snowy.vercel.app'
+  THEN
+    RAISE EXCEPTION 'Creation de classe impossible depuis cet environnement.'
       USING ERRCODE='42501';
   END IF;
 
