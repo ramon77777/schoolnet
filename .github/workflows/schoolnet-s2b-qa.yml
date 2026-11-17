@@ -1,0 +1,28 @@
+name: SCHOOLNET S2-B - Garde-fous Preview (sans deploiement)
+on:
+  push:
+    branches:
+      - feature/schoolnet-s2a-classes-tenant-qa
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  s2b:
+    name: S2-B tests, lint et build (hors ligne)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les dependances
+        run: npm ci --no-audit --no-fund
+      - name: Tester les garde-fous S2-B (sans Supabase)
+        run: npm run qa:s2b
+      - name: Verifier ESLint
+        run: npm run lint
+      - name: Compiler TypeScript et Vite
+        run: npm run build
