@@ -30,6 +30,7 @@ BEGIN
   PERFORM pg_catalog.set_config('qa.s3c.subject',v_subject::text,true);
   PERFORM pg_catalog.set_config('qa.s3c.year',v_year::text,true);
   PERFORM pg_catalog.set_config('qa.s3c.audit_before',(SELECT count(*)::text FROM public.schoolnet_school_audit),true);
+  PERFORM pg_catalog.set_config('qa.s3c.events_before',(SELECT count(*)::text FROM public.schoolnet_school_assignment_events),true);
   PERFORM pg_catalog.set_config('qa.s3c.class_students_before',(SELECT count(*)::text FROM public.class_students),true);
   PERFORM pg_catalog.set_config('qa.s3c.class_teachers_before',(SELECT count(*)::text FROM public.class_teachers),true);
   PERFORM pg_catalog.set_config('qa.s3c.enrollments_before',(SELECT count(*)::text FROM public.student_enrollments),true);
@@ -135,6 +136,7 @@ BEGIN
     OR pg_catalog.jsonb_array_length(v_cat->'teachers')<>1
     OR pg_catalog.jsonb_array_length(v_cat->'subjects')<1
     OR pg_catalog.jsonb_array_length(v_cat->'student_assignments')<>0
+    OR pg_catalog.jsonb_array_length(v_cat->'events')<>0
   THEN RAISE EXCEPTION 'S3-C : catalogue initial incomplet.'; END IF;
 
   v_sa1:=public.schoolnet_school_assign_student(v_a,v_class_a1,v_s);
@@ -148,6 +150,7 @@ BEGIN
     OR v_cat->'student_assignments'->0->>'status'<>'active'
     OR (v_cat->'student_assignments'->0->>'effective_active')::boolean IS DISTINCT FROM true
     OR (v_cat->'teacher_assignments'->0->>'effective_active')::boolean IS DISTINCT FROM true
+    OR pg_catalog.jsonb_array_length(v_cat->'events')<>2
   THEN RAISE EXCEPTION 'S3-C : affectations non visibles dans le catalogue.'; END IF;
 
   -- L'admin A ne peut voir/affecter B.
@@ -277,6 +280,8 @@ DO $qa_s3c_audit$
 BEGIN
   IF (SELECT count(*) FROM public.schoolnet_school_audit)
      <> current_setting('qa.s3c.audit_before')::bigint+11
+    OR (SELECT count(*) FROM public.schoolnet_school_assignment_events)
+     <> current_setting('qa.s3c.events_before')::bigint+11
     OR (SELECT count(*) FROM public.class_students)
      <> current_setting('qa.s3c.class_students_before')::bigint
     OR (SELECT count(*) FROM public.class_teachers)
