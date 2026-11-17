@@ -166,7 +166,7 @@ export default function LocalSchoolClasses() {
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
               Consultez et organisez les classes officielles de votre établissement.
-              La création est ouverte uniquement après activation de S2-B.
+              La création est réservée au site officiel et aux administrateurs habilités.
               Les groupes d'apprenants libres et les cours à domicile restent indépendants.
             </p>
           </div>
@@ -225,7 +225,7 @@ export default function LocalSchoolClasses() {
             S2-A est installée sur Supabase. Ce navigateur utilise un aperçu ou
             un environnement local : aucune classe ne peut être créée depuis ici,
             même si les fonctions S2-B deviennent disponibles sur le serveur.
-            Les classes autorisées pourront être consultées après activation de S2-B.
+            Les classes autorisées peuvent être consultées ici après chargement du catalogue.
           </p>
         </div>
       )}
@@ -233,9 +233,9 @@ export default function LocalSchoolClasses() {
         <div role="status" className="sn-card space-y-2 border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
           <p className="font-bold">🔒 Activation du module en attente</p>
           <p>
-            La fondation S2-A est installée sur Supabase principal.
-            Les fonctions de catalogue et de création S2-B ne sont pas encore
-            installées : aucune création n'est possible pour le moment.
+            S2-B est installé sur Supabase principal, mais son catalogue n'a pas
+            été trouvé par l'API utilisée dans cette session. Actualisez la page
+            ou contactez l'administration SCHOOLNET si le problème persiste.
           </p>
         </div>
       )}
@@ -352,8 +352,8 @@ export default function LocalSchoolClasses() {
           )}
           {!ready && (
             <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-              Les classes scolaires apparaîtront ici après l'activation et la validation
-              des règles d'isolation en base.
+              La liste des classes apparaîtra après chargement du catalogue et
+              vérification des autorisations de votre établissement.
             </p>
           )}
           {visibleClasses.map((item) => (
