@@ -1,4 +1,4 @@
-name: SCHOOLNET S2-B - Garde-fous Preview (sans deploiement)
+name: SCHOOLNET S2-B et S3-A - QA sans deploiement
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   s2b:
-    name: S2-B tests, lint et build (hors ligne)
+    name: S2-B/S3-A tests, lint et build (hors ligne)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -22,6 +22,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Tester les garde-fous S2-B (sans Supabase)
         run: npm run qa:s2b
+      - name: Tester la preparation S3-A (sans Supabase)
+        run: npm run qa:s3a
       - name: Verifier ESLint
         run: npm run lint
       - name: Compiler TypeScript et Vite
