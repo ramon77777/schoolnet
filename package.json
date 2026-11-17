@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "qa:s2b": "node --experimental-strip-types --test scripts/test-schoolnet-s2b-preview-guard.mjs",
     "preview": "vite preview",
-    "qa:lot5c": "npm run lint && npm run build && node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs && node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs scripts/test-schoolnet-lot5c-main-install.mjs && node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs"
+    "qa:lot5c": "npm run lint && npm run build && node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs && node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs scripts/test-schoolnet-lot5c-main-install.mjs && node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs",
+    "qa:s3a": "node --experimental-strip-types --test scripts/test-schoolnet-s3a-preview-guard.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
