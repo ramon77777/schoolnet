@@ -12,6 +12,7 @@ DECLARE v_constraint text;
 BEGIN
   IF to_regclass('public.schoolnet_school_student_class_assignments') IS NOT NULL
     OR to_regclass('public.schoolnet_school_teacher_subject_assignments') IS NOT NULL
+    OR to_regclass('public.schoolnet_school_assignment_events') IS NOT NULL
     OR to_regprocedure('public.schoolnet_school_assignment_catalog(uuid)') IS NOT NULL
     OR to_regprocedure('public.schoolnet_school_assign_student(uuid,uuid,uuid)') IS NOT NULL
     OR to_regprocedure('public.schoolnet_school_set_student_assignment_active(uuid,uuid,boolean)') IS NOT NULL
@@ -84,12 +85,36 @@ CREATE TABLE public.schoolnet_school_teacher_subject_assignments (
 CREATE INDEX schoolnet_s3c_teacher_class_list
   ON public.schoolnet_school_teacher_subject_assignments (school_id,class_id);
 
+-- Journal immuable des mouvements : conserve chaque transition, meme apres
+-- une reactivation ou un changement de classe. Ne stocke aucun email.
+CREATE TABLE public.schoolnet_school_assignment_events (
+  id uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
+  school_id uuid NOT NULL REFERENCES public.schoolnet_schools(id) ON DELETE RESTRICT,
+  assignment_kind text NOT NULL CHECK (assignment_kind IN ('student_class','teacher_subject')),
+  assignment_id uuid NOT NULL,
+  class_id uuid NOT NULL REFERENCES public.classes(id) ON DELETE RESTRICT,
+  school_year_id uuid NOT NULL REFERENCES public.school_years(id) ON DELETE RESTRICT,
+  person_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  subject_id uuid REFERENCES public.academic_subjects(id) ON DELETE RESTRICT,
+  action text NOT NULL CHECK (action IN ('assigned','revoked','reactivated')),
+  actor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  CONSTRAINT schoolnet_s3c_events_subject_consistent CHECK (
+    (assignment_kind='student_class' AND subject_id IS NULL) OR
+    (assignment_kind='teacher_subject' AND subject_id IS NOT NULL)
+  )
+);
+CREATE INDEX schoolnet_s3c_events_school_class_recent
+  ON public.schoolnet_school_assignment_events (school_id,class_id,created_at DESC);
+
 -- Defense en profondeur: aucune lecture / mutation directe via l'API REST.
 -- Les lectures et ecritures passent uniquement par les RPC tenant-scoped.
 ALTER TABLE public.schoolnet_school_student_class_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schoolnet_school_teacher_subject_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.schoolnet_school_assignment_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.schoolnet_school_student_class_assignments FROM PUBLIC,anon,authenticated;
 REVOKE ALL ON TABLE public.schoolnet_school_teacher_subject_assignments FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON TABLE public.schoolnet_school_assignment_events FROM PUBLIC,anon,authenticated;
 
 -- Invariants supplementaires meme lors d'un insert privilegié :
 -- classe officielle de l'ecole/annee, membre au bon role et actif.
@@ -203,6 +228,26 @@ BEGIN
   PERFORM schoolnet_private.assert_s3c_access(p_school_id,false);
   RETURN pg_catalog.jsonb_build_object(
     'school_id',p_school_id,
+    'events',COALESCE((
+      SELECT pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'id',e.id,'class_id',e.class_id,'assignment_kind',e.assignment_kind,
+          'action',e.action,'member_name',COALESCE(member.full_name,''),
+          'subject_name',subject.name,'actor_name',COALESCE(actor.full_name,''),
+          'created_at',e.created_at
+        ) ORDER BY e.created_at DESC,e.id DESC
+      )
+      FROM (
+        SELECT ev.id,ev.class_id,ev.assignment_kind,ev.action,
+          ev.person_id,ev.subject_id,ev.actor_id,ev.created_at
+        FROM public.schoolnet_school_assignment_events ev
+        WHERE ev.school_id=p_school_id
+        ORDER BY ev.created_at DESC,ev.id DESC LIMIT 100
+      ) e
+      LEFT JOIN public.profiles member ON member.id=e.person_id
+      LEFT JOIN public.profiles actor ON actor.id=e.actor_id
+      LEFT JOIN public.academic_subjects subject ON subject.id=e.subject_id
+    ),'[]'::jsonb),
     'classes',COALESCE((
       SELECT pg_catalog.jsonb_agg(
         pg_catalog.jsonb_build_object(
@@ -312,6 +357,11 @@ BEGIN
   INSERT INTO public.schoolnet_school_audit
     (school_id,action,actor_id,target_user_id)
   VALUES (p_school_id,'school_student_class_assigned',auth.uid(),p_student_id);
+  INSERT INTO public.schoolnet_school_assignment_events
+    (school_id,assignment_kind,assignment_id,class_id,school_year_id,
+     person_id,subject_id,action,actor_id)
+  VALUES (p_school_id,'student_class',v_id,p_class_id,v_year,p_student_id,
+          NULL,'assigned',auth.uid());
   RETURN v_id;
 END;
 $assign_student$;
@@ -359,6 +409,13 @@ BEGIN
          ELSE 'school_student_class_revoked' END,
     auth.uid(),v_student
   );
+  INSERT INTO public.schoolnet_school_assignment_events
+    (school_id,assignment_kind,assignment_id,class_id,school_year_id,
+     person_id,subject_id,action,actor_id)
+  VALUES (
+    p_school_id,'student_class',p_assignment_id,v_class,v_year,v_student,
+    NULL,CASE WHEN p_active THEN 'reactivated' ELSE 'revoked' END,auth.uid()
+  );
   RETURN p_assignment_id;
 END;
 $student_status$;
@@ -392,6 +449,13 @@ BEGIN
   INSERT INTO public.schoolnet_school_audit
     (school_id,action,actor_id,target_user_id)
   VALUES (p_school_id,'school_teacher_subject_assigned',auth.uid(),p_teacher_id);
+  INSERT INTO public.schoolnet_school_assignment_events
+    (school_id,assignment_kind,assignment_id,class_id,school_year_id,
+     person_id,subject_id,action,actor_id)
+  VALUES (
+    p_school_id,'teacher_subject',v_id,p_class_id,v_year,p_teacher_id,
+    p_subject_id,'assigned',auth.uid()
+  );
   RETURN v_id;
 END;
 $assign_teacher$;
@@ -402,13 +466,14 @@ CREATE FUNCTION schoolnet_private.local_school_set_teacher_subject_assignment_ac
 RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog
 AS $teacher_status$
-DECLARE v_current text;v_teacher uuid;
+DECLARE v_current text;v_teacher uuid;v_class uuid;v_year uuid;v_subject uuid;
 BEGIN
   PERFORM schoolnet_private.assert_s3c_access(p_school_id,true);
   IF p_assignment_id IS NULL OR p_active IS NULL THEN
     RAISE EXCEPTION 'S3-C : affectation ou statut invalide.' USING ERRCODE='22023';
   END IF;
-  SELECT a.status,a.teacher_id INTO v_current,v_teacher
+  SELECT a.status,a.teacher_id,a.class_id,a.school_year_id,a.subject_id
+  INTO v_current,v_teacher,v_class,v_year,v_subject
   FROM public.schoolnet_school_teacher_subject_assignments a
   WHERE a.id=p_assignment_id AND a.school_id=p_school_id FOR UPDATE;
   IF v_current IS NULL THEN
@@ -430,6 +495,13 @@ BEGIN
     CASE WHEN p_active THEN 'school_teacher_subject_reactivated'
          ELSE 'school_teacher_subject_revoked' END,
     auth.uid(),v_teacher
+  );
+  INSERT INTO public.schoolnet_school_assignment_events
+    (school_id,assignment_kind,assignment_id,class_id,school_year_id,
+     person_id,subject_id,action,actor_id)
+  VALUES (
+    p_school_id,'teacher_subject',p_assignment_id,v_class,v_year,v_teacher,
+    v_subject,CASE WHEN p_active THEN 'reactivated' ELSE 'revoked' END,auth.uid()
   );
   RETURN p_assignment_id;
 END;
@@ -539,9 +611,10 @@ BEGIN
   SELECT count(*) INTO v_protected_tables FROM pg_catalog.pg_class
   WHERE oid IN (
     'public.schoolnet_school_student_class_assignments'::pg_catalog.regclass,
-    'public.schoolnet_school_teacher_subject_assignments'::pg_catalog.regclass
+    'public.schoolnet_school_teacher_subject_assignments'::pg_catalog.regclass,
+    'public.schoolnet_school_assignment_events'::pg_catalog.regclass
   ) AND relrowsecurity;
-  IF v_public_functions<>5 OR v_protected_tables<>2
+  IF v_public_functions<>5 OR v_protected_tables<>3
     OR pg_catalog.has_function_privilege('anon','public.schoolnet_school_assignment_catalog(uuid)','EXECUTE')
     OR pg_catalog.has_function_privilege('anon','public.schoolnet_school_assign_student(uuid,uuid,uuid)','EXECUTE')
     OR pg_catalog.has_function_privilege('anon','public.schoolnet_school_set_student_assignment_active(uuid,uuid,boolean)','EXECUTE')
@@ -556,6 +629,8 @@ BEGIN
     OR pg_catalog.has_table_privilege('authenticated','public.schoolnet_school_student_class_assignments','INSERT')
     OR pg_catalog.has_table_privilege('authenticated','public.schoolnet_school_teacher_subject_assignments','SELECT')
     OR pg_catalog.has_table_privilege('authenticated','public.schoolnet_school_teacher_subject_assignments','INSERT')
+    OR pg_catalog.has_table_privilege('authenticated','public.schoolnet_school_assignment_events','SELECT')
+    OR pg_catalog.has_table_privilege('authenticated','public.schoolnet_school_assignment_events','INSERT')
   THEN RAISE EXCEPTION 'S3-C : controle des privileges et RLS non conforme.';
   END IF;
 END;
