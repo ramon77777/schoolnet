@@ -22,6 +22,7 @@ import LocalSchoolDashboard from "@/features/schools/pages/LocalSchoolDashboard"
 import LocalSchoolClasses from "@/features/schools/pages/LocalSchoolClasses";
 import LocalSchoolTeachers from "@/features/schools/pages/LocalSchoolTeachers";
 import LocalSchoolStudents from "@/features/schools/pages/LocalSchoolStudents";
+import LocalSchoolAssignments from "@/features/schools/pages/LocalSchoolAssignments";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
 import AdminAttendance from "@/features/admin/pages/AdminAttendance";
@@ -384,6 +385,7 @@ export const router = createBrowserRouter([
               { path: "school/classes", element: <LocalSchoolClasses /> },
               { path: "school/teachers", element: <LocalSchoolTeachers /> },
               { path: "school/students", element: <LocalSchoolStudents /> },
+              { path: "school/assignments", element: <LocalSchoolAssignments /> },
             ],
           },
 
