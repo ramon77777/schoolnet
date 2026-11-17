@@ -1,3 +1,13 @@
+> **Mise a jour du 17 novembre 2026 : S2-A est INSTALLEE sur le Supabase principal.**
+> Migration officielle `20261117123824_schoolnet_s2a_classes_tenant_foundation`.
+> Ce document est conserve comme **protocole historique de preparation AVANT installation**.
+> Les instructions ci-dessous indiquant « non installe » sont obsoletes.
+> **Ne pas relancer la preparation ni reinstaller S2-A.**
+> Voir le rapport effectif :
+> [Installation reelle S2-A](./SCHOOLNET_S2A_INSTALLATION_REELLE_2026-11-17.md).
+>
+---
+
 # SCHOOLNET 2.0 - Lot S2-A : préparation et sauvegarde
 
 **État : PR #14 en brouillon - NON INSTALLÉ EN BASE - AUCUN DÉPLOIEMENT VERCEL.**  
