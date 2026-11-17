@@ -100,7 +100,7 @@ test("S3-C 07 - formulaires distincts avec classe et annee, sans ecriture legacy
   assert.match(page,/assignment-teacher/);
   assert.match(page,/assignment-subject/);
   assert.match(page,/selectedClass\.school_year_id/);
-  assert.match(page,/class_students|class_teachers/);
+  assert.match(page,/cours historiques/);
   // La page ne doit pas reutiliser les tables legacy; la mention textuelle
   // de ces tables n'est pas requise. Les RPC restent la seule ecriture.
   assert.doesNotMatch(page,/\.from\(["'](?:class_students|class_teachers)["']\)/);
