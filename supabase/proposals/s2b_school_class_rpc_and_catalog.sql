@@ -145,7 +145,7 @@ BEGIN
   -- Origin n'est PAS une preuve d'identite (forgeable hors navigateur) :
   -- les controles Auth et appartenance a l'ecole CI-DESSUS restent
   -- les veritables controles d'autorisation.
-  v_request_headers := pg_catalog.nullif(
+  v_request_headers := NULLIF(
     pg_catalog.current_setting('request.headers',true),''
   );
   IF v_request_headers IS NULL
