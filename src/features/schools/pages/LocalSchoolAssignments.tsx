@@ -123,6 +123,10 @@ export default function LocalSchoolAssignments() {
     (safeCatalog?.teacher_assignments ?? []).filter((row) => row.class_id === classId),
     [safeCatalog, classId],
   );
+  const historyEvents = useMemo(() =>
+    (safeCatalog?.events ?? []).filter((event) => event.class_id === classId),
+    [safeCatalog, classId],
+  );
   const activeStudentCount = studentAssignments.filter((row) => row.effective_active).length;
   const activeTeacherCount = teacherAssignments.filter((row) => row.effective_active).length;
 
@@ -587,6 +591,49 @@ export default function LocalSchoolAssignments() {
             })}
           </div>
         </div>
+      </section>
+
+      <section className="sn-card space-y-3 p-5 md:p-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-indigo-700">
+            4. Traçabilité des affectations
+          </p>
+          <h2 className="mt-1 text-lg font-bold text-slate-950">Journal des mouvements</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Chaque création, révocation et réactivation reste journalisée.
+            Les événements affichés concernent uniquement la classe sélectionnée.
+          </p>
+        </div>
+        {!ready || !selectedClass || historyEvents.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
+            Aucun mouvement enregistré pour cette classe.
+          </p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {historyEvents.map((event) => (
+              <div key={event.id} className="rounded-xl border border-slate-200 p-3">
+                <p className="text-sm font-semibold text-slate-900">
+                  {event.member_name || "Utilisateur"} ·
+                  {event.action === "assigned" ? " Affectation" :
+                    event.action === "revoked" ? " Révocation" : " Réactivation"}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {event.assignment_kind === "student_class" ? "Élève" :
+                    `Enseignant · ${event.subject_name ?? "Matière"}`}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {new Date(event.created_at).toLocaleString("fr-CI")} ·
+                  Par {event.actor_name || "Administrateur"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        {historyEvents.length >= 100 && (
+          <p className="text-xs text-slate-500">
+            Seuls les 100 mouvements les plus récents de l'établissement sont chargés.
+          </p>
+        )}
       </section>
 
       <div className="sn-card border border-indigo-100 bg-indigo-50 p-4 text-sm leading-6 text-indigo-900">
