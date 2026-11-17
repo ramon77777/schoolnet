@@ -59,7 +59,7 @@ test("S3-A 04 - route exclusivement school_admin et navigation locale", async ()
 test("S3-A 05 - formulaire, confirmation et lecture seule Preview", async () => {
   const page = await read("../src/features/schools/pages/LocalSchoolTeachers.tsx");
   assert.match(page, /Prévisualisation SCHOOLNET — lecture seule/);
-  assert.match(page, /S3-A — Activation du module en attente/);
+  assert.match(page, /S3-A — Répertoire momentanément indisponible/);
   assert.match(page, /readOnlyPreview \|\| !ready/);
   assert.match(page, /!readOnlyPreview && !isDemo/);
   assert.match(page, /window\.confirm/);
@@ -101,5 +101,9 @@ test("S3-A 08 - recette reversible et aucune migration permanente", async () => 
   assert.match(check, /v_other_blocked/);
   assert.match(check, /v_preview_blocked/);
   assert.doesNotMatch(check, /\bCOMMIT\s*;/i);
-  assert.equal(existsSync(new URL("../supabase/migrations/20261117_s3a_school_teachers_roster_and_memberships.sql", import.meta.url)), false);
+  const canonical = new URL("../supabase/migrations/20261117155641_schoolnet_s3a_school_teachers_roster_and_memberships.sql", import.meta.url);
+  assert.equal(existsSync(canonical), true);
+  const canonSql = await read("../supabase/migrations/20261117155641_schoolnet_s3a_school_teachers_roster_and_memberships.sql");
+  assert.match(canonSql, /migration canonique DEJA INSTALLEE/);
+  assert.match(canonSql, /DO \$verify_s3a\$/);
 });
