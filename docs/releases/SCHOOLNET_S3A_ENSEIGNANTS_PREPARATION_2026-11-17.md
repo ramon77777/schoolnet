@@ -1,4 +1,68 @@
 # SCHOOLNET 2.0 — S3-A | Gestion des enseignants par établissement
+
+## ACTUALISATION OFFICIELLE — S3-A INSTALLEE LE 17/11/2026
+
+Cette section est l'etat courant et remplace toute mention historique de
+« S3-A NON installee » dans les notes de preparation situees ci-dessous.
+
+- **Migration installee sur Supabase principal :**
+  `20261117155641_schoolnet_s3a_school_teachers_roster_and_memberships`,
+  enregistree **une seule fois** dans l'historique Supabase.
+- **Migration canonique sur GitHub :**
+  `supabase/migrations/20261117155641_schoolnet_s3a_school_teachers_roster_and_memberships.sql`.
+  Le fichier reflete la proposition appliquee; ne pas le rejouer.
+- **Resultat :** 3 facades RPC publiques `SECURITY INVOKER` et 3 fonctions
+  privees `SECURITY DEFINER` installees.
+- **Privileges :** `anon` ne peut executer aucune des trois RPC ;
+  `authenticated` les appelle seulement sous les gardes de role,
+  session et ecole; toujours aucun droit INSERT/UPDATE direct de
+  `authenticated` sur les affiliations.
+- **Recette SQL apres installation :** le script de verification d'origine
+  execute dans `BEGIN; ... ROLLBACK;`, avec PASS sur A/B, doublons,
+  compte existant eligible, revocation/reactivation, journal d'audit,
+  Preview, Origin absente, faux sous-domaine et admin local revoque.
+- **Apres recette :** 2 classes historiques conservees, 0 classe
+  officielle, 2 ecoles actives, 1 affiliation admin locale,
+  **0 affiliation teacher** et 5 evenements d'audit, inchanges.
+- **Tests avant installation sur le poste Windows :** `qa:s3a` 8/8,
+  lint 0 erreur (un warning historique), TypeScript/Vite OK,
+  capture de l'interface avant activation conforme.
+- **UI et test automatise mis a jour** pour reflechir le backend actif ;
+  nouvelle verification Windows et capture de `/app/school/teachers`
+  necessaires avant cloture de la recette locale post-installation.
+- **Sauvegarde :** l'archive applicative anterieure a S2-B fournie
+  par l'utilisateur existe sur son poste Windows. Aucun nouvel export
+  integral ni test de restauration complet n'a ete effectue pendant
+  l'installation de S3-A. L'installation est additive et verifiee
+  transactionnellement, mais cela ne remplace pas un vrai PRA.
+- **PR #14 reste draft**. Pas de fusion dans `main`, pas de publication
+  Vercel Production executee par l'assistant. Une Preview automatique
+  de l'integration Git/Vercel peut etre declenchee sans promotion.
+- **Important :** les mutations enseignants restent bloquees sur
+  localhost et les Previews Vercel. Recette reelle des actions sur le
+  domaine officiel lors de la publication autorisee distincte.
+- **Prochaine priorite :** finalisation locale S3-A, puis preparation
+  S3-B (eleves), sans toucher a S3-C affectations pedagogiques.
+
+### Prochaine verification locale
+
+```powershell
+git pull --ff-only origin feature/schoolnet-s2a-classes-tenant-qa
+npm run qa:s3a
+npm run lint
+npm run build
+npm run dev
+```
+
+Sur `http://localhost:5173/app/school/teachers` : les fonctions sont
+presentes, l'etat d'attente doit disparaitre, et la liste d'enseignants
+de cet etablissement doit afficher **0 rattachement**. Le bouton de
+rattachement doit rester inactif dans localhost.
+
+---
+
+## HISTORIQUE : preparation S3-A avant installation (conserve pour tracabilite)
+
 **Date : 17 novembre 2026** — **Statut : code et proposition SQL préparés sur GitHub, aucune migration S3-A installée.**
 
 ## Objectif
