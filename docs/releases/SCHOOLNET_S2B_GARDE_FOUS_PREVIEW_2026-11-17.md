@@ -1,5 +1,46 @@
 # SCHOOLNET 2.0 — S2-B | Garde-fous de creation de classes (17/11/2026)
 
+## ACTUALISATION — S2-B INSTALLEE SUR SUPABASE PRINCIPAL (17/11/2026)
+
+Cette section est l'etat le plus recent et remplace les mentions historiques
+de « S2-B non installee » figurant dans les sections de recette preparatoire ci-dessous.
+
+- Projet: `schoolnet_2.0` (`anttmbhaphkhmkoqsofd`).
+- Migration installee via Supabase et historisee une seule fois:
+  `20261117150838_schoolnet_s2b_school_class_rpc_and_catalog`.
+- Migration canonique ajoutee sur la branche de la PR #14:
+  `supabase/migrations/20261117150838_schoolnet_s2b_school_class_rpc_and_catalog.sql`.
+  Le fichier documente la migration deja appliquee; **ne pas la relancer**.
+- Quatre RPC (deux facades publiques invoker et deux helpers prives)
+  presentes; `anon` ne peut pas executer les deux facades publiques.
+- Recette reelle executee *apres installation* sous `BEGIN ... ROLLBACK`:
+  droits inter-ecoles, creation autorisee, doublons, audit, cinq roles,
+  revocation, suspension et refus des origines non approuvees: PASS.
+- Postcontrole apres recette: **2 classes legacy intactes, 0 classe
+  officielle enregistree, 2 ecoles actives, 1 school_admin actif,
+  5 lignes d'audit, 4 policies sur classes**.
+- Sauvegarde pre-installation fournie localement par l'utilisateur:
+  `D:\\Bakary\\SCHOOLNET_BACKUPS\\S2B_2026-11-17\\schoolnet_avant_s2b.dump`.
+  Archive `pg_dump` des schemas `public`, `schoolnet_private`,
+  `schoolnet_student_private` (757260 octets). Ce n'est **pas** une
+  sauvegarde complete des objets Storage ni une restauration validee.
+  Ne jamais committer ce fichier prive.
+- Tests Windows realises par l'utilisateur avant installation:
+  `npm run qa:s2b` 7/7, ESLint 0 erreur (1 avertissement ancien),
+  build Vite/TypeScript OK, capture UI lecture seule conforme.
+- Les messages de l'interface ont ete actualises suite a l'installation;
+  nouvelle recette Windows requise apres synchronisation GitHub.
+- **Conservation des garde-fous**: localhost et Previews Vercel restent
+  lecture seule. Les RPC restent refusees aux utilisateurs non autorises
+  ou hors etablissement. Seule la production officielle peut demander une
+  creation apres publication controlee.
+- **PR #14 reste draft**, aucune fusion vers `main`, aucun nouveau
+  deploiement/promotion Vercel. Ne pas relancer `supabase db push`.
+- Suite: synchronisation locale et tests, recette lecture seule apres
+  installation, puis preparation separee de la publication et du lot S3.
+
+---
+
 ## Situation et perimetre
 - **S2-A installee** sur Supabase principal (migration `20261117123824_schoolnet_s2a_classes_tenant_foundation`), tests de confinement PASS.
 - **S2-B NON INSTALLEE** sur Supabase principal. Les fonctions
