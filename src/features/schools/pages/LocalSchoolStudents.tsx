@@ -245,10 +245,11 @@ export default function LocalSchoolStudents() {
 
       {!isDemo && schoolId && activation === "pending" && (
         <div role="status" className="sn-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-bold">🔒 S3-B — Activation du module en attente</p>
+          <p className="font-bold">⚠️ S3-B — Répertoire momentanément indisponible</p>
           <p className="mt-1">
-            L'interface S3-B est prête. Les fonctions SQL de rattachement
-            des élèves ne sont pas encore installées sur Supabase.
+            S3-B est installé sur Supabase principal, mais le répertoire
+            n'est pas disponible dans cette session. Actualisez la page ou
+            contactez l'administration SCHOOLNET si le problème persiste.
           </p>
         </div>
       )}
@@ -356,8 +357,8 @@ export default function LocalSchoolStudents() {
 
           {!ready && (
             <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-              Le répertoire sera consultable après activation de S3-B et
-              vérification de vos droits sur cet établissement.
+              Le répertoire s'affiche après chargement des données et vérification
+              de vos droits sur cet établissement.
             </p>
           )}
           {ready && students.length === 0 && (
