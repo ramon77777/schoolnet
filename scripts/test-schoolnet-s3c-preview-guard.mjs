@@ -63,7 +63,7 @@ test("S3-C 04 - catalogue valide toutes les familles de reponses", async () => {
   const api = await read("../src/features/schools/lib/schoolAssignmentsApi.ts");
   assert.match(api,/isSchoolAssignmentsCatalog/);
   for(const key of [
-    "classes","students","teachers","subjects","student_assignments","teacher_assignments",
+    "classes","students","teachers","subjects","events","student_assignments","teacher_assignments",
   ]) {
     assert.ok(api.includes(key),"champ requis: "+key);
   }
@@ -121,7 +121,7 @@ test("S3-C 09 - tables officielles separees et RLS fail-closed", async () => {
   const sql = await read("../supabase/proposals/s3c_school_class_assignments.sql");
   assert.match(sql,/CREATE TABLE public\.schoolnet_school_student_class_assignments/);
   assert.match(sql,/CREATE TABLE public\.schoolnet_school_teacher_subject_assignments/);
-  assert.equal((sql.match(/ENABLE ROW LEVEL SECURITY/g) ?? []).length,2);
+  assert.equal((sql.match(/ENABLE ROW LEVEL SECURITY/g) ?? []).length,3);
   assert.match(sql,/REVOKE ALL ON TABLE public\.schoolnet_school_student_class_assignments/);
   assert.match(sql,/REVOKE ALL ON TABLE public\.schoolnet_school_teacher_subject_assignments/);
   assert.doesNotMatch(sql,/GRANT (?:SELECT|INSERT|UPDATE|DELETE) ON TABLE public\.schoolnet_school_(?:student_class|teacher_subject)_assignments/i);
@@ -187,6 +187,22 @@ test("S3-C 14 - recette rollback reel, aucune migration permanente S3-C", async 
   assert.match(qa,/v_same_year/);
   assert.match(qa,/qa_s3c_cross_school/);
   assert.match(qa,/v_direct_table_denied/);
+  assert.match(qa,/events_before/);
   assert.doesNotMatch(qa,/^\s*COMMIT\s*;/im);
   assert.equal(existsSync(new URL("../supabase/migrations/20261117_s3c_school_class_assignments.sql",import.meta.url)),false);
+});
+
+test("S3-C 15 - journal d'affectations immuable, prive et filtre par ecole", async () => {
+  const sql = await read("../supabase/proposals/s3c_school_class_assignments.sql");
+  const page = await read("../src/features/schools/pages/LocalSchoolAssignments.tsx");
+  const api = await read("../src/features/schools/lib/schoolAssignmentsApi.ts");
+  assert.match(sql,/CREATE TABLE public\\.schoolnet_school_assignment_events/);
+  assert.match(sql,/ALTER TABLE public\\.schoolnet_school_assignment_events ENABLE ROW LEVEL SECURITY/);
+  assert.match(sql,/REVOKE ALL ON TABLE public\\.schoolnet_school_assignment_events/);
+  assert.match(sql,/WHERE ev\\.school_id=p_school_id/);
+  assert.match(sql,/ORDER BY ev\\.created_at DESC,ev\\.id DESC LIMIT 100/);
+  assert.match(sql,/INSERT INTO public\\.schoolnet_school_assignment_events/);
+  assert.match(api,/events: SchoolAssignmentEvent\\[\\]/);
+  assert.match(page,/Journal des mouvements/);
+  assert.match(page,/historyEvents/);
 });
