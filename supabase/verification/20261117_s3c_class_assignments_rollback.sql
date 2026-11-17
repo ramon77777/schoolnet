@@ -43,6 +43,11 @@ BEGIN
          (v_b,v_teacher,'teacher',v_admin),
          (v_b,v_admin,'school_admin',v_admin);
 
+  -- L'administration B ne devient ACTIVE qu'apres le test d'isolement.
+  UPDATE public.schoolnet_school_memberships
+  SET status='revoked',revoked_at=pg_catalog.now()
+  WHERE school_id=v_b AND user_id=v_admin;
+
   INSERT INTO public.classes(school_id,level_id,name,school_year,school_year_id,learning_context)
   VALUES (v_a,v_level,'S3C QA A1',v_year_name,v_year,'school') RETURNING id INTO v_class_a1;
   INSERT INTO public.classes(school_id,level_id,name,school_year,school_year_id,learning_context)
@@ -59,6 +64,45 @@ BEGIN
     '{"origin":"https://schoolnet-snowy.vercel.app"}',true);
 END;
 $setup_s3c$;
+
+-- L'admin local A n'a PAS droit de lecture ni mutation dans B.
+SET LOCAL ROLE authenticated;
+DO $qa_s3c_cross_school$
+DECLARE
+  v_denied_read boolean:=false;
+  v_denied_student boolean:=false;
+  v_denied_teacher boolean:=false;
+BEGIN
+  BEGIN
+    PERFORM public.schoolnet_school_assignment_catalog(current_setting('qa.s3c.b')::uuid);
+  EXCEPTION WHEN insufficient_privilege THEN v_denied_read:=true; END;
+  BEGIN
+    PERFORM public.schoolnet_school_assign_student(
+      current_setting('qa.s3c.b')::uuid,
+      current_setting('qa.s3c.class_b')::uuid,
+      current_setting('qa.s3c.student')::uuid
+    );
+  EXCEPTION WHEN insufficient_privilege THEN v_denied_student:=true; END;
+  BEGIN
+    PERFORM public.schoolnet_school_assign_teacher_subject(
+      current_setting('qa.s3c.b')::uuid,
+      current_setting('qa.s3c.class_b')::uuid,
+      current_setting('qa.s3c.teacher')::uuid,
+      current_setting('qa.s3c.subject')::uuid
+    );
+  EXCEPTION WHEN insufficient_privilege THEN v_denied_teacher:=true; END;
+  IF NOT (v_denied_read AND v_denied_student AND v_denied_teacher) THEN
+    RAISE EXCEPTION 'S3-C : refus inter-etablissements insuffisant.';
+  END IF;
+END;
+$qa_s3c_cross_school$;
+RESET ROLE;
+
+-- Autorisation temporaire du meme administrateur pour tester le multi-ecoles.
+UPDATE public.schoolnet_school_memberships
+SET status='active',revoked_at=NULL
+WHERE user_id=current_setting('qa.s3c.admin')::uuid
+  AND school_id=current_setting('qa.s3c.b')::uuid;
 
 -- Access control des classes officielles et des membres du tenant A.
 SET LOCAL ROLE authenticated;
