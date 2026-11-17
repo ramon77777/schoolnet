@@ -50,8 +50,20 @@ export type TeacherSubjectAssignment = {
   revoked_at: string | null;
 };
 
+export type SchoolAssignmentEvent = {
+  id: string;
+  class_id: string;
+  assignment_kind: "student_class" | "teacher_subject";
+  action: "assigned" | "revoked" | "reactivated";
+  member_name: string;
+  subject_name: string | null;
+  actor_name: string;
+  created_at: string;
+};
+
 export type SchoolAssignmentsCatalog = {
   school_id: string;
+  events: SchoolAssignmentEvent[];
   classes: SchoolAssignmentClass[];
   students: SchoolAssignmentMember[];
   teachers: SchoolAssignmentMember[];
@@ -105,10 +117,11 @@ export function isSchoolAssignmentsCatalog(
   schoolId: string,
 ): value is SchoolAssignmentsCatalog {
   if (!isRecord(value) || value.school_id !== schoolId) return false;
-  const { classes, students, teachers, subjects, student_assignments, teacher_assignments } = value;
+  const { classes, students, teachers, subjects, events, student_assignments, teacher_assignments } = value;
   if (!Array.isArray(classes) || !Array.isArray(students) ||
     !Array.isArray(teachers) || !Array.isArray(subjects) ||
-    !Array.isArray(student_assignments) || !Array.isArray(teacher_assignments)) {
+    !Array.isArray(events) || !Array.isArray(student_assignments) ||
+    !Array.isArray(teacher_assignments)) {
     return false;
   }
   return classes.every((row: unknown) => isRecord(row) &&
@@ -118,6 +131,13 @@ export function isSchoolAssignmentsCatalog(
       isText(row.id) && isText(row.full_name) && row.status === "active") &&
     subjects.every((row: unknown) => isRecord(row) &&
       isText(row.id) && isText(row.name) && isText(row.code)) &&
+    events.every((row: unknown) => isRecord(row) &&
+      isText(row.id) && isText(row.class_id) &&
+      (row.assignment_kind === "student_class" || row.assignment_kind === "teacher_subject") &&
+      (row.action === "assigned" || row.action === "revoked" || row.action === "reactivated") &&
+      isText(row.member_name) && isText(row.actor_name) &&
+      (row.subject_name === null || isText(row.subject_name)) &&
+      isText(row.created_at)) &&
     student_assignments.every((row: unknown) => isRecord(row) &&
       isText(row.id) && isText(row.class_id) && isText(row.school_year_id) &&
       isText(row.student_id) && isText(row.student_name) &&
