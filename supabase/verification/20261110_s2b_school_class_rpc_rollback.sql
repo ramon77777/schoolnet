@@ -1,5 +1,6 @@
 -- SCHOOLNET S2-B | Recette transactionnelle non persistante
--- Executer : BEGIN; <SQL S2-A>; <SQL S2-B>; <CE TEST>; ROLLBACK;
+-- Executer : BEGIN; <SQL S2-B>; <CE TEST>; ROLLBACK;
+-- S2-A EST DEJA INSTALLEE. Ne pas re-appliquer S2-A.
 -- Ne JAMAIS utiliser COMMIT pour ces fixtures de test.
 
 DO $setup$
@@ -38,6 +39,9 @@ BEGIN
    (SELECT count(*)::text FROM public.schoolnet_school_audit),true);
  PERFORM set_config('request.jwt.claim.sub',v_local::text,true);
  PERFORM set_config('request.jwt.claim.role','authenticated',true);
+ -- Contexte equivalent a une requete POST issue du domaine officiel.
+ PERFORM set_config('request.headers',
+   '{"origin":"https://schoolnet-snowy.vercel.app"}',true);
 END;
 $setup$;
 
@@ -56,6 +60,9 @@ DECLARE
  v_duplicate_blocked boolean:=false;
  v_invalid_level_blocked boolean:=false;
  v_invalid_year_blocked boolean:=false;
+ v_preview_origin_blocked boolean:=false;
+ v_missing_origin_blocked boolean:=false;
+ v_subdomain_origin_blocked boolean:=false;
 BEGIN
  IF public.get_my_role()::text <> 'school_admin' THEN
    RAISE EXCEPTION 'Mauvais role pour test local.';
@@ -117,9 +124,37 @@ BEGIN
  EXCEPTION WHEN invalid_parameter_value THEN v_invalid_year_blocked:=true;
  END;
 
+ -- Un administrateur LEGITIME ne peut PAS creer depuis une Preview Vercel.
+ -- Origin est une protection additionnelle : Auth/role/affiliation restent
+ -- testes independamment ci-dessus.
+ PERFORM set_config('request.headers',
+   '{"origin":"https://schoolnet-s2b-preview.vercel.app"}',true);
+ BEGIN
+   PERFORM public.schoolnet_school_create_class(v_a,v_level,v_year,'QA preview interdite');
+ EXCEPTION WHEN insufficient_privilege THEN v_preview_origin_blocked:=true;
+ END;
+
+ -- Absence de header Origin = refus (scripts et domaines non verifies).
+ PERFORM set_config('request.headers','',true);
+ BEGIN
+   PERFORM public.schoolnet_school_create_class(v_a,v_level,v_year,'QA sans origine interdite');
+ EXCEPTION WHEN insufficient_privilege THEN v_missing_origin_blocked:=true;
+ END;
+
+ -- Comparaison stricte, pas de suffixe / sous-domaine ressemblant.
+ PERFORM set_config('request.headers',
+   '{"origin":"https://schoolnet-snowy.vercel.app.evil.example"}',true);
+ BEGIN
+   PERFORM public.schoolnet_school_create_class(v_a,v_level,v_year,'QA faux domaine interdit');
+ EXCEPTION WHEN insufficient_privilege THEN v_subdomain_origin_blocked:=true;
+ END;
+ PERFORM set_config('request.headers',
+   '{"origin":"https://schoolnet-snowy.vercel.app"}',true);
+
  IF NOT(v_other_catalog_blocked AND v_other_school_blocked
     AND v_duplicate_blocked AND v_invalid_level_blocked
-    AND v_invalid_year_blocked)
+    AND v_invalid_year_blocked AND v_preview_origin_blocked
+    AND v_missing_origin_blocked AND v_subdomain_origin_blocked)
  THEN
    RAISE EXCEPTION 'Permissions/validation S2-B: catalogue B %, creation B %, doublon %, niveau %, annee %',
     v_other_catalog_blocked,v_other_school_blocked,v_duplicate_blocked,
