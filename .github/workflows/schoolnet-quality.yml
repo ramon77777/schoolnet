@@ -167,3 +167,106 @@ jobs:
           source_count=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollments WHERE school_year_id='20252025-2025-4025-8025-202520252025' AND status='completed'")
           test "$run_count" = "1"
           test "$source_count" = "1"
+
+  # Lot 5D-F: two independent, disposable Postgres instances to validate
+  # the FULL read-only-audited legacy RPC definitions, not shortened mocks.
+  lot5d_full_rpc:
+    name: Lot 5D-F - RPC completes, releve et archives (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirmer cible PostgreSQL ephemere et clients disponibles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test -z "$(printenv DATABASE_URL || true)"
+          test -z "$(printenv SUPABASE_DB_URL || true)"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Installer seulement le schema synthétique et les propositions F sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5df_fixture_enhance_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5df_legacy_full_lock_SANDBOX_ONLY.sql
+      - name: Recette du comportement historique avant bascule avec ROLLBACK
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5df_full_regression_pre_postgresql17.sql
+      - name: Concurrence finaliseur avec RPC upsert COMPLETE
+        shell: bash
+        run: bash scripts/lot5d/5df_run_cross_postgresql17.sh upsert
+      - name: Compteurs apres tests rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "1"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollments WHERE school_year_id='20252025-2025-4025-8025-202520252025' AND status='completed'")" = "1"
+
+  lot5d_full_status:
+    name: Lot 5D-F - verrou annee AVANT statut en concurrence (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer fixture + candidat F sur la base PG17 fictive seulement
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test -z "$(printenv SUPABASE_DB_URL || true)"
+          test -z "$(printenv DATABASE_URL || true)"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5df_fixture_enhance_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5df_legacy_full_lock_SANDBOX_ONLY.sql
+      - name: Concurrence finaliseur avec RPC statut COMPLETE
+        shell: bash
+        run: bash scripts/lot5d/5df_run_cross_postgresql17.sh status

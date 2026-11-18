@@ -19,6 +19,7 @@
     "qa:lot5d:c": "node --test scripts/test-schoolnet-lot5d-consolidated-sandbox.mjs",
     "qa:lot5d:d": "node --test scripts/test-schoolnet-lot5d-d-readiness.mjs",
     "qa:lot5d:e": "node --test scripts/test-schoolnet-lot5d-e-legacy-cross.mjs",
+    "qa:lot5d:f": "node --test scripts/test-schoolnet-lot5d-f-full-compat.mjs",
     "qa:e2e:readiness": "node --experimental-strip-types --test scripts/test-schoolnet-e2e-readiness.mjs",
     "qa:sandbox:prepare": "node --test scripts/test-schoolnet-sandbox-preparation.mjs",
     "sandbox:check": "node scripts/check-schoolnet-sandbox-env.mjs"
