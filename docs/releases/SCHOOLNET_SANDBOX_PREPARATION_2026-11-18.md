@@ -1,7 +1,7 @@
 # SCHOOLNET — Préparation de l'environnement de recette isolé
 
 **Date : 18 novembre 2026**  
-**Statut : conception et garde-fous de configuration uniquement ; aucun bac à sable créé.**  
+**Statut : conception et garde-fous de configuration uniquement ; aucun bac à sable créé, pas de déploiement.**  
 **Branche :** `feature/schoolnet-s2a-classes-tenant-qa`, PR n° 14 en brouillon.
 
 ## 1. Décision de sécurité
