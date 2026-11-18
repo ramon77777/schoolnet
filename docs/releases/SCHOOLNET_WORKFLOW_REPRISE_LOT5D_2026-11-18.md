@@ -244,6 +244,45 @@ toute bascule réelle. La recette locale E **a été validée par l'utilisateur 
 lint 0 erreur (1 avertissement React Hook connu), build Vite réussi.
 Cette validation ne vaut pas autorisation d'écriture SQL réelle.
 
+### 5D-F : **RPC HISTORIQUES COMPLÈTES + CONCURRENCE SQL + ARCHITECTURE ADMIN — CI VALIDÉE, LOCAL À FAIRE**
+
+Travaux préparés **uniquement** sur GitHub et PostgreSQL 17 fictif :
+[Rapport 5D-F et proposition d'architecture](./SCHOOLNET_LOT5DF_RPC_COMPLETES_PASSERELLE_ADMIN_2026-11-18.md).
+
+- **Audit Supabase principal en SELECT uniquement** : définitions complètes
+  de cinq RPC Admin (upsert, statut, wrapper genre, affectation, retrait).
+  Aucune migration, aucun dossier, aucun Auth ni RLS réel modifié.
+- **Candidat entier** : proposition
+  `supabase/proposals/20261118_schoolnet_lot5df_legacy_full_lock_SANDBOX_ONLY.sql`
+  issue de `pg_get_functiondef`, avec `search_path=pg_catalog` et verrou
+  `school_years IN SHARE MODE` **avant** les lectures métier dans les cinq RPC.
+  **Il est interdit de l'installer dans le Supabase principal.**
+- **Régressions** : 12 assertions SQL avant bascule sous `ROLLBACK`
+  (numérotation, date initiale, statut, retrait et réaffectation,
+  wrapper genre, rôle) ; deux scénarios de concurrence distincts
+  avec finaliseur sur une base PostgreSQL 17 fictive ; 13 assertions
+  après bascule (archives conservées, statut historique bloqué,
+  opérations dans la nouvelle année autorisées).
+- **CI vérifiée** : [run #44336667446](https://github.com/ramon77777/schoolnet/actions/runs/44336667446),
+  **5 jobs SUCCESS**, dont deux nouveaux jobs F (upsert complet et statut
+  complet) + `npm run qa:lot5d:f` **12/12** dans GitHub Actions.
+- **Passerelle Admin réelle** : architecture documentée, **PAS implémentée** :
+  Auth réelle, profil Admin, origine exacte, contrat strict, transaction
+  privée sous rôle SQL à privilèges minimaux, idempotence et journal.
+  Aucun endpoint, rôle SQL, secret ou déploiement ajouté.
+
+**Recette locale F NON ENCORE VALIDÉE :** exécuter
+`git pull --ff-only`, `npm run qa:lot5d:f`, `npm run lint`,
+`npm run build`. Les recettes locales précédentes A+B+C+D+E restent
+**73/73 validées**. Préserver le stash, les scripts non suivis et
+`tsconfig.app.tsbuildinfo`.
+
+**Risques encore bloquants :** dossier déjà actif en année cible 2026–2027,
+RPC directe de changement d'année encore non neutralisée côté réel,
+écritures directes RLS, `admin_finalize_public_enrollment_request`,
+affichage des dernières classes historiques côté Parent/Enseignant,
+test sur schéma réellement fidèle et passerelle serveur encore inexistante.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -343,6 +382,25 @@ production Vercel décidée. La réussite de 5D-E ne rend pas la bascule
 annuelle opérationnelle : anciennes RPC réelles et backend Admin privé
 toujours à sécuriser sous nouveau GO.
 
+### Prochain test local — Lot 5D-F
+
+Les cinq jobs CI du 5D-F sont verts sur GitHub ; la **recette locale
+de l'utilisateur reste à faire**. Terminal PowerShell :
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:f
+npm run lint
+npm run build
+git status --short
+```
+
+Attendu : **12/12 tests F**, zéro erreur ESLint (un avertissement
+React Hook historique possible), build réussi, aucun fichier local
+non suivi effacé. Le SQL F reste non installable.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -360,7 +418,10 @@ toujours à sécuriser sous nouveau GO.
    tester une copie fidèle du vrai schéma, revoir les écrans historiques
    Parent/Enseignant et préparer un véritable backend Admin avec un rôle
    SQL privé et une authentification vérifiée.
-5. Soumettre une future migration finale et son éventuelle installation
+5. **5D-F : cinq RPC historiques complètes préparées et CI validée ;**
+   tests locaux F à confirmer, choix de la passerelle Admin et
+   vérification des chemins non couverts (RLS direct et demandes publiques).
+6. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -391,6 +452,7 @@ toujours à sécuriser sous nouveau GO.
 > - `docs/releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DE_CONCURRENCE_RPC_ARCHIVES_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5DF_RPC_COMPLETES_PASSERELLE_ADMIN_2026-11-18.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -407,10 +469,12 @@ toujours à sécuriser sous nouveau GO.
 > anciennes RPC réelles **non corrigées** ;
 > passerelle Admin uniquement simulée et **NON DÉPLOYÉE**.
 >
-> **Prochaine étape (GO distinct requis)** : revoir les anciennes RPC
-> de production complètes, les écrans Parent/Enseignant et la
-> fidélité du schéma isolé ; concevoir un backend Admin réellement
-> authentifié et une migration canonique. **Rien à installer encore.**
+> **Prochaine action immédiate** : recette locale `qa:lot5d:f`
+> **12/12 attendus**, lint et build ; la CI F a déjà **5/5 jobs SUCCESS**.
+> **Après GO distinct** : vérifier une copie fidèle du schéma réel,
+> corriger les parcours directs et écrans Parent/Enseignant,
+> concevoir la passerelle Admin authentifiée, puis seulement
+> étudier la migration canonique. **Rien à installer encore.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
