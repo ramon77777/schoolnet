@@ -190,4 +190,91 @@ BEGIN
 END;
 $lot5d_test_success$;
 ROLLBACK;
-\echo 'SCHOOLNET 5D-A+B : 15 verifications SQL de fixture terminees, ROLLBACK effectue.'
+
+-- Seconde suite: cible contenant un BROUILLON distinct -> arret strict v1.
+BEGIN;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+DO $lot5d_draft$
+DECLARE
+  src uuid:='20252025-2025-4025-8025-202520252025';
+  dst uuid:='20262026-2026-4026-8026-202620262026';
+  admin_id uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  blocked boolean:=false;
+BEGIN
+  INSERT INTO public.student_enrollments(student_id,school_year_id,class_id,status)
+    VALUES('22222222-2222-4222-8222-222222222222',
+      dst,'c0260000-0000-4000-8000-000000000026','draft');
+  PERFORM schoolnet_private.save_lot5d_legacy_decision(src,dst,
+    '11111111-1111-4111-8111-111111111111','repeat',
+    'c0260000-0000-4000-8000-000000000026',NULL,admin_id);
+  BEGIN
+    PERFORM schoolnet_private.finalize_lot5d_legacy_year(src,dst,'2026-2027',admin_id,
+      '10000000-0000-4000-8000-000000000016');
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE '%annee cible deja occupee%' THEN blocked:=true; ELSE RAISE; END IF;
+  END;
+  IF NOT blocked OR NOT (SELECT is_current FROM public.school_years WHERE id=src)
+  THEN RAISE EXCEPTION 'QA 16: brouillon cible non protege'; END IF;
+  RAISE NOTICE '5D-SQL 16 : brouillon deja present en cible = STOP OK';
+END;
+$lot5d_draft$;
+ROLLBACK;
+
+-- Troisieme suite: depart sans nouveau dossier, avec audit.
+BEGIN;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+DO $lot5d_leave$
+DECLARE
+  src uuid:='20252025-2025-4025-8025-202520252025';
+  dst uuid:='20262026-2026-4026-8026-202620262026';
+  admin_id uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  result_json jsonb;
+BEGIN
+  PERFORM schoolnet_private.save_lot5d_legacy_decision(src,dst,
+    '11111111-1111-4111-8111-111111111111','leave',NULL,'Depart fictif',admin_id);
+  result_json:=schoolnet_private.finalize_lot5d_legacy_year(src,dst,'2026-2027',admin_id,
+    '10000000-0000-4000-8000-000000000017');
+  IF (result_json->>'departed')::integer<>1
+     OR EXISTS(SELECT 1 FROM public.student_enrollments WHERE school_year_id=dst)
+     OR (SELECT count(*) FROM public.class_students)<>1
+     OR (SELECT class_name FROM public.profiles
+          WHERE id='11111111-1111-4111-8111-111111111111') IS NOT NULL
+     OR (SELECT count(*) FROM public.school_year_rollover_audit
+          WHERE decision='leave' AND target_enrollment_id IS NULL)<>1
+  THEN RAISE EXCEPTION 'QA 17: depart non conforme'; END IF;
+  RAISE NOTICE '5D-SQL 17 : depart controle, aucun dossier cible, audit OK';
+END;
+$lot5d_leave$;
+ROLLBACK;
+
+-- Quatrieme suite: reinscription vers un niveau suivant (pas redoublement).
+BEGIN;
+SELECT pg_catalog.set_config('request.jwt.claim.sub',
+ 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+DO $lot5d_reenroll$
+DECLARE
+  src uuid:='20252025-2025-4025-8025-202520252025';
+  dst uuid:='20262026-2026-4026-8026-202620262026';
+  admin_id uuid:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  result_json jsonb;
+BEGIN
+  PERFORM schoolnet_private.save_lot5d_legacy_decision(src,dst,
+    '11111111-1111-4111-8111-111111111111','re_enroll',
+    'c0270000-0000-4000-8000-000000000027',NULL,admin_id);
+  result_json:=schoolnet_private.finalize_lot5d_legacy_year(src,dst,'2026-2027',admin_id,
+    '10000000-0000-4000-8000-000000000018');
+  IF (result_json->>'re_enrolled')::integer<>1
+     OR (SELECT class_id FROM public.student_enrollments WHERE school_year_id=dst)
+         <>'c0270000-0000-4000-8000-000000000027'::uuid
+     OR (SELECT class_name FROM public.profiles
+         WHERE id='11111111-1111-4111-8111-111111111111')<>'5e A'
+     OR (SELECT count(*) FROM public.school_year_rollover_audit
+          WHERE decision='re_enroll' AND target_enrollment_id IS NOT NULL)<>1
+  THEN RAISE EXCEPTION 'QA 18: reinscription niveau suivant non conforme'; END IF;
+  RAISE NOTICE '5D-SQL 18 : reinscription niveau suivant et audit OK';
+END;
+$lot5d_reenroll$;
+ROLLBACK;
+\echo 'SCHOOLNET 5D-A+B : 18 verifications SQL fictives terminees, 4 ROLLBACK effectues.'
