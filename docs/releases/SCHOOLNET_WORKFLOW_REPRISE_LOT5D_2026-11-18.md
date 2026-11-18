@@ -287,7 +287,7 @@ RPC directe de changement d'année encore non neutralisée côté réel,
 affichage des dernières classes historiques côté Parent/Enseignant,
 test sur schéma réellement fidèle et passerelle serveur encore inexistante.
 
-### 5D-G : **AUDIT RLS RÉEL + VOIES DIRECTES + PASSERELLE MOCK — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-G : **AUDIT RLS RÉEL + VOIES DIRECTES + PASSERELLE MOCK — CI ET LOCAL VALIDÉS**
 
 Le 18/11/2026, sur la PR #15 **en brouillon** :
 [rapport technique et limites du Lot 5D-G](./SCHOOLNET_LOT5DG_AUDIT_RLS_PASSERELLE_2026-11-18.md).
@@ -320,9 +320,13 @@ Le 18/11/2026, sur la PR #15 **en brouillon** :
   **6/6 jobs SUCCESS** dont PostgreSQL 17 fictif G, `qa:lot5d:g`
   **20/20 en CI**, lint/build réussis. PostgreSQL G vérifie les
   droits RLS et documents en 2 phases, avec `ROLLBACK` pour les tests.
-- **Recette locale G : À FAIRE**. Cumul précédemment confirmé par
-  l'utilisateur : A–F **85/85**. Le total atteindra **105/105**
-  après validation locale de G **20/20**.
+- **Recette locale G : VALIDÉE LE 18/11/2026**. Transmission
+  intégrale par l'utilisateur : `git pull --ff-only` réussi
+  (`f3ec13f..20125ba`), `npm run qa:lot5d:g` **20/20**,
+  `npm run lint` **0 erreur** (1 avertissement React Hook connu),
+  `npm run build` **réussi**, Vite v7.3.1, 867 modules.
+  Les fichiers locaux non suivis sont conservés.
+  **Cumul des recettes locales A–G : 105/105 tests validés**.
 
 **Aucune migration 5D installée, aucune donnée Supabase principale
 modifiée, aucune fusion ni publication de production.** Une copie fidèle
@@ -453,25 +457,40 @@ distincts de ces tests locaux, ont réussi dans GitHub Actions sur
 des **données fictives**. Aucune installation des propositions SQL F,
 aucun véritable backend Admin et aucune validation de production.
 
-### Prochaine recette locale — Lot 5D-G
+### Recette locale du Lot 5D-G — **VALIDÉE LE 18 NOVEMBRE 2026**
 
-Tests **hors réseau** uniquement, déjà réussis en CI. À effectuer
-sur ton poste Windows, depuis la branche de PR #15 :
+L'utilisateur a exécuté la recette dans PowerShell sur
+`D:\Bakary\10 autres\schoolnet`, depuis la branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:g
-npm run lint
-npm run build
-git status --short
-```
+- `git status --short` et `git branch --show-current` : branche attendue
+  et état Git local contrôlé au début et à la fin.
+- `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118` :
+  **fast-forward réussi**, de `f3ec13f` à `20125ba`, sans conflit.
+- `npm run qa:lot5d:g` : **20/20 tests réussis**, zéro échec.
+- `npm run lint` : **0 erreur** ; avertissement historique
+  `react-hooks/exhaustive-deps` dans
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : TypeScript et Vite **réussis**, Vite v7.3.1,
+  **867 modules** ; avertissements non bloquants sur Browserslist
+  et taille du bundle JavaScript.
+- `git status --short` final : état local **inchangé** ;
+  `tsconfig.app.tsbuildinfo` modifié, trois scripts non suivis
+  `scripts/schoolnet-student-auth-sandbox-local.mjs`,
+  `scripts/test-schoolnet-student-auth-flow-mock.mjs` et
+  `scripts/test-schoolnet-student-auth-sandbox-local.mjs`,
+  ainsi que `supabase/proposals/staged/` **conservés**.
 
-**Attendu : 20/20 G**, lint 0 erreur (warning React Hook déjà connu),
-build Vite réussi et conservation des fichiers non suivis.
-**Cumul A–F 85/85 validé**, G en attente d'acceptation locale.
-Le SQL G ne peut être utilisé que dans le job PostgreSQL 17 fictif.
+**Total des recettes locales Lots 5D-A à G :**
+9 + 17 + 12 + 15 + 20 + 12 + 20 = **105/105 tests validés**.
+Les assertions SQL PostgreSQL 17 exécutées dans GitHub Actions
+sont distinctes et ne sont pas comptées dans ce cumul.
+
+**Important :** cette recette valide un contrat de passerelle
+**mock/hors réseau** et une CI sur PostgreSQL 17 **fictif** ;
+elle ne valide pas un backend Admin réellement authentifié,
+la sécurité des fichiers Storage ni l'installation SQL en
+production. Aucune fonction 5D réelle n'a été installée.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -494,7 +513,7 @@ Le SQL G ne peut être utilisé que dans le job PostgreSQL 17 fictif.
    tests locaux F **12/12 validés**, choix de la passerelle Admin et
    vérification des chemins non couverts (RLS direct et demandes publiques).
 6. **5D-G** : audit RLS/droits/Storage en lecture seule, CI 6/6
-   et mock gateway 20/20 validés en CI ; recette locale à confirmer.
+   et mock gateway **20/20 validés également en local le 18/11/2026**.
    **Garde documentaire SQL insuffisant seul** : l'ordre actuel
    Storage.remove() avant métadonnées doit être protégé côté Storage
    et métier sur un environnement isolé.
@@ -534,8 +553,8 @@ Le SQL G ne peut être utilisé que dans le job PostgreSQL 17 fictif.
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
-> **Recettes locales A9/9, B17/17, C12/12, D15/15, E20/20 et F12/12
-> toutes validées par l'utilisateur : 85/85 tests locaux A à F.**
+> **Recettes locales A9/9, B17/17, C12/12, D15/15, E20/20,
+> F12/12 et G20/20 validées par l'utilisateur : 105/105 tests locaux A à G.**
 > CI GitHub Actions [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560) :
 > **3 jobs SUCCESS**, incluant tests 5D-E 20/20, SQL PG17
 > concurrent, 11 assertions de garde historique et archivage fictif.
@@ -547,17 +566,21 @@ Le SQL G ne peut être utilisé que dans le job PostgreSQL 17 fictif.
 > anciennes RPC réelles **non corrigées** ;
 > passerelle Admin uniquement simulée et **NON DÉPLOYÉE**.
 >
-> **Point de reprise après CI G** : `qa:lot5d:g` **20/20**
-> et [GitHub Actions #44342623526](https://github.com/ramon77777/schoolnet/actions/runs/44342623526)
-> **6/6 jobs SUCCESS**, sans accès d'écriture au Supabase principal.
-> **Local G À FAIRE** ; A à F **85/85 validés**. Année cible déjà occupée.
-> **Bloqueur documentaire** : Storage.remove() est appelé avant la
-> suppression SQL, sans garde de clôture sur le bucket ; ne pas installer
-> la seule protection SQL G. La passerelle G reste **un mock sans réseau**.
-> **Prochaine action immédiate :** pull de la branche, `qa:lot5d:g`,
-> lint et build. Puis décision distincte sur le correctif Storage/UI,
-> l'audit de classe Parent/Enseignant et le backend Admin réel.
-> **Aucune migration ni déploiement autorisé.**
+> **Point de reprise après VALIDATION LOCALE G le 18/11/2026 :**
+> A9/9 + B17/17 + C12/12 + D15/15 + E20/20 + F12/12 + G20/20
+> = **105/105 tests locaux validés par l'utilisateur** ; lint 0 erreur,
+> build Vite réussi. CI [run #44342623526](https://github.com/ramon77777/schoolnet/actions/runs/44342623526)
+> **6/6 jobs SUCCESS** avec PostgreSQL 17 fictif, sans écriture dans
+> Supabase principal.
+> **Blocages persistants :** dossier actif déjà présent en 2026–2027 ;
+> le Storage supprime l'objet avant la métadonnée SQL et n'a aucun
+> garde d'archive adapté ; aucune passerelle Admin réelle
+> (uniquement des adaptateurs mock sans réseau), schéma de test non fidèle
+> à l'intégralité de la production et écrans Parent/Enseignant historiques.
+> **Prochaine phase avec GO distinct :** sécuriser en sandbox la cohérence
+> Storage/métadonnées et le parcours Admin ; étudier les lecteurs
+> de classe Parent/Enseignant et la véritable passerelle privée.
+> **Aucune migration, aucune fusion ni aucun déploiement autorisé.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**

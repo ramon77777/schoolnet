@@ -2,7 +2,7 @@
 
 **Date :** 18 novembre 2026  
 **Statut :** [GitHub Actions #44342623526](https://github.com/ramon77777/schoolnet/actions/runs/44342623526) : **6 jobs SUCCESS** sur la branche.  
-**Recette locale utilisateur :** **G à effectuer (20 tests attendus)** ; Lots A à F : **85/85 déjà validés**.  
+**Recette locale utilisateur :** **G VALIDÉ 20/20 le 18/11/2026** ; Lots A à G : **105/105 tests locaux validés**.  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon**.  
 **Protection :** aucune écriture dans Supabase principal ; aucune migration, aucune Edge Function ni API réellement déployée, aucun changement sur `main` ou Vercel production.
 
@@ -210,28 +210,38 @@ est celui de la version corrigée. Aucune intervention sur Supabase réel.
 [Securing Edge Functions](https://supabase.com/docs/guides/functions/auth)
 et [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
-## 5. Recette locale du Lot 5D-G — À FAIRE
+## 5. Recette locale du Lot 5D-G — **VALIDÉE LE 18 NOVEMBRE 2026**
 
-Dans PowerShell, sur la branche existante, sans toucher au SQL principal :
+L'utilisateur a communiqué sa sortie complète PowerShell, dans
+`D:\Bakary\10 autres\schoolnet`, branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:g
-npm run lint
-npm run build
-git status --short
-```
+- `git pull --ff-only` **réussi**, de `f3ec13f` à `20125ba`
+  sans conflit.
+- `npm run qa:lot5d:g` **20/20**, 0 échec, tests hors réseau
+  du contrat Admin et des protections SQL en proposition.
+- `npm run lint` **0 erreur** (1 avertissement préexistant
+  `react-hooks/exhaustive-deps` à
+  `EnrollmentRecordsPage.tsx:161`).
+- `npm run build` **réussi** avec Vite v7.3.1 et 867 modules.
+  Avertissements Browserslist et bundle volumineux non bloquants.
+- `git status --short` final inchangé : les trois scripts locaux
+  non suivis, `supabase/proposals/staged/` et
+  `tsconfig.app.tsbuildinfo` sont **préservés**.
 
-**Attendu :** 20/20 tests G locaux ; lint zéro erreur avec
-l'avertissement React Hook préexistant ; build Vite réussi.
-Aucun `supabase db push`, aucun SQL Editor,
-aucune suppression de fichiers non suivis, aucun merge ni déploiement.
-La réussite locale porterait le cumul A–G à **105/105**,
-sans compter les assertions SQL exécutées **séparément** en CI.
+**Cumul local Lots 5D-A à G : 105/105 tests validés.**
+La CI SQL PostgreSQL 17 fictive est comptabilisée séparément
+([6/6 jobs](https://github.com/ramon77777/schoolnet/actions/runs/44342623526)).
+Cette validation ne constitue **ni** une installation de protections
+5D sur le serveur principal **ni** un test d'une API Admin déployée,
+et ne protège pas encore les objets Storage de l'ancienne année.
 
-**Interdictions maintenues :** le SQL `SANDBOX_ONLY` n'est pas une
-migration de production ; aucune activation de bascule annuelle,
-aucun nettoyage automatique de l'année cible, aucune modification
-Supabase principal, `main` ou Vercel sans nouveaux GO.
+**Avant tout GO de production :** corriger conjointement la protection
+Storage et la suppression UI / métadonnées, qualifier l'inscription
+active déjà présente en 2026–2027, tester un schéma fidèle et les
+lectures Parent/Enseignant, puis obtenir des accords distincts pour
+la migration canonique, le backend, la fusion `main` et Vercel.
+
+**Interdictions maintenues :** aucun SQL `SANDBOX_ONLY` sur Supabase
+principal, aucun `supabase db push`, aucun flag d'écriture, aucune
+fusion dans `main` ni mise en production Vercel.
