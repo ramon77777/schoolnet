@@ -32,6 +32,8 @@ jobs:
         run: npm run qa:lot5d:a
       - name: Verifier Lot 5D-B (preflight et SQL non installable, sans reseau)
         run: npm run qa:lot5d:b
+      - name: Verifier Lot 5D-C (candidat consolide, securite hors reseau)
+        run: npm run qa:lot5d:c
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -49,3 +51,50 @@ jobs:
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
       - name: Tests famille deja presents
         run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
+
+  lot5d_sql_sandbox:
+    name: Test 5D-A+B sur PostgreSQL 17 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verifier cible ephemere et client PostgreSQL
+        shell: bash
+        run: |
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql --version
+      - name: Installer fixture, candidat consolide, recette rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/lot5d/test_consolidated_postgresql17.sql
+      - name: Verifier aucun changement d annee apres la recette
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(psql -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_years WHERE is_current AND name='2025-2026'")
+          test "$count" = "1"
