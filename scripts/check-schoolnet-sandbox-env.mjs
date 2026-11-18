@@ -8,6 +8,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import {
+  REQUIRED_SANDBOX_ENV_KEYS,
   parseSandboxEnv,
   validateSandboxEnvironment,
 } from "./lib/schoolnet-sandbox-env.mjs";
@@ -43,7 +44,16 @@ async function main() {
   }
 
   const parsed = parseSandboxEnv(source);
-  const result = validateSandboxEnvironment(parsed.env, parsed.issues);
+  // Vite donne priorite aux variables du processus sur les fichiers .env.
+  // Refuser toute surcharge pouvant rediriger silencieusement vers prod.
+  const inheritedConflicts = REQUIRED_SANDBOX_ENV_KEYS.filter(
+    (key) => process.env[key] !== undefined && process.env[key] !== parsed.env[key],
+  );
+  const issues = [
+    ...parsed.issues,
+    ...inheritedConflicts.map((key) => "PROCESS_ENV_OVERRIDE_" + key),
+  ];
+  const result = validateSandboxEnvironment(parsed.env, issues);
   if (!result.valid) {
     process.stderr.write("REFUS: configuration de recette non conforme.\n");
     for (const issue of result.issues) {
