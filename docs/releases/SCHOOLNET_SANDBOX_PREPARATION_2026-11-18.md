@@ -1,7 +1,7 @@
 # SCHOOLNET — Préparation de l'environnement de recette isolé
 
 **Date : 18 novembre 2026**  
-**Statut : conception et garde-fous de configuration uniquement ; aucun bac à sable créé, pas de déploiement.**  
+**Statut : conception et garde-fous de configuration uniquement ; aucun bac à sable créé, pas de déploiement manuel.**  
 **Branche :** `feature/schoolnet-s2a-classes-tenant-qa`, PR n° 14 en brouillon.
 
 ## 1. Décision de sécurité
@@ -168,6 +168,12 @@ journaux et contrôler le nettoyage de la base test.
 **Phase T5 — Décision métier :** seulement après signatures et nouvelles
 autorisations, envisager une promotion ciblée des changements sur
 production. La présente phase ne donne aucune permission de le faire.
+
+**Attention aux automatisations existantes :** un commit sur cette branche GitHub
+peut déclencher automatiquement une Preview du projet Vercel actuel,
+même si nous ne demandons aucun déploiement. Aucune nouvelle ressource
+Vercel, aucune promotion vers Production, aucun changement de variables
+Vercel et aucune publication manuelle ne sont autorisés ici.
 
 Le plan E2E détaillé est
 `docs/releases/SCHOOLNET_RECETTE_E2E_S2B_S3C_PREPARATION_2026-11-18.md`.
