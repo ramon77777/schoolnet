@@ -16,6 +16,7 @@
     "qa:s3c": "node --experimental-strip-types --test scripts/test-schoolnet-s3c-preview-guard.mjs",
     "qa:lot5d:a": "node --test scripts/test-schoolnet-lot5d-a-guard.mjs",
     "qa:lot5d:b": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-b-preflight.mjs",
+    "qa:lot5d:c": "node --test scripts/test-schoolnet-lot5d-consolidated-sandbox.mjs",
     "qa:e2e:readiness": "node --experimental-strip-types --test scripts/test-schoolnet-e2e-readiness.mjs",
     "qa:sandbox:prepare": "node --test scripts/test-schoolnet-sandbox-preparation.mjs",
     "sandbox:check": "node scripts/check-schoolnet-sandbox-env.mjs"
