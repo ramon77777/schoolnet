@@ -108,12 +108,16 @@ Les tests **`qa:lot5d:c`** sont des tests **statiques**. Ils ne prouvent
 **représentation partielle** : il ne valide pas à lui seul tous les
 triggers, policies, dépendances et fonctions du Supabase réel.
 
-**Statut de recette** : le premier job PostgreSQL 17 éphémère (15 scénarios)
-et la vérification GitHub Actions de build/tests ont **réussi** pour le
-commit `10d7912` (run `44316739463`). Le scénario a ensuite été enrichi
-à **18 vérifications**, dont le résultat GitHub Actions doit être confirmé
-à nouveau. La validation locale par l'utilisateur n'est pas encore faite.
-Le caractère **entièrement fictif** de la recette reste inchangé. Même après réussite, les
+**Statut de recette : 18/18 tests SQL isolés réussis.**
+Le job PostgreSQL 17 éphémère et le job de qualité (tests statiques,
+ESLint, build et fonctions Edge) ont **tous les deux réussi** sur le
+commit `0c36d202`, run GitHub Actions
+[#44317583860](https://github.com/ramon77777/schoolnet/actions/runs/44317583860).
+Un premier cycle 15/15 avait déjà réussi (run `44316739463`).
+Les **18 cas** sont désormais vérifiés en conditions PostgreSQL 17
+fictives uniquement. La validation locale de l'utilisateur n'est pas encore
+faite, et le vrai schéma Supabase + la concurrence à deux sessions
+restent à contrôler avant tout GO de production. Même après réussite, les
 contrôles de concurrence à deux sessions, permissions via véritable
 backend Admin et compatibilité exhaustive avec le schéma existant
 restent à effectuer avant installation.
@@ -141,8 +145,9 @@ de `schoolnet_2.0`. Les fichiers locaux non suivis doivent être préservés.
 
 ## 6. Points encore bloquants
 
-1. Confirmer la nouvelle exécution des **18 cas** du job SQL isolé et corriger tout échec
-   de compilation, de trigger ou de scénario **sur cette branche uniquement**.
+1. **Recette SQL isolée 18/18 validée.** Effectuer maintenant la QA
+   locale `npm run qa:lot5d:c`, `npm run lint`, `npm run build` et
+   examiner les résultats utilisateur avant le GO suivant.
 2. Réaliser l'examen métier du dossier actif 2026–2027 :
    aucun statut modifié automatiquement.
 3. Auditer les usages historiques de `class_students` et
