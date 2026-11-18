@@ -1,5 +1,6 @@
 // src/features/admin/pages/AdminSchoolYears.tsx
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
@@ -162,7 +163,6 @@ export default function AdminSchoolYears() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [activatingId, setActivatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -312,52 +312,6 @@ export default function AdminSchoolYears() {
     }
   }
 
-  async function setCurrentYear(row: SchoolYearRow) {
-    if (row.is_current || activatingId) {
-      return;
-    }
-
-    const ok = window.confirm(
-      `Définir "${row.name}" comme année scolaire active ?`,
-    );
-
-    if (!ok) {
-      return;
-    }
-
-    try {
-      setActivatingId(row.id);
-      setError(null);
-
-      const { error: rpcError } = await supabase.rpc(
-        "admin_set_current_school_year",
-        {
-          p_school_year_id: row.id,
-        },
-      );
-
-      if (rpcError) {
-        throw rpcError;
-      }
-
-      await loadSchoolYears();
-    } catch (err) {
-      console.error(
-        "[AdminSchoolYears] setCurrentYear error:",
-        err,
-      );
-
-      alert(
-        safeErrorMessage(
-          err,
-          "Impossible d’activer cette année scolaire.",
-        ),
-      );
-    } finally {
-      setActivatingId(null);
-    }
-  }
-
   async function deleteSchoolYear(row: SchoolYearRow) {
     if (row.is_current) {
       alert(
@@ -416,6 +370,16 @@ export default function AdminSchoolYears() {
           Gérez les périodes académiques et définissez l’année active.
         </div>
       </div>
+
+      <section role="status" className="sn-card border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        <p className="font-semibold">Passage d'annee controle — Lot 5D-A</p>
+        <p className="mt-1">
+          L'activation directe d'une annee scolaire existante est suspendue pour
+          eviter la cloture implicite ou la perte de coherence des dossiers.
+          La preparation reste consultable en lecture seule dans
+          {" "}<Link to="/app/admin/year-rollover" className="font-semibold underline">Reinscriptions et passage d'annee</Link>.
+        </p>
+      </section>
 
       {user?.isDemo && (
         <div className="sn-card p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200">
@@ -576,21 +540,9 @@ export default function AdminSchoolYears() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="sn-btn-ghost sn-press"
-                        onClick={() => void setCurrentYear(row)}
-                        disabled={
-                          row.is_current ||
-                          activatingId !== null
-                        }
-                      >
-                        {row.is_current
-                          ? "Année active"
-                          : activatingId === row.id
-                            ? "Activation..."
-                            : "Définir active"}
-                      </button>
+                      <span className="sn-btn-ghost cursor-not-allowed opacity-70" title="Activation directe suspendue — Lot 5D-A">
+                        {row.is_current ? "Annee active" : "Activation via passage d'annee"}
+                      </span>
 
                       <button
                         type="button"
