@@ -7,9 +7,9 @@
 >
 > - **Déjà validé en local :** Lot 5D-A 9/9, Lot 5D-B 17/17, lint 0 erreur, build OK, captures Super Admin conformes.
 > - **Audit de Supabase principal :** 43 migrations, année courante 2025–2026 (1 actif) et année cible 2026–2027 (1 actif d'un **autre** élève). Aucune SQL 5D installée, ancienne RPC directe toujours présente côté serveur.
-> - **Préparation nouvelle :** candidat SQL 5D-A+B sous `supabase/proposals/...` (**SANDBOX_ONLY**, pas `migrations/`), déclencheurs de verrouillage de l'année active, décisions, finaliseur privé, journal, idempotence, intégrité S3-C. Fixtures fictives et tests transactionnels PostgreSQL 17 isolés dans GitHub Actions, **résultats à vérifier**.
+> - **Préparation nouvelle :** candidat SQL 5D-A+B sous `supabase/proposals/...` (**SANDBOX_ONLY**, pas `migrations/`), déclencheurs de verrouillage de l'année active, décisions, finaliseur privé, journal, idempotence, intégrité S3-C. Fixtures fictives et tests transactionnels PostgreSQL 17 isolés dans GitHub Actions : **18/18 cas SQL réussis** (run `44317583860`) ; les essais sur le vrai schéma restent à venir.
 > - **PR et production :** `feature/schoolnet-lot5d-a-securisation-20261118`, [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon** ; `main` et projet Vercel existant `schoolnet-snowy.vercel.app` inchangés pour le Lot 5D.
-> - **Prochaine action :** récupérer l'exécution de `npm run qa:lot5d:c`, la recette PostgreSQL 17 éphémère et les captures / retours locaux ; analyser les écarts de schéma, classes et effets legacy avant GO de migration.
+> - **Prochaine action :** faire valider localement `npm run qa:lot5d:c`, lint et build ; la **CI isolée 18/18 est verte**. Vérifier ensuite la fidélité au vrai schéma, l'examen métier du dossier cible, les historiques et la concurrence avant un quelconque GO SQL.
 > - **Interdits :** aucune modification du Supabase principal, aucune réparation automatique du dossier 2026–2027, aucun `supabase db push`, aucune activation directe d'année, aucune ouverture de flag d'écriture, aucun merge `main` ou déploiement Vercel sans autorisation nouvelle.
 
 ---
