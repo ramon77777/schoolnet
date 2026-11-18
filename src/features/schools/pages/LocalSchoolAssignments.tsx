@@ -345,10 +345,11 @@ export default function LocalSchoolAssignments() {
       )}
       {!isDemo && schoolId && activation === "pending" && (
         <div role="status" className="sn-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-bold">🔒 S3-C — Activation du module en attente</p>
+          <p className="font-bold">⚠️ S3-C — Catalogue momentanément indisponible</p>
           <p className="mt-1">
-            Les fonctions et les tables SQL S3-C ne sont pas encore installées
-            dans Supabase. Cette page est préparée pour les tests en lecture seule.
+            S3-C est installé sur Supabase principal, mais le catalogue n'est
+            pas disponible dans cette session. Actualisez la page ou
+            contactez l'administration SCHOOLNET si cela persiste.
           </p>
         </div>
       )}
@@ -394,7 +395,7 @@ export default function LocalSchoolAssignments() {
         ) : (
           <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
             {ready ? "Aucune classe officielle créée dans cet établissement." :
-              "Les classes autorisées apparaîtront après activation du catalogue S3-C."}
+              "Les classes autorisées apparaîtront après chargement du catalogue S3-C."}
           </div>
         )}
         {ready && safeCatalog && safeCatalog.classes.length === 0 && (
