@@ -28,6 +28,8 @@ jobs:
         run: npm run qa:s3b
       - name: Tester la proposition S3-C (sans Supabase)
         run: npm run qa:s3c
+      - name: Verifier la preparation E2E S2-B a S3-C (hors ligne)
+        run: npm run qa:e2e:readiness
       - name: Verifier ESLint
         run: npm run lint
       - name: Compiler TypeScript et Vite
