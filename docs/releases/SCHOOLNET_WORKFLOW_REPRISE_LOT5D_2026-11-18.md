@@ -129,15 +129,19 @@ dans la même branche, sans changement de `main` ou de Supabase principal :
 - `scripts/lot5d/fixture_postgresql17.sql` : profil, classes, année et
   inscriptions **entièrement fictifs** (schéma réduit).
 - `scripts/lot5d/test_consolidated_postgresql17.sql` :
-  15 vérifications SQL en transaction avec `ROLLBACK`, injection d'erreur.
+  **18 vérifications SQL** en transaction avec `ROLLBACK`, injection d'erreur,
+  brouillon cible, départ et réinscription au niveau suivant.
 - `scripts/test-schoolnet-lot5d-consolidated-sandbox.mjs` :
   12 contrôles de structure et de sécurité hors ligne, `npm run qa:lot5d:c`.
 - CI GitHub `schoolnet-quality.yml` : job PostgreSQL 17 **jetable**,
   base `schoolnet_lot5d_ci` sur `127.0.0.1`, sans clé Supabase ni Vercel.
 
-**ATTENTION :** au moment de cette mise à jour, l'exécution des contrôles
-PostgreSQL 17 doit encore être confirmée. La présence du fichier et du job
-CI **ne valide pas** sa syntaxe et sa sûreté réelle. Le candidat n'est
+**Résultats GitHub Actions :** première exécution PostgreSQL 17 sur
+fixtures (15 cas), statiques, lint et build **réussie** (run
+`44316739463`, commit `10d7912`). Le scénario a été enrichi à **18 cas** :
+vérifier la nouvelle exécution avant d'inscrire « 18/18 validés ».
+La présence d'un job vert sur des données fictives **ne valide pas**
+l'installation ni la sûreté sur le vrai schéma Supabase. Le candidat n'est
 pas autorisé pour le SQL Editor principal ni une fusion de PR.
 
 **Politique v1 volontairement plus stricte :** toute ligne de dossier en
@@ -201,7 +205,7 @@ L'année 2025–2026 est toujours courante ; l'année cible 2026–2027
 contient 1 dossier actif **d'un autre apprenant**. La politique actuelle
 côté serveur doit être renforcée avant toute activation.
 
-**Action suivante :** récupérer la **recette 5D-C locale**, les résultats du job SQL PostgreSQL 17 éphémère et les contrôles métier complémentaires. La migration est une **proposition non installée**. Le rapport interdit
+**Action suivante :** récupérer la **recette 5D-C locale**, la nouvelle exécution SQL PostgreSQL 17 éphémère sur 18 cas et les contrôles métier complémentaires. La migration est une **proposition non installée**. Le rapport interdit
 la simple activation du flag de production ou la réutilisation aveugle
 de l'ancienne RPC.
 
@@ -271,8 +275,9 @@ et faire examiner le message.
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
 > 5D-A 9/9 et 5D-B 17/17 testés en local ; audit du principal
 > **SELECT seulement** terminé. **Candidat consolidé 5D-A+B et
-> job PostgreSQL 17 isolé préparés sur GitHub : vérifier QA 5D-C
-> et logs CI avant de déclarer la recette SQL validée.**
+ > job PostgreSQL 17 isolé préparés sur GitHub. Première CI
+> (15 cas) verte ; scénario porté à 18 cas, nouvelle recette CI et
+> validation locale `qa:lot5d:c` à confirmer avant le GO suivant.**
 > 2025–2026 courante : 1 actif ; cible 2026–2027 : 1 actif
 > **pour un élève différent**. Blocage maintenu.
 > **Aucune installation SQL principale, aucun statut de dossier changé,
