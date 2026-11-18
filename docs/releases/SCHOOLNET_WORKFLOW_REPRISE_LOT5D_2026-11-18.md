@@ -333,6 +333,42 @@ modifiée, aucune fusion ni publication de production.** Une copie fidèle
 du schéma avec Storage isolé et une vraie passerelle sécurisée restent
 indispensables ; l'année cible 2026–2027 déjà active demeure bloquante.
 
+### 5D-H : **ARCHIVAGE STORAGE SANS SUPPRESSION DANGEREUSE ET CLASSES HISTORIQUES — CI VALIDÉE, LOCAL À FAIRE**
+
+Le 18/11/2026 sur la PR #15 en brouillon :
+[rapport H](./SCHOOLNET_LOT5DH_ARCHIVES_STORAGE_CLASSES_2026-11-18.md).
+
+- **Correctif interface :** plus de suppression de fichiers ou de métadonnées
+  directement depuis `AdminEnrollmentDocuments.tsx` ; bouton désactivé
+  « Suppression suspendue ». Téléchargement et dépôt conservés.
+- **Dépôt sans effacement compensatoire :** si l'upload Storage réussit
+  mais que l'INSERT de métadonnées n'est pas confirmé, l'objet distant
+  est conservé et une vérification administrative est requise.
+  Une reprise serveur reste à concevoir pour les objets sans registre.
+- **Candidat RLS Storage `SANDBOX_ONLY`** :
+  `supabase/proposals/20261118_schoolnet_lot5dh_storage_delete_SANDBOX_ONLY.sql`
+  remplace `DELETE` sur le bucket par `USING (false)`
+  **seulement dans un PostgreSQL 17 fictif**, sans toucher aux policies
+  de lecture/dépôt. Ce SQL **n'est pas installable** au principal.
+- **Parent :** dernière classe explicitement **historique**,
+  année active non confirmée. Résolveur de classes annuelles
+  `parentYearClassProposal.ts` validé hors réseau,
+  **pas connecté** car `authenticated` n'a pas de SELECT direct
+  sur `student_enrollments`; lecture familiale serveur à construire.
+- **Enseignant :** `TeacherClasses.tsx` affiche des données
+  fictives ; l'avertissement le précise. Le vrai parcours annuel
+  reste à créer via droits propres de l'Enseignant.
+- **CI** : [run #44349058440](https://github.com/ramon77777/schoolnet/actions/runs/44349058440),
+  **7/7 jobs SUCCESS**, `qa:lot5d:h` **24/24** en CI, PG17
+  H valide en isolé, lint et build réussis.
+- **Recette locale H À FAIRE :** A–G déjà **105/105 validés**,
+  H **24/24 attendus**, soit **129/129** après confirmation.
+  Relancer aussi les **10 tests Parent du Lot 5.C** séparément.
+
+**Aucune suppression Storage sécurisée par un backend réel n'existe.
+Aucune migration 5D, aucun rôle nouveau, aucun déploiement** ;
+2026–2027 occupée par un autre élève reste un blocage métier.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -492,6 +528,28 @@ elle ne valide pas un backend Admin réellement authentifié,
 la sécurité des fichiers Storage ni l'installation SQL en
 production. Aucune fonction 5D réelle n'a été installée.
 
+### Prochaine recette locale — Lot 5D-H
+
+La CI **7/7 jobs** et les **24 tests H** sont validés sur GitHub.
+Exécuter dans PowerShell de SCHOOLNET, sans SQL réel :
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:h
+node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu :** H **24/24**, Parent historique **10/10**, ESLint
+zéro erreur (un avertissement préexistant), build Vite réussi,
+fichiers locaux non suivis conservés. **A à G 105/105** restent
+validés ; objectif de cumul **129/129** après la recette H.
+Le SQL Storage H est **SANDBOX_ONLY**, non installable.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -517,7 +575,12 @@ production. Aucune fonction 5D réelle n'a été installée.
    **Garde documentaire SQL insuffisant seul** : l'ordre actuel
    Storage.remove() avant métadonnées doit être protégé côté Storage
    et métier sur un environnement isolé.
-7. Soumettre une future migration finale et son éventuelle installation
+7. **5D-H :** suppression navigateur suspendue, réponse SQL incertaine
+   conservée, politique Storage refusant DELETE seulement en PG17 fictif,
+   et étiquetage Parent/Enseignant corrigé. **24 tests H et 7 jobs CI
+   validés** ; recette locale H à recevoir. La vraie suppression privée,
+   la lecture annuelle parentale et les tests Storage API restent ouverts.
+8. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -550,6 +613,7 @@ production. Aucune fonction 5D réelle n'a été installée.
 > - `docs/releases/SCHOOLNET_LOT5DE_CONCURRENCE_RPC_ARCHIVES_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DF_RPC_COMPLETES_PASSERELLE_ADMIN_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DG_AUDIT_RLS_PASSERELLE_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5DH_ARCHIVES_STORAGE_CLASSES_2026-11-18.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -577,10 +641,18 @@ production. Aucune fonction 5D réelle n'a été installée.
 > garde d'archive adapté ; aucune passerelle Admin réelle
 > (uniquement des adaptateurs mock sans réseau), schéma de test non fidèle
 > à l'intégralité de la production et écrans Parent/Enseignant historiques.
-> **Prochaine phase avec GO distinct :** sécuriser en sandbox la cohérence
-> Storage/métadonnées et le parcours Admin ; étudier les lecteurs
-> de classe Parent/Enseignant et la véritable passerelle privée.
-> **Aucune migration, aucune fusion ni aucun déploiement autorisé.**
+> **Lot 5D-H en CI validé** : [run #44349058440](https://github.com/ramon77777/schoolnet/actions/runs/44349058440)
+> **7/7 jobs SUCCESS** et **24/24 tests H** hors réseau.
+> Suppression navigateur suspendue, fichier conservé si SQL
+> non confirmé ; politique Storage H en **SANDBOX_ONLY**.
+> Parent/Enseignant distinguent classe historique et données fictives ;
+> accès Parent à l'année active pas encore implémenté.
+> **Prochaine action : recette locale `qa:lot5d:h` 24/24 +
+> tests Parent historiques 10/10, lint, build** ;
+> A–G **105/105** déjà validés, objectif A–H **129/129**.
+> **Après GO distinct** : vraie passerelle Admin, correction Storage
+> côté serveur avec reprise, lecture annuelle Parent/Enseignant et
+> tests Auth/Storage fidèles. **Aucune migration ni déploiement.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
