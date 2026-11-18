@@ -155,6 +155,50 @@ et les historiques enseignants.
 2026–2027 appartient à un autre élève que celui actif en 2025–2026,
 mais empêche néanmoins la bascule. Aucune régularisation automatique.
 
+### 5D-D : **COMPATIBILITÉ RÉELLE AUDITÉE EN LECTURE SEULE + TESTS CONCURRENTS PRÉPARÉS**
+
+Le 18/11, l'utilisateur a confirmé les résultats locaux précédents :
+**5D-A 9/9, 5D-B 17/17, 5D-C 12/12, lint 0 erreur (1 avertissement connu),
+build Vite réussi, Git fast-forward OK**. Les fichiers non suivis sont conservés.
+
+Nouveaux travaux **sur la même branche / PR #15** :
+
+- [Rapport de compatibilité réelle, concurrence et passerelle Admin](./SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md).
+  Inspection de `pg_catalog`, `information_schema` et fonctions/triggers
+  du **Supabase principal avec SELECT uniquement** : 43 migrations, 1 année
+  courante, 1 dossier actif source, 1 dossier actif cible distinct,
+  aucune migration 5D installée.
+- `scripts/lot5d/fixture_postgresql17.sql` renforcé : copie **synthétique**
+  du trigger `ensure_student_single_class_per_school_year` et contrôle
+  de rôle élève (`validate_class_student_role`).
+- `scripts/lot5d/schema_compatibility_postgresql17.sql` : vérifie que
+  l'élève fictif ne peut rejoindre deux classes dans la même année.
+- `scripts/lot5d/run_concurrency_postgresql17.sh` + quatre fichiers SQL
+  de préparation/deux sessions/postcontrôle : le premier commit laisse une
+  transaction ouverte, le second client doit subir un `lock timeout`,
+  puis le replay identique est idempotent et un autre `operation_id` rejeté.
+- `scripts/lot5d/authorization_postgresql17.sql` :
+  vérifie accès Admin, refus étudiant et `anon` à la fonction privée,
+  ainsi que blocage de l'activation directe y compris pour Admin.
+- `scripts/lot5d/admin_gateway_contract_mock.mjs` :
+  **référence pure non déployée**, sans réseau ni SQL ; contrôle du contrat
+  de requête (origine sandbox, identité serveur, rôle global, JSON strict).
+- `scripts/test-schoolnet-lot5d-d-readiness.mjs` :
+  **15 tests statiques** dans `npm run qa:lot5d:d`, complétant les contrôles
+  d'intégration PostgreSQL de la CI.
+
+**Statut :** le job PostgreSQL 17 éphémère enrichi (concurrence, contraintes
+et autorisations) est exécuté uniquement sur données fictives. Conserver
+une distinction entre **CI vérifiée** et **recette locale utilisateur**.
+Aucun nouveau service/endpoint Admin n'a été créé. Toutes les écritures
+5D restent interdites sur le Supabase principal.
+
+**Risques non clos** : interactions concurrentes avec les RPC historiques,
+lecture des anciens `class_students` dans les interfaces Parent/Enseignant,
+fidélité de tous les triggers du vrai schéma et qualification métier du
+dossier cible déjà actif. Une authentification réelle de la passerelle et
+un rôle SQL dédié sont à concevoir avant un GO de migration.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -193,41 +237,35 @@ sont documentées dans le rapport, sans révocation globale imprudente.
 - Ne jamais modifier ou « corriger » le dossier actif 2026–2027 par déduction
   ou à partir de la date système. Faire un audit métier et un choix approuvé.
 
-## 5. Étape IMMÉDIATE à la reprise — après validation locale et audit serveur
+## 5. Étape IMMÉDIATE — recette locale 5D-D après CI isolée
 
-**Réalisé et validé :** branche GitHub synchronisée jusqu'au commit
-`b20b3ee` avant l'audit, tests `qa:lot5d:a` 9/9 et `qa:lot5d:b`
-17/17, ESLint 0 erreur, build Vite OK, deux captures des interfaces
-Super Admin conformes. Aucun test SQL de mutation en production.
+**Validé par l'utilisateur** : `qa:lot5d:a` 9/9, `qa:lot5d:b` 17/17,
+`qa:lot5d:c` 12/12, lint 0 erreur et build Vite réussi.
+Tous les fichiers non suivis ont été **conservés** après fast-forward
+sur `feature/schoolnet-lot5d-a-securisation-20261118`.
 
-**Audit en lecture seule terminé :**
-[rapport d'audit 5D-B](./SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md).
-L'année 2025–2026 est toujours courante ; l'année cible 2026–2027
-contient 1 dossier actif **d'un autre apprenant**. La politique actuelle
-côté serveur doit être renforcée avant toute activation.
-
-**Action suivante :** faire la **recette 5D-C locale** (la CI SQL isolée est désormais verte 18/18), puis vérifier les contrôles métier et les dépendances avant une éventuelle proposition d'installation. La migration est une **proposition non installée**. Le rapport interdit
-la simple activation du flag de production ou la réutilisation aveugle
-de l'ancienne RPC.
-
-Si une synchronisation documentaire locale est souhaitée, utiliser
-uniquement :
+**Prochaine vérification locale ciblée (aucune écriture SQL)** :
+mettre à jour la branche puis lancer la recette D, lint et build.
 
 ```powershell
 git status --short
 git branch --show-current
 git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:a
-npm run qa:lot5d:b
-npm run qa:lot5d:c
+npm run qa:lot5d:d
 npm run lint
 npm run build
+git status --short
 ```
 
-Les fichiers locaux hors suivi et `tsconfig.app.tsbuildinfo` modifié
-doivent être conservés ; **ne pas** utiliser `git clean -fd`,
-`git reset --hard` ni `supabase db push`. Sur refus Git, s'arrêter
-et faire examiner le message.
+Attendu : **15 tests D** et aucun échec, puis lint 0 erreur
+(1 warning React Hook déjà connu) et build réussi.
+Si `git pull --ff-only` refuse, **ne pas forcer**.
+Les fichiers locaux hors suivi et `tsconfig.app.tsbuildinfo` restent
+à conserver sans `git clean -fd`, `git reset --hard` ni stash destructeur.
+**Aucun `supabase db push`, SQL Editor, changement de statut, merge ou Vercel**.
+
+Le candidat `SANDBOX_ONLY.sql` reste une **proposition**. Le module Admin
+historique est toujours en lecture seule pour le passage d'année.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -235,17 +273,17 @@ et faire examiner le message.
 1. **Audit technique terminé en lecture seule.** Examen métier du
    dossier actif 2026–2027 par un responsable habilité : **à faire**,
    sans changement de statut automatique.
-2. **Candidat SQL consolidé sur GitHub : préparé.**
-   Vérifier maintenant la **recette réelle GitHub Actions PostgreSQL 17
-   jetable**, les assertions JS statiques et les retours QA locaux.
-3. Formaliser la politique d'année SCHOOLNET globale et le parcours
+2. **Candidat consolidé / 18 tests SQL isolés validés ;** le job
+   de concurrence, permissions et classe a été ajouté. Lire le résultat
+   GitHub Actions et demander la recette locale `qa:lot5d:d`.
+3. Définir la politique d'année SCHOOLNET globale et le parcours
    des établissements ; la gestion S3-C reste **distincte**.
-4. Compléter la recette fidèle au vrai schéma et tester **deux sessions
-   concurrentes** (le premier job utilise des fixtures synthétiques) ;
-   vérifier les listes historiques et le backend Admin privé.
-5. Ne soumettre une migration finale et sa potentielle installation
-   dans le principal **qu'après nouvelle autorisation distincte**,
-   sauvegarde et contrôles de préflight. Aucune écriture réelle actuellement.
+4. Compléter la recette fidèle au vrai schéma, tester la **concurrence croisée
+   avec les RPC historiques**, vérifier les listes Parent/Enseignant et préparer
+   un véritable backend Admin avec rôle SQL privé et vérification Auth.
+5. Soumettre une future migration finale et son éventuelle installation
+   dans le principal **uniquement sous nouveaux GO distincts**,
+   après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
 **APRÈS ACTIVATION SQL AUTORISÉE** :
 - Recette métier contrôlée, puis fusion PR #15 et publication sur le **Vercel
@@ -268,20 +306,24 @@ et faire examiner le message.
 
 ## 8. Règle de reprise
 
-> **Prochaine conversation SCHOOLNET :**
-> Lire `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`,
-> `docs/releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md`
-> et `docs/releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md`.
+> **À lire en premier lors de la prochaine conversation SCHOOLNET :**
+> - `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md`
+>
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
-> PR #15 **brouillon**, `main` et Vercel existant inchangés.
-> 5D-A 9/9 et 5D-B 17/17 testés en local ; audit du principal
-> **SELECT seulement** terminé. **Candidat consolidé 5D-A+B et
- > job PostgreSQL 17 isolé préparés sur GitHub. **CI SQL
-> 18/18 et qualité complète vertes** (run `44317583860`).
-> Recette locale `qa:lot5d:c` à confirmer par l'utilisateur avant
-> tout GO suivant.**
-> 2025–2026 courante : 1 actif ; cible 2026–2027 : 1 actif
-> **pour un élève différent**. Blocage maintenu.
-> **Aucune installation SQL principale, aucun statut de dossier changé,
-> aucun flag d'écriture activé, aucune fusion `main`, aucune
-> publication Vercel sans accord distinct.**
+> PR #15 **brouillon** ; `main` et Vercel existant inchangés.
+> Recette locale **A9/9 B17/17 C12/12 réussie** et build OK ;
+> recette `qa:lot5d:d` **à faire sur le PC**.
+> Audit réel **lecture seule**, 43 migrations, classe unique par année,
+> ancienne RPC directe encore présente en Supabase.
+> Candidat transactionnel SQL privé non installé ; job PG17 de concurrence
+> et de permissions sur données fictives en CI ; lire les logs de CI
+> avant de considérer ce jalon comme validé.
+> Année 2025–2026 courante (1 actif), cible 2026–2027 (1 actif
+> **d'un élève différent**), blocage métier maintenu.
+>
+> **Pas de modification des dossiers réels, aucune installation SQL
+> principale, aucun flag d'écriture, aucune fusion `main` et aucune
+> publication Vercel sans nouvelle autorisation explicite.**
