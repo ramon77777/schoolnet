@@ -1,5 +1,89 @@
 # SCHOOLNET 2.0 — S3-C | Affectations scolaires par établissement
 
+## ACTUALISATION OFFICIELLE — S3-C INSTALLE LE 18 NOVEMBRE 2026
+
+Cette section décrit **l'état actuel**. Les mentions « NON installé » dans
+l'historique de préparation conservé plus bas ne sont plus d'actualité.
+
+- **Projet :** Supabase principal `schoolnet_2.0` (ACTIVE_HEALTHY).
+- **Version appliquée :**
+  `20261118083254_schoolnet_s3c_class_assignments`, enregistrée
+  **une seule fois** dans `supabase_migrations.schema_migrations`.
+- **Migration canonique :**
+  `supabase/migrations/20261118083254_schoolnet_s3c_class_assignments.sql`.
+  Ce fichier versionne la proposition déjà appliquée :
+  **ne pas la rejouer** sur la base principale et ne pas utiliser
+  `supabase db push`.
+- **Périmètre installé :** 3 tables isolées
+  (`schoolnet_school_student_class_assignments`,
+  `schoolnet_school_teacher_subject_assignments`,
+  `schoolnet_school_assignment_events`) ; 5 façades publiques
+  `SECURITY INVOKER` ; helpers privés de contrôle d'accès,
+  triggers de validation des affiliations et actions de journalisation.
+- **Droits confirmés après installation :** RLS active sur les 3 tables ;
+  aucune table accessible directement en SELECT/INSERT par
+  `authenticated` ; aucune des 5 RPC exécutable par `anon` ;
+  accès RPC `authenticated` soumis aux contrôles serveur
+  (`auth.uid()`, rôle `school_admin`, établissement actif).
+- **Recette SQL post-installation :** PASS avec
+  `BEGIN … ROLLBACK`, script
+  `supabase/verification/20261117_s3c_class_assignments_rollback.sql`.
+  Les scénarios école A/B, identité, matières, unicité par année,
+  révocation/réactivation, changement de classe, Preview/Origin,
+  suspension d'affiliation, administrateur révoqué, permissions
+  directes et journal des 11 mouvements ont réussi.
+- **Contrôle après ROLLBACK :** toujours 0 classe officielle,
+  0 affectation officielle élève, 0 affectation officielle enseignant,
+  0 mouvement en journal S3-C, 1 seule affiliation administrative,
+  2 classes legacy, 2 `class_students`, 2 `class_teachers`,
+  2 `student_enrollments` et 5 événements d'audit historiques.
+  Aucune donnée test n'a été conservée.
+- **Conseillers de sécurité Supabase :** relevé après migration ;
+  les 3 nouveaux avis INFO `rls_enabled_no_policy` correspondent
+  volontairement aux 3 nouvelles tables sans politiques directes :
+  RLS activée, droits SQL directs retirés et lecture/écriture par RPC
+  privées uniquement. Les autres catégories d'avis existaient déjà
+  avant l'installation ; elles seront suivies dans une phase d'audit.
+- **Validation locale avant installation :** capture de la page S3-C,
+  15/15 tests `npm run qa:s3c`, et compilation précédemment réussie.
+- **Validation locale après installation : à réaliser.** Page, tableau
+  de bord et test n°14 mis à jour pour la migration réelle ; nouveau
+  contrôle sur Windows nécessaire avant clôture finale de la recette UI.
+- **Sauvegardes :** aucune sauvegarde intégrale récente ni
+  restauration complète ne peut être attestée via les accès disponibles.
+  La sauvegarde applicative antérieure conservée sur le PC utilisateur
+  ne constitue pas une sauvegarde de reprise actuelle. La migration
+  additive s'est déroulée transactionnellement, avec recette réversible,
+  sans remplacer un PRA.
+- **GitHub :** PR #14 maintenue ouverte en brouillon ; aucun merge,
+  aucune promotion Vercel Production lancée. Des déploiements Preview
+  automatiques peuvent exister, sans autoriser les mutations locales.
+
+### Reprise Windows — vérification post-installation S3-C
+
+```powershell
+git pull --ff-only origin feature/schoolnet-s2a-classes-tenant-qa
+npm run qa:s3c
+npm run lint
+npm run build
+npm run dev
+```
+
+Ouvrir `http://localhost:5173/app/school/assignments` en tant
+qu'administrateur d'établissement. Attendu : menu **Affectations**,
+école `SCH-000001`, bandeau bleu lecture seule ; **disparition du
+bandeau jaune « Activation du module en attente »** et catalogue
+chargé (0 classe officielle actuellement). Les écritures restent
+bloquées sur localhost / Previews Vercel.
+
+Les mutations réelles doivent être testées sur le domaine officiel
+uniquement après publication autorisée, sans dégrader les données
+historiques. Aucune affectation ne se crée automatiquement par l'installation.
+
+---
+
+## HISTORIQUE DE PRÉPARATION S3-C — 17 NOVEMBRE 2026
+
 **Date : 17 novembre 2026**  
 **Statut : GitHub (code React + proposition SQL + recette transactionnelle).**
 **S3-C NON installé définitivement sur Supabase, aucune publication Vercel Production, PR n°14 toujours draft.**
