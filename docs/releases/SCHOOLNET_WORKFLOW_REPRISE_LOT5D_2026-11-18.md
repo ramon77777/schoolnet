@@ -116,6 +116,40 @@ La source et la cible ont chacune 1 dossier actif, pour **deux élèves différe
 aucune fonction serveur n'est installée.** Ce jalon constitue un diagnostic
 et une spécification sécurisée, pas une activation.
 
+### 5D-A+B, phase C : **CANDIDAT TRANSACTIONNEL PREPARE SUR GITHUB — NON INSTALLE**
+
+Suite à l'autorisation de conception, les livrables suivants sont présents
+dans la même branche, sans changement de `main` ou de Supabase principal :
+
+- [Dossier de conception du candidat SQL consolidé](./SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md).
+- `supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql` :
+  **SQL exécutable seulement en PostgreSQL isolé**, pas dans `supabase/migrations/`.
+  Garde SQL anti-bascule directe, registre de décisions, journal et finaliseur
+  privé, verrouillage, contrôle des droits, RLS, idempotence et rollback.
+- `scripts/lot5d/fixture_postgresql17.sql` : profil, classes, année et
+  inscriptions **entièrement fictifs** (schéma réduit).
+- `scripts/lot5d/test_consolidated_postgresql17.sql` :
+  15 vérifications SQL en transaction avec `ROLLBACK`, injection d'erreur.
+- `scripts/test-schoolnet-lot5d-consolidated-sandbox.mjs` :
+  12 contrôles de structure et de sécurité hors ligne, `npm run qa:lot5d:c`.
+- CI GitHub `schoolnet-quality.yml` : job PostgreSQL 17 **jetable**,
+  base `schoolnet_lot5d_ci` sur `127.0.0.1`, sans clé Supabase ni Vercel.
+
+**ATTENTION :** au moment de cette mise à jour, l'exécution des contrôles
+PostgreSQL 17 doit encore être confirmée. La présence du fichier et du job
+CI **ne valide pas** sa syntaxe et sa sûreté réelle. Le candidat n'est
+pas autorisé pour le SQL Editor principal ni une fusion de PR.
+
+**Politique v1 volontairement plus stricte :** toute ligne de dossier en
+année cible (`draft`, `active`, `completed`, `withdrawn`,
+`cancelled`) bloque le passage. Les anciennes affectations `class_students`
+sont conservées ; il faudra tester les effets sur les listes d'élèves
+et les historiques enseignants.
+
+**Verrou métier persistant :** le dossier actif déjà présent dans
+2026–2027 appartient à un autre élève que celui actif en 2025–2026,
+mais empêche néanmoins la bascule. Aucune régularisation automatique.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -167,9 +201,7 @@ L'année 2025–2026 est toujours courante ; l'année cible 2026–2027
 contient 1 dossier actif **d'un autre apprenant**. La politique actuelle
 côté serveur doit être renforcée avant toute activation.
 
-**Action suivante soumise à accord distinct :** préparer sur GitHub la
-**migration SQL consolidée 5D-A+B** et les scénarios de tests sur
-environnement isolé, **sans installation**. Le rapport interdit
+**Action suivante :** récupérer la **recette 5D-C locale**, les résultats du job SQL PostgreSQL 17 éphémère et les contrôles métier complémentaires. La migration est une **proposition non installée**. Le rapport interdit
 la simple activation du flag de production ou la réutilisation aveugle
 de l'ancienne RPC.
 
@@ -180,6 +212,11 @@ uniquement :
 git status --short
 git branch --show-current
 git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:a
+npm run qa:lot5d:b
+npm run qa:lot5d:c
+npm run lint
+npm run build
 ```
 
 Les fichiers locaux hors suivi et `tsconfig.app.tsbuildinfo` modifié
@@ -189,21 +226,21 @@ et faire examiner le message.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
-**5D-B / ÉTAPE DE CONCEPTION SERVEUR (EN ATTENTE D'AUTORISATION)** :
+**5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
 1. **Audit technique terminé en lecture seule.** Examen métier du
    dossier actif 2026–2027 par un responsable habilité : **à faire**,
    sans changement de statut automatique.
-2. Concevoir sur GitHub la migration SQL **consolidée** 5D-A+B :
-   neutralisation du changement direct de l'année, vérifications
-   transactionnelles, rôles serveur, isolement S3-C, journal et idempotence.
+2. **Candidat SQL consolidé sur GitHub : préparé.**
+   Vérifier maintenant la **recette réelle GitHub Actions PostgreSQL 17
+   jetable**, les assertions JS statiques et les retours QA locaux.
 3. Formaliser la politique d'année SCHOOLNET globale et le parcours
-   des établissements, sans mélanger inscriptions legacy et affectations.
-4. Tester sur environnement **isolé avec données fictives** :
-   cas conformes et rejets, concurrence, RLS, journal et `ROLLBACK`.
-   Aucun test mutateur dans Supabase principal.
-5. Demander une **autorisation distincte** pour installer une migration
-   consolidée et ciblée dans le projet principal après sauvegarde et
-   contrôles de préflight ; ensuite seulement, recette métier réelle.
+   des établissements ; la gestion S3-C reste **distincte**.
+4. Compléter la recette fidèle au vrai schéma et tester **deux sessions
+   concurrentes** (le premier job utilise des fixtures synthétiques) ;
+   vérifier les listes historiques et le backend Admin privé.
+5. Ne soumettre une migration finale et sa potentielle installation
+   dans le principal **qu'après nouvelle autorisation distincte**,
+   sauvegarde et contrôles de préflight. Aucune écriture réelle actuellement.
 
 **APRÈS ACTIVATION SQL AUTORISÉE** :
 - Recette métier contrôlée, puis fusion PR #15 et publication sur le **Vercel
@@ -227,16 +264,17 @@ et faire examiner le message.
 ## 8. Règle de reprise
 
 > **Prochaine conversation SCHOOLNET :**
-> Reprendre à partir de
-> `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`
-> et de
-> `docs/releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md`.
+> Lire `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`,
+> `docs/releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md`
+> et `docs/releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md`.
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
-> PR #15 **brouillon**, main et Vercel inchangés.
-> **5D-A validé localement ; 5D-B diagnostic local validé (17/17) et
-> audit SQL lecture seule terminé.** Année 2025–2026 courante,
-> 1 actif source / 1 actif cible **pour deux élèves différents**.
-> Avant toute suite SQL : qualifier le dossier cible et obtenir
-> un GO distinct pour concevoir le finaliseur transactionnel en GitHub
-> et le tester en isolation. **Pas de SQL en production, pas de
-> passage d'année, pas de fusion, pas de Vercel sans autorisation.**
+> PR #15 **brouillon**, `main` et Vercel existant inchangés.
+> 5D-A 9/9 et 5D-B 17/17 testés en local ; audit du principal
+> **SELECT seulement** terminé. **Candidat consolidé 5D-A+B et
+> job PostgreSQL 17 isolé préparés sur GitHub : vérifier QA 5D-C
+> et logs CI avant de déclarer la recette SQL validée.**
+> 2025–2026 courante : 1 actif ; cible 2026–2027 : 1 actif
+> **pour un élève différent**. Blocage maintenu.
+> **Aucune installation SQL principale, aucun statut de dossier changé,
+> aucun flag d'écriture activé, aucune fusion `main`, aucune
+> publication Vercel sans accord distinct.**
