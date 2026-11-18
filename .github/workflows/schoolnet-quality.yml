@@ -28,6 +28,8 @@ jobs:
         run: npm run lint
       - name: Compiler l'application Vite/TypeScript
         run: npm run build
+      - name: Verifier Lot 5D-A (lecture seule, sans acces Supabase)
+        run: npm run qa:lot5d:a
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
