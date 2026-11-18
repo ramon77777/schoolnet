@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { areSchoolClassesReadOnly } from "@/features/schools/lib/schoolClassWritePolicy";
 import { getAdminSchools, type SchoolRecord } from "@/features/schools/lib/schoolManagementApi";
 import {
   createLocalSchoolClass,
@@ -15,6 +16,9 @@ import {
 export default function LocalSchoolClasses() {
   const { user, loading: authLoading } = useAuth();
   const isDemo = Boolean(user?.isDemo);
+  // Lecture seule dans toutes les Previews Vercel et sur localhost.
+  // Une création ne peut partir que de la production officielle.
+  const readOnlyPreview = areSchoolClassesReadOnly();
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
   const [schoolsLoading, setSchoolsLoading] = useState(true);
@@ -114,6 +118,7 @@ export default function LocalSchoolClasses() {
   const name = className.trim().replace(/\s+/g, " ");
   const canSave = Boolean(
     ready && !saving && !schoolsLoading && user?.id && !isDemo &&
+    !readOnlyPreview &&
     name.length >= 2 && name.length <= 100 &&
     safeCatalog?.levels.some((row) => String(row.id) === levelId) &&
     safeCatalog?.school_years.some((row) => row.id === schoolYearId)
@@ -121,7 +126,7 @@ export default function LocalSchoolClasses() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSave || !selectedSchoolId || !safeCatalog) return;
+    if (!canSave || readOnlyPreview || !selectedSchoolId || !safeCatalog) return;
     try {
       setSaving(true);
       setFormError(null);
@@ -160,7 +165,8 @@ export default function LocalSchoolClasses() {
               Gestion des classes
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Créez et organisez les classes officielles de votre établissement.
+              Consultez et organisez les classes officielles de votre établissement.
+              La création est réservée au site officiel et aux administrateurs habilités.
               Les groupes d'apprenants libres et les cours à domicile restent indépendants.
             </p>
           </div>
@@ -212,13 +218,24 @@ export default function LocalSchoolClasses() {
           Mode démonstration : aucune création ou lecture de données privées n'est autorisée.
         </p>
       )}
+      {readOnlyPreview && !isDemo && (
+        <div role="status" className="sn-card space-y-2 border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-bold">Prévisualisation SCHOOLNET — lecture seule</p>
+          <p>
+            S2-A est installée sur Supabase. Ce navigateur utilise un aperçu ou
+            un environnement local : aucune classe ne peut être créée depuis ici,
+            même si les fonctions S2-B deviennent disponibles sur le serveur.
+            Les classes autorisées peuvent être consultées ici après chargement du catalogue.
+          </p>
+        </div>
+      )}
       {selectedSchoolId && activation === "pending" && !isDemo && (
         <div role="status" className="sn-card space-y-2 border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
           <p className="font-bold">🔒 Activation du module en attente</p>
           <p>
-            Le formulaire est préparé sur notre Preview, mais les protections S2-A et les
-            fonctions S2-B n'ont pas encore été activées dans Supabase.
-            Aucune classe ne peut être créée avant validation.
+            S2-B est installé sur Supabase principal, mais son catalogue n'a pas
+            été trouvé par l'API utilisée dans cette session. Actualisez la page
+            ou contactez l'administration SCHOOLNET si le problème persiste.
           </p>
         </div>
       )}
@@ -302,7 +319,7 @@ export default function LocalSchoolClasses() {
               </p>
             )}
             <button type="submit" className="sn-btn-primary w-full" disabled={!canSave}>
-              {saving ? "Création en cours…" : "Créer la classe"}
+              {saving ? "Création en cours…" : readOnlyPreview ? "Aperçu en lecture seule" : "Créer la classe"}
             </button>
             <p className="text-xs leading-5 text-slate-500">
               Les élèves, enseignants, notes et bulletins ne sont pas affectés automatiquement.
@@ -335,8 +352,8 @@ export default function LocalSchoolClasses() {
           )}
           {!ready && (
             <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-              Les classes scolaires apparaîtront ici après l'activation et la validation
-              des règles d'isolation en base.
+              La liste des classes apparaîtra après chargement du catalogue et
+              vérification des autorisations de votre établissement.
             </p>
           )}
           {visibleClasses.map((item) => (

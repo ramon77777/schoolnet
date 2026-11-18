@@ -69,13 +69,26 @@ export default function LocalSchoolDashboard() {
       <section className="sn-card space-y-3 p-5 md:p-6">
         <h2 className="text-lg font-bold text-slate-950">Modules scolaires</h2>
         <p className="text-sm leading-6 text-slate-600">
-          La gestion des classes, enseignants, apprenants, bulletins et documents sera
-          activée progressivement, après vérification de l'isolation des données
-          entre établissements. Aucun accès global n'est attribué à ce compte.
+          Les classes (S2-A/S2-B), les enseignants (S3-A) et les élèves
+          (S3-B) sont activés côté serveur, avec contrôle des droits locaux.
+          Les affectations pédagogiques (S3-C) sont désormais installées
+          côté serveur, avec contrôle des droits de l'établissement. Les modifications sont réservées
+          au site officiel SCHOOLNET. Les bulletins et les autres modules
+          seront ouverts ensuite, un par un.
+          Aucun accès global n'est attribué à ce compte.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link to="/app/school/classes" className="sn-btn-ghost inline-flex">
-            Préparer mes classes
+            Consulter mes classes
+          </Link>
+          <Link to="/app/school/teachers" className="sn-btn-ghost inline-flex">
+            Consulter mes enseignants
+          </Link>
+          <Link to="/app/school/students" className="sn-btn-ghost inline-flex">
+            Consulter mes élèves
+          </Link>
+          <Link to="/app/school/assignments" className="sn-btn-ghost inline-flex">
+            Consulter les affectations
           </Link>
           <Link to="/app/profile" className="sn-btn-ghost inline-flex">
             Consulter mon profil

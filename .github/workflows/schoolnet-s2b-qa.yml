@@ -1,0 +1,38 @@
+name: SCHOOLNET S2-B, S3-A, S3-B et S3-C - QA sans deploiement
+on:
+  push:
+    branches:
+      - feature/schoolnet-s2a-classes-tenant-qa
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  s2b:
+    name: S2-B/S3-A/S3-B/S3-C tests, lint et build (hors ligne)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les dependances
+        run: npm ci --no-audit --no-fund
+      - name: Tester les garde-fous S2-B (sans Supabase)
+        run: npm run qa:s2b
+      - name: Tester la preparation S3-A (sans Supabase)
+        run: npm run qa:s3a
+      - name: Tester la preparation S3-B (sans Supabase)
+        run: npm run qa:s3b
+      - name: Tester la proposition S3-C (sans Supabase)
+        run: npm run qa:s3c
+      - name: Verifier la preparation E2E S2-B a S3-C (hors ligne)
+        run: npm run qa:e2e:readiness
+      - name: Verifier la preparation du sandbox isole (hors ligne)
+        run: npm run qa:sandbox:prepare
+      - name: Verifier ESLint
+        run: npm run lint
+      - name: Compiler TypeScript et Vite
+        run: npm run build

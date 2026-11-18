@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
+import {
+  areSchoolClassesReadOnly,
+  SCHOOL_CLASS_PREVIEW_READ_ONLY_MESSAGE,
+} from "./schoolClassWritePolicy";
 
 export type SchoolClassLevel = {
   id: number;
@@ -35,25 +39,26 @@ type SupabaseLikeError = {
 };
 
 /**
- * Les deux RPC du lot S2-B ne sont pas déployées dans Supabase tant que
- * l'activation des lots S2-A et S2-B n'a pas été approuvée.
- * Une fonction absente est un état « en attente », pas une création réussie.
+ * S2-A est installée. Les deux RPC S2-B restent une proposition non
+ * appliquée ; une fonction absente est « activation en attente ».
+ * Une erreur de colonne ou SQL n'est PAS confondue avec cette attente.
  */
 export function isSchoolClassesActivationPending(cause: unknown): boolean {
   const error = (cause ?? {}) as SupabaseLikeError;
   const message = [error.message, error.details].filter(Boolean).join(" ").toLowerCase();
   return (
     error.code === "PGRST202" ||
-    error.code === "42703" ||
-    error.code === "PGRST204" ||
-    (message.includes("schoolnet_school_class_catalog") &&
-      (message.includes("schema cache") || message.includes("not find"))) ||
-    (message.includes("school_id") && message.includes("does not exist"))
+    ((message.includes("schoolnet_school_class_catalog") ||
+      message.includes("schoolnet_school_create_class")) &&
+      (message.includes("schema cache") || message.includes("not find")))
   );
 }
 
 export function schoolClassErrorMessage(cause: unknown): string {
   const error = (cause ?? {}) as SupabaseLikeError;
+  if (error.message === SCHOOL_CLASS_PREVIEW_READ_ONLY_MESSAGE) {
+    return SCHOOL_CLASS_PREVIEW_READ_ONLY_MESSAGE;
+  }
   if (error.code === "23505") {
     return "Une classe portant ce nom existe déjà dans cet établissement pour cette année scolaire.";
   }
@@ -122,6 +127,13 @@ export async function createLocalSchoolClass(input: {
   schoolYearId: string;
   name: string;
 }): Promise<string> {
+  // Protection au niveau du client API : même si le formulaire est appelé
+  // depuis du code personnalisé, aucune RPC de création ne part de Preview
+  // Vercel, localhost ou d'un projet Supabase autre que SCHOOLNET principal.
+  // Ce garde-fou n'est pas une barrière d'authentification.
+  if (areSchoolClassesReadOnly()) {
+    throw new Error(SCHOOL_CLASS_PREVIEW_READ_ONLY_MESSAGE);
+  }
   // Jamais d'INSERT direct sur classes : tous les contrôles sont côté SQL.
   const { data, error } = await supabase.rpc("schoolnet_school_create_class", {
     p_school_id: input.schoolId,
