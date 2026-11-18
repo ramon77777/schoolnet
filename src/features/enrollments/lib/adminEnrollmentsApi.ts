@@ -63,6 +63,8 @@ export type EnrollmentClass = {
   name: string;
   school_year_id: string | null;
   school_year: string;
+  school_id: string | null;
+  learning_context: string | null;
 };
 
 export type EnrollmentStudent = {
@@ -128,7 +130,7 @@ export async function getAdminEnrollmentCatalog(): Promise<EnrollmentCatalog> {
       .order("starts_on", { ascending: false }),
     supabase
       .from("classes")
-      .select("id, name, school_year_id, school_year")
+      .select("id, name, school_year_id, school_year, school_id, learning_context")
       .order("name", { ascending: true }),
     supabase
       .from("profiles")
