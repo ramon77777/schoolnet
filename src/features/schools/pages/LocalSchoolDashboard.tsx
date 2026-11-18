@@ -71,8 +71,8 @@ export default function LocalSchoolDashboard() {
         <p className="text-sm leading-6 text-slate-600">
           Les classes (S2-A/S2-B), les enseignants (S3-A) et les élèves
           (S3-B) sont activés côté serveur, avec contrôle des droits locaux.
-          Les affectations pédagogiques (S3-C) sont préparées mais restent
-          en attente d'installation SQL. Les modifications sont réservées
+          Les affectations pédagogiques (S3-C) sont désormais installées
+          côté serveur, avec contrôle des droits de l'établissement. Les modifications sont réservées
           au site officiel SCHOOLNET. Les bulletins et les autres modules
           seront ouverts ensuite, un par un.
           Aucun accès global n'est attribué à ce compte.
@@ -88,7 +88,7 @@ export default function LocalSchoolDashboard() {
             Consulter mes élèves
           </Link>
           <Link to="/app/school/assignments" className="sn-btn-ghost inline-flex">
-            Préparer les affectations
+            Consulter les affectations
           </Link>
           <Link to="/app/profile" className="sn-btn-ghost inline-flex">
             Consulter mon profil
