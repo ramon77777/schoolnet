@@ -20,13 +20,15 @@ cleanup() {
 }
 trap cleanup EXIT
 psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/concurrency_prepare.sql >"$workdir/prepare.log" 2>&1
-psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/concurrency_session_a.sql >"$workdir/session_a.log" 2>&1 &
+PGAPPNAME=schoolnet_5d_race_a psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/concurrency_session_a.sql >"$workdir/session_a.log" 2>&1 &
 pid_a=$!
 
-# Readiness emitted only after successful finalizer within still-open transaction A.
+# Wait until the database observes A sleeping AFTER the successful finalizer
+# while its transaction remains open. This is stronger than stdout buffering.
 ready=0
 for attempt in $(seq 1 150); do
-  if grep -q 'SESSION_A_FINALIZED_UNCOMMITTED' "$workdir/session_a.log"; then
+  active=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM pg_catalog.pg_stat_activity WHERE application_name='schoolnet_5d_race_a' AND state='active' AND query LIKE '%pg_sleep(11)%'")
+  if [[ "$active" = "1" ]]; then
     ready=1
     break
   fi
