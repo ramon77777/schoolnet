@@ -93,9 +93,17 @@ puis confirme qu'une seconde connexion est bloquée par les verrous de table
 jusqu'au délai prévu. Ce résultat ne prouve **pas encore** l'absence de
 deadlocks avec **toutes** les anciennes RPC et opérations d'école.
 
-**À consigner après exécution :** état GitHub Actions des jobs
-`Tests, lint, build et Edge checks sans deploiement` et
-`Test 5D-A+B sur PostgreSQL 17 jetable`, plus QA locale.
+**Résultat vérifié :** les deux jobs GitHub Actions sont **SUCCESS**
+(run [#44322527431](https://github.com/ramon77777/schoolnet/actions/runs/44322527431),
+commit `dd3bc707`). Le job PostgreSQL 17 a testé les 18 cas précédents,
+les protections classes/années, les **deux sessions concurrentes**,
+l'idempotence après conflit, et les permissions simulées
+`anon` / élève / Admin. Le job qualité a réussi avec
+`qa:lot5d:d` (15 tests statiques), lint, build et tests existants.
+
+**Recette locale D de l'utilisateur :** reste à effectuer.
+Le succès sur fixtures synthétiques **n'établit pas** la compatibilité
+exhaustive avec le vrai schéma SQL.
 
 ## 3. Passerelle Admin : architecture à préparer, sans endpoint actif
 
@@ -170,7 +178,9 @@ clé `service_role` dans le navigateur et aucune migration de rôle SQL.
 | QA locale A 9/9, B 17/17, C 12/12 | **Validé par l'utilisateur le 18/11/2026** |
 | Première intégration SQL fictive 18/18 (CI) | **Réussie**, run #44317583860 |
 | Audit de compatibilité avec vrai schéma (SELECT uniquement) | **Effectué** |
-| Nouvelle CI avec 2 sessions, rôles et garde classe | **Résultat à confirmer** |
+| Nouvelle CI avec 2 sessions, rôles et garde classe | **Réussie**, run #44322527431, schéma fictif |
+| Contrat mock Admin : 15 tests statiques | **Réussi en CI**, non déployé |
+| Recette locale `qa:lot5d:d` de l'utilisateur | **À faire** |
 | Revue métier et dossier actif dans année cible | **À faire** |
 | Passerelle backend Admin, migration canonique et tests proches du réel | **Non implémentés / prochain GO distinct** |
 | Installation Supabase principal, merge main, Vercel | **Interdits sans autorisation spécifique** |
