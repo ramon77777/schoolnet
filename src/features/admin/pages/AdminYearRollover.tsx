@@ -18,6 +18,7 @@ import {
   type RolloverDecisionType,
   type RolloverRun,
 } from "@/features/enrollments/lib/schoolYearRolloverApi";
+import { areSchoolYearRolloverWritesBlocked } from "@/features/enrollments/lib/schoolYearRolloverWritePolicy";
 
 const INITIAL_CATALOG: EnrollmentCatalog = { years: [], classes: [], students: [] };
 
@@ -61,6 +62,7 @@ function getDecisionClassLabel(
 export default function AdminYearRollover() {
   const { user, loading: authLoading } = useAuth();
   const isDemo = Boolean(user?.isDemo);
+  const readOnlyRuntime = areSchoolYearRolloverWritesBlocked();
   const [catalog, setCatalog] = useState<EnrollmentCatalog>(INITIAL_CATALOG);
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [targetYearId, setTargetYearId] = useState("");
@@ -92,6 +94,7 @@ export default function AdminYearRollover() {
   const targetYear = futureYears.find((year) => year.id === targetYearId) ?? null;
   const targetClasses = useMemo(
     () => catalog.classes.filter((item) => targetYear &&
+      item.school_id === null && item.learning_context !== "school" &&
       resolveTargetClass(targetYear.id, targetYear.name,
         item.school_year_id, item.school_year)),
     [catalog.classes, targetYear],
@@ -192,6 +195,15 @@ export default function AdminYearRollover() {
   const targetAnomalies = existingTarget.filter((row) =>
     row.status === "active" || row.status === "completed");
   const hasPending = planned !== activeSource.length;
+  // S2-A/S3-C affectations par etablissement : jamais reutiliser la RPC
+  // historique de passage d'annee pour ces classes ou leurs inscriptions.
+  const officialClasses = catalog.classes.filter((item) =>
+    item.school_id !== null || item.learning_context === "school");
+  const nonLegacySource = activeSource.filter((row) => {
+    const sourceClass = catalog.classes.find((item) => item.id === row.class_id);
+    return !sourceClass || sourceClass.school_id !== null ||
+      sourceClass.learning_context === "school";
+  });
   const warnings = [
     ...(activeSource.length === 0 ? ["Aucune inscription active pour l'année courante."] : []),
     ...(targetClasses.length === 0 ? ["L'année cible ne possède pas de classe."] : []),
@@ -199,11 +211,17 @@ export default function AdminYearRollover() {
       ? [String(targetAnomalies.length) +
          " dossier(s) déjà actifs ou terminés dans l'année cible : régularisation obligatoire avant la bascule."]
       : []),
+    ...(nonLegacySource.length > 0
+      ? [String(nonLegacySource.length) +
+         " dossier(s) d'origine non legacy : ne pas traiter avec la RPC globale 5.D."] : []),
+    ...(officialClasses.length > 0
+      ? ["Des classes officielles d'etablissement existent : la bascule globale attend " +
+         "un workflow compatible S3-C, sans toucher aux affectations locales."] : []),
     ...(hasPending ? ["Toutes les décisions doivent être enregistrées avant la clôture."] : []),
     ...(!targetYear ? ["Sélectionnez une année cible valide."] : []),
   ];
   const busy = loadingBase || loadingPlan || Boolean(savingStudentId) || finalizing;
-  const canFinalize = !busy && !isDemo && !migrationPending && !run &&
+  const canFinalize = !busy && !isDemo && !readOnlyRuntime && !migrationPending && !run &&
     Boolean(currentYear && targetYear) && warnings.length === 0 &&
     confirmName.trim() === targetYear?.name;
 
@@ -219,7 +237,7 @@ export default function AdminYearRollover() {
   }
 
   async function submitDecision(studentId: string) {
-    if (!currentYear || !targetYear || isDemo || migrationPending || busy || run) return;
+    if (!currentYear || !targetYear || isDemo || readOnlyRuntime || migrationPending || busy || run) return;
     const draft = drafts[studentId] ?? rowDraft();
     if ((draft.decision === "re_enroll" || draft.decision === "repeat") &&
         !targetClasses.some((item) => item.id === draft.targetClassId)) {
@@ -306,6 +324,16 @@ export default function AdminYearRollover() {
       {isDemo && <p role="alert" className="sn-card border border-amber-200 bg-amber-50 p-4 text-amber-800">
         Le mode démonstration ne permet pas de préparer les réinscriptions réelles.
       </p>}
+      {readOnlyRuntime && !isDemo && (
+        <section role="status" className="sn-card border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
+          <h2 className="font-bold">Lot 5D-A — preparation en lecture seule</h2>
+          <p className="mt-1">Aucune decision ni bascule annuelle n'est autorisee
+            depuis localhost ou une Preview. Le domaine officiel est egalement bloque
+            tant que l'activation explicite et les controles serveur ne sont pas valides.</p>
+          <p className="mt-2">Les classes et affectations propres aux etablissements
+            (S2-A a S3-C) ne doivent pas etre traitees par le passage d'annee legacy.</p>
+        </section>
+      )}
       {migrationPending && !isDemo && (
         <section role="status" className="sn-card border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
           <h2 className="font-bold">Activation Supabase en attente</h2>
@@ -399,7 +427,7 @@ export default function AdminYearRollover() {
               const saved = decisionsByStudent.get(row.student_id);
               const plannedClass = targetClasses.find((item) => item.id === draft.targetClassId);
               const targetRecord = existingTarget.find((item) => item.student_id === row.student_id);
-              const studentBusy = busy || isDemo || migrationPending || Boolean(run);
+              const studentBusy = busy || isDemo || readOnlyRuntime || migrationPending || Boolean(run);
               return (
                 <article key={row.enrollment_id} className="space-y-4 p-5 md:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -497,7 +525,7 @@ export default function AdminYearRollover() {
             Saisissez exactement « {targetYear?.name || "année cible"} » pour confirmer
           </span>
           <input className="sn-input w-full" value={confirmName} autoComplete="off"
-            disabled={busy || isDemo || migrationPending || Boolean(run) || !targetYear}
+            disabled={busy || isDemo || readOnlyRuntime || migrationPending || Boolean(run) || !targetYear}
             onChange={(event) => setConfirmName(event.target.value)}
             placeholder={targetYear?.name || "Nom de l'année scolaire"} />
         </label>
@@ -506,9 +534,11 @@ export default function AdminYearRollover() {
             {finalizing ? "Clôture en cours…" : "Valider et activer l'année suivante"}
           </button>
           <p className="text-xs text-slate-500">
-            {migrationPending
-              ? "Activation SQL 5.D nécessaire avant cette opération."
-              : "Contrôles serveur et historique obligatoires."}
+            {readOnlyRuntime
+              ? "Lot 5D-A : ecritures desactivees, aucune migration n'est autorisee."
+              : migrationPending
+                ? "Activation SQL 5.D nécessaire avant cette opération."
+                : "Contrôles serveur et historique obligatoires."}
           </p>
         </div>
       </form>
