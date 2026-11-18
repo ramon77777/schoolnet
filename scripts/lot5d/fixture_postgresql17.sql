@@ -44,6 +44,49 @@ CREATE TABLE public.class_teachers (
  class_id uuid NOT NULL REFERENCES public.classes(id),teacher_id uuid NOT NULL
  REFERENCES public.profiles(id),PRIMARY KEY(class_id,teacher_id)
 );
+-- Real Supabase also enforces one legacy class per student/year via trigger.
+-- Synthetic reimplementation of the audited public.ensure_student_single_class_per_school_year.
+CREATE FUNCTION public.ensure_student_single_class_per_school_year()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $single$
+DECLARE
+  v_year text;
+  v_role text;
+  v_conflict boolean;
+BEGIN
+  SELECT c.school_year INTO v_year FROM public.classes c WHERE c.id=NEW.class_id;
+  IF v_year IS NULL THEN RAISE EXCEPTION 'Classe introuvable.'; END IF;
+  SELECT p.role::text INTO v_role FROM public.profiles p WHERE p.id=NEW.student_id;
+  IF v_role IS DISTINCT FROM 'student' THEN
+    RAISE EXCEPTION 'Seul un apprenant peut etre affecte a une classe.'; END IF;
+  SELECT EXISTS(
+    SELECT 1 FROM public.class_students cs
+    JOIN public.classes c ON c.id=cs.class_id
+    WHERE cs.student_id=NEW.student_id AND c.school_year=v_year
+      AND cs.class_id<>NEW.class_id
+      AND NOT (TG_OP='UPDATE' AND cs.class_id=OLD.class_id
+               AND cs.student_id=OLD.student_id)
+  ) INTO v_conflict;
+  IF v_conflict THEN
+    RAISE EXCEPTION 'Cet apprenant est deja affecte a une autre classe pour l annee scolaire %',v_year;
+  END IF;
+  RETURN NEW;
+END;
+$single$;
+CREATE TRIGGER trg_class_students_single_class_per_year
+ BEFORE INSERT OR UPDATE OF class_id,student_id ON public.class_students
+ FOR EACH ROW EXECUTE FUNCTION public.ensure_student_single_class_per_school_year();
+CREATE FUNCTION public.validate_class_student_role()
+RETURNS trigger LANGUAGE plpgsql AS $v_role$
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=NEW.student_id
+                AND p.role='student'::public.user_role)
+  THEN RAISE EXCEPTION 'class_students.student_id must reference a student'; END IF;
+  RETURN NEW;
+END;
+$v_role$;
+CREATE TRIGGER trg_validate_class_student_role
+ BEFORE INSERT OR UPDATE ON public.class_students
+ FOR EACH ROW EXECUTE FUNCTION public.validate_class_student_role();
 CREATE SEQUENCE public.student_enrollment_number_seq;
 CREATE TABLE public.student_enrollments (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
