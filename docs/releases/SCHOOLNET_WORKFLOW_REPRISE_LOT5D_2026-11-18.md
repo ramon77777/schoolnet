@@ -136,11 +136,12 @@ dans la même branche, sans changement de `main` ou de Supabase principal :
 - CI GitHub `schoolnet-quality.yml` : job PostgreSQL 17 **jetable**,
   base `schoolnet_lot5d_ci` sur `127.0.0.1`, sans clé Supabase ni Vercel.
 
-**Résultats GitHub Actions :** première exécution PostgreSQL 17 sur
-fixtures (15 cas), statiques, lint et build **réussie** (run
-`44316739463`, commit `10d7912`). Le scénario a été enrichi à **18 cas** :
-vérifier la nouvelle exécution avant d'inscrire « 18/18 validés ».
-La présence d'un job vert sur des données fictives **ne valide pas**
+**Résultats GitHub Actions confirmés :** recette SQL PostgreSQL 17
+**18/18 réussie**, job complet de qualité (statiques, lint, build, fonctions
+Edge) **réussi**, run
+[#44317583860](https://github.com/ramon77777/schoolnet/actions/runs/44317583860),
+commit `0c36d202`. Toutes les données et le schéma de ce job sont
+**fictifs**, sur base éphémère. Cette réussite **ne valide pas**
 l'installation ni la sûreté sur le vrai schéma Supabase. Le candidat n'est
 pas autorisé pour le SQL Editor principal ni une fusion de PR.
 
@@ -205,7 +206,7 @@ L'année 2025–2026 est toujours courante ; l'année cible 2026–2027
 contient 1 dossier actif **d'un autre apprenant**. La politique actuelle
 côté serveur doit être renforcée avant toute activation.
 
-**Action suivante :** récupérer la **recette 5D-C locale**, la nouvelle exécution SQL PostgreSQL 17 éphémère sur 18 cas et les contrôles métier complémentaires. La migration est une **proposition non installée**. Le rapport interdit
+**Action suivante :** faire la **recette 5D-C locale** (la CI SQL isolée est désormais verte 18/18), puis vérifier les contrôles métier et les dépendances avant une éventuelle proposition d'installation. La migration est une **proposition non installée**. Le rapport interdit
 la simple activation du flag de production ou la réutilisation aveugle
 de l'ancienne RPC.
 
@@ -275,9 +276,10 @@ et faire examiner le message.
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
 > 5D-A 9/9 et 5D-B 17/17 testés en local ; audit du principal
 > **SELECT seulement** terminé. **Candidat consolidé 5D-A+B et
- > job PostgreSQL 17 isolé préparés sur GitHub. Première CI
-> (15 cas) verte ; scénario porté à 18 cas, nouvelle recette CI et
-> validation locale `qa:lot5d:c` à confirmer avant le GO suivant.**
+ > job PostgreSQL 17 isolé préparés sur GitHub. **CI SQL
+> 18/18 et qualité complète vertes** (run `44317583860`).
+> Recette locale `qa:lot5d:c` à confirmer par l'utilisateur avant
+> tout GO suivant.**
 > 2025–2026 courante : 1 actif ; cible 2026–2027 : 1 actif
 > **pour un élève différent**. Blocage maintenu.
 > **Aucune installation SQL principale, aucun statut de dossier changé,
