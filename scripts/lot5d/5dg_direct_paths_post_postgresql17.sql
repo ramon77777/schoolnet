@@ -13,11 +13,11 @@ BEGIN
   IF (SELECT count(*) FROM public.school_year_rollover_runs)<>1
     OR (SELECT count(*) FROM public.student_enrollment_documents)<>1
   THEN RAISE EXCEPTION 'G-POST 01: missing rollover or source document'; END IF;
-  SELECT id INTO old_enroll FROM public.student_enrollments
-  WHERE school_year_id='20252025-2025-4025-8025-202520252025';
-  SELECT id INTO target_enroll FROM public.student_enrollments
-  WHERE school_year_id='20262026-2026-4026-8026-202620262026';
-  SELECT id INTO old_doc FROM public.student_enrollment_documents WHERE enrollment_id=old_enroll;
+  SELECT enrollment_id,id INTO old_enroll,old_doc
+  FROM public.student_enrollment_documents
+  WHERE original_filename='preuve-ancienne.pdf';
+  SELECT target_enrollment_id INTO target_enroll
+  FROM public.school_year_rollover_audit WHERE source_enrollment_id=old_enroll;
   IF target_enroll IS NULL OR old_doc IS NULL
   THEN RAISE EXCEPTION 'G-POST 01: source/target chain missing'; END IF;
   RAISE NOTICE 'G-POST 01: archived document still references same enrollment';
@@ -63,13 +63,22 @@ BEGIN
 
   IF (SELECT count(*) FROM public.student_enrollment_documents
       WHERE enrollment_id=old_enroll)<>1
-    OR (SELECT status::text FROM public.student_enrollments WHERE id=old_enroll)<>'completed'
-    OR (SELECT count(*) FROM public.school_year_rollover_audit)<>1
+     OR (SELECT count(*) FROM public.school_year_rollover_audit)<>1
   THEN RAISE EXCEPTION 'G-POST 07: historical data/audit changed'; END IF;
-  RAISE NOTICE 'G-POST 07: source document, status and audit retained';
+  RAISE NOTICE 'G-POST 07: source document and audit retained';
 END;
 $5dg_post$;
 RESET ROLE;
+DO $5dg_final_status$
+BEGIN
+ IF NOT EXISTS (
+   SELECT 1 FROM public.student_enrollments e
+   JOIN public.school_year_rollover_runs r ON r.source_year_id=e.school_year_id
+   WHERE e.status='completed'
+ ) THEN RAISE EXCEPTION 'G-POST 07B: old enrollment not completed'; END IF;
+ RAISE NOTICE 'G-POST 07B: old enrollment status completed';
+END;
+$5dg_final_status$;
 -- UPDATE has no authenticated grant in real schema, but SQL trigger still
 -- protects privileged SQL clients. Superuser bypasses RLS but not triggers.
 DO $5dg_pg$
