@@ -58,14 +58,20 @@ BEGIN
   SELECT p.role::text INTO v_role FROM public.profiles p WHERE p.id=NEW.student_id;
   IF v_role IS DISTINCT FROM 'student' THEN
     RAISE EXCEPTION 'Seul un apprenant peut etre affecte a une classe.'; END IF;
-  SELECT EXISTS(
-    SELECT 1 FROM public.class_students cs
-    JOIN public.classes c ON c.id=cs.class_id
-    WHERE cs.student_id=NEW.student_id AND c.school_year=v_year
-      AND cs.class_id<>NEW.class_id
-      AND NOT (TG_OP='UPDATE' AND cs.class_id=OLD.class_id
-               AND cs.student_id=OLD.student_id)
-  ) INTO v_conflict;
+  IF TG_OP='UPDATE' THEN
+    SELECT EXISTS(
+      SELECT 1 FROM public.class_students cs JOIN public.classes c ON c.id=cs.class_id
+      WHERE cs.student_id=NEW.student_id AND c.school_year=v_year
+        AND cs.class_id<>NEW.class_id
+        AND NOT(cs.class_id=OLD.class_id AND cs.student_id=OLD.student_id)
+    ) INTO v_conflict;
+  ELSE
+    SELECT EXISTS(
+      SELECT 1 FROM public.class_students cs JOIN public.classes c ON c.id=cs.class_id
+      WHERE cs.student_id=NEW.student_id AND c.school_year=v_year
+        AND cs.class_id<>NEW.class_id
+    ) INTO v_conflict;
+  END IF;
   IF v_conflict THEN
     RAISE EXCEPTION 'Cet apprenant est deja affecte a une autre classe pour l annee scolaire %',v_year;
   END IF;
