@@ -57,9 +57,17 @@ function isCanonicalHttpsOrigin(value) {
   if (typeof value !== "string" || !value.startsWith("https://")) return false;
   try {
     const url = new URL(value);
+    const mainHostname = new URL(PRODUCTION_APP_ORIGIN).hostname;
+    // Refuser le domaine officiel, ses sous-domaines et les suffixes pieges
+    // du type "schoolnet-snowy.vercel.app.evil.example".
+    const overlapsProduction =
+      url.hostname === mainHostname ||
+      url.hostname.endsWith("." + mainHostname) ||
+      url.hostname.startsWith(mainHostname + ".");
     return url.origin === value && url.protocol === "https:" &&
       url.username === "" && url.password === "" && url.port === "" &&
       url.pathname === "/" && url.search === "" && url.hash === "" &&
+      !overlapsProduction &&
       !url.hostname.endsWith(".invalid") &&
       url.hostname !== "localhost" && url.hostname !== "127.0.0.1";
   } catch {
