@@ -3,6 +3,13 @@
 \set ON_ERROR_STOP on
 BEGIN;
 SELECT pg_catalog.set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
+INSERT INTO public.student_enrollment_documents(
+  enrollment_id,document_type,original_filename,storage_path,mime_type,size_bytes,uploaded_by)
+SELECT e.id,'birth_certificate','fiche-avant.pdf',e.id::text||'/fiche-avant.pdf',
+ 'application/pdf',1500,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+FROM public.student_enrollments e
+WHERE e.student_id='11111111-1111-4111-8111-111111111111'
+AND e.school_year_id='20252025-2025-4025-8025-202520252025';
 SET LOCAL ROLE authenticated;
 DO $5dg_pre$
 DECLARE
@@ -38,15 +45,8 @@ BEGIN
   INSERT INTO public.class_students(class_id,student_id) VALUES(old_class,student);
   RAISE NOTICE 'G-PRE 04: preclose legacy class link can be maintained';
 
-  SELECT id INTO source_enroll FROM public.student_enrollments
-  WHERE student_id=student AND school_year_id='20252025-2025-4025-8025-202520252025';
-  INSERT INTO public.student_enrollment_documents(
-    enrollment_id,document_type,original_filename,storage_path,mime_type,size_bytes,uploaded_by
-  ) VALUES(
-    source_enroll,'birth_certificate','fiche-avant.pdf',
-    source_enroll::text||'/fiche-avant.pdf','application/pdf',1500,
-    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-  ) RETURNING id INTO source_doc;
+  SELECT id INTO source_doc FROM public.student_enrollment_documents
+    WHERE original_filename='fiche-avant.pdf';
   DELETE FROM public.student_enrollment_documents WHERE id=source_doc;
   RAISE NOTICE 'G-PRE 05: normal preclose document add/delete preserved';
 END;
