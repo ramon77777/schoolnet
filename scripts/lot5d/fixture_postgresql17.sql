@@ -82,7 +82,7 @@ BEGIN
  (v_c.school_year_id=v_y.id OR (v_c.school_year_id IS NULL AND v_c.school_year=v_y.name))
  THEN RAISE EXCEPTION 'fixture: dossier ou classe invalide';END IF;
  IF NEW.enrollment_number IS NULL OR NEW.enrollment_number='' THEN
-  NEW.enrollment_number:='INS-'||pg_catalog.substring(v_y.name FROM '[0-9]{4}')||'-'||
+  NEW.enrollment_number:='INS-'||pg_catalog.substr(v_y.name,1,4)||'-'||
     pg_catalog.lpad(pg_catalog.nextval('public.student_enrollment_number_seq')::text,6,'0');
  END IF;
  NEW.updated_at:=now();
