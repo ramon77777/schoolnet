@@ -142,7 +142,7 @@ test("S3-C 10 - triggers d'integrite et affiliations actives", async () => {
 test("S3-C 11 - roles SQL, school_admin et origine officielle", async () => {
   const sql = await read("../supabase/proposals/s3c_school_class_assignments.sql");
   assert.match(sql,/auth\.uid\(\) IS NULL/);
-  assert.match(sql,/(?:SELECT public\.get_my_role\(\))::text IS DISTINCT FROM 'school_admin'/);
+  assert.match(sql,/\(SELECT public\.get_my_role\(\)\)::text IS DISTINCT FROM 'school_admin'/);
   assert.match(sql,/schoolnet_private\.is_school_admin_for\(p_school_id\)/);
   assert.match(sql,/current_setting\('request\.headers',true\)/);
   assert.match(sql,/IS DISTINCT FROM 'https:\/\/schoolnet-snowy\.vercel\.app'/);
