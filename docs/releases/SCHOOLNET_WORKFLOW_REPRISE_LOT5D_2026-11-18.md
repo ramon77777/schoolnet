@@ -244,7 +244,7 @@ toute bascule réelle. La recette locale E **a été validée par l'utilisateur 
 lint 0 erreur (1 avertissement React Hook connu), build Vite réussi.
 Cette validation ne vaut pas autorisation d'écriture SQL réelle.
 
-### 5D-F : **RPC HISTORIQUES COMPLÈTES + CONCURRENCE SQL + ARCHITECTURE ADMIN — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-F : **RPC HISTORIQUES COMPLÈTES + CONCURRENCE SQL + ARCHITECTURE ADMIN — CI ET LOCAL VALIDÉS**
 
 Travaux préparés **uniquement** sur GitHub et PostgreSQL 17 fictif :
 [Rapport 5D-F et proposition d'architecture](./SCHOOLNET_LOT5DF_RPC_COMPLETES_PASSERELLE_ADMIN_2026-11-18.md).
@@ -271,11 +271,15 @@ Travaux préparés **uniquement** sur GitHub et PostgreSQL 17 fictif :
   privée sous rôle SQL à privilèges minimaux, idempotence et journal.
   Aucun endpoint, rôle SQL, secret ou déploiement ajouté.
 
-**Recette locale F NON ENCORE VALIDÉE :** exécuter
-`git pull --ff-only`, `npm run qa:lot5d:f`, `npm run lint`,
-`npm run build`. Les recettes locales précédentes A+B+C+D+E restent
-**73/73 validées**. Préserver le stash, les scripts non suivis et
-`tsconfig.app.tsbuildinfo`.
+**Recette locale F validée par l'utilisateur le 18 novembre 2026** :
+`git pull --ff-only` sans conflit (`4920c68..f3ec13f`),
+`npm run qa:lot5d:f` **12/12**, `npm run lint` **0 erreur** (1 warning
+préexistant `react-hooks/exhaustive-deps`, `EnrollmentRecordsPage.tsx:161`),
+`npm run build` **réussi**, Vite v7.3.1, **867 modules**.
+Avertissements Browserslist et bundle important non bloquants.
+**Cumul A+B+C+D+E+F : 85/85 tests locaux validés.**
+`tsconfig.app.tsbuildinfo`, les trois scripts locaux non suivis et
+`supabase/proposals/staged/` sont inchangés et conservés.
 
 **Risques encore bloquants :** dossier déjà actif en année cible 2026–2027,
 RPC directe de changement d'année encore non neutralisée côté réel,
@@ -382,24 +386,30 @@ production Vercel décidée. La réussite de 5D-E ne rend pas la bascule
 annuelle opérationnelle : anciennes RPC réelles et backend Admin privé
 toujours à sécuriser sous nouveau GO.
 
-### Prochain test local — Lot 5D-F
+### Recette locale du Lot 5D-F — **VALIDÉE LE 18 NOVEMBRE 2026**
 
-Les cinq jobs CI du 5D-F sont verts sur GitHub ; la **recette locale
-de l'utilisateur reste à faire**. Terminal PowerShell :
+L'utilisateur a exécuté dans PowerShell, sur
+`D:\Bakary\10 autres\schoolnet`, la branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:f
-npm run lint
-npm run build
-git status --short
-```
+- `git status --short` et `git branch --show-current` : branche
+  attendue, état local contrôlé avant et après.
+- `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118` :
+  **fast-forward réussi**, de `4920c68` à `f3ec13f`.
+- `npm run qa:lot5d:f` : **12 tests réussis, 0 échec**.
+- `npm run lint` : **0 erreur**, 1 avertissement
+  React Hook déjà connu à la ligne 161 d'`EnrollmentRecordsPage.tsx`.
+- `npm run build` : **TypeScript et Vite réussis**, 867 modules,
+  Vite v7.3.1 (avertissements Browserslist et taille du bundle).
+- `git status --short` final inchangé : `tsconfig.app.tsbuildinfo`
+  modifié, 3 scripts locaux non suivis et `supabase/proposals/staged/`
+  toujours préservés ; aucun fichier local supprimé.
 
-Attendu : **12/12 tests F**, zéro erreur ESLint (un avertissement
-React Hook historique possible), build réussi, aucun fichier local
-non suivi effacé. Le SQL F reste non installable.
+**Total local validé des Lots 5D-A à F : 9+17+12+15+20+12 =
+85/85 tests.** Les scénarios de concurrence PostgreSQL 17,
+distincts de ces tests locaux, ont réussi dans GitHub Actions sur
+des **données fictives**. Aucune installation des propositions SQL F,
+aucun véritable backend Admin et aucune validation de production.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -419,7 +429,7 @@ non suivi effacé. Le SQL F reste non installable.
    Parent/Enseignant et préparer un véritable backend Admin avec un rôle
    SQL privé et une authentification vérifiée.
 5. **5D-F : cinq RPC historiques complètes préparées et CI validée ;**
-   tests locaux F à confirmer, choix de la passerelle Admin et
+   tests locaux F **12/12 validés**, choix de la passerelle Admin et
    vérification des chemins non couverts (RLS direct et demandes publiques).
 6. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
@@ -456,8 +466,8 @@ non suivi effacé. Le SQL F reste non installable.
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
-> **Recette locale A9/9, B17/17, C12/12, D15/15 validée : 53/53 ;
-> recette locale E **20/20 VALIDÉE** : **73/73 tests locaux A à E**.**
+> **Recettes locales A9/9, B17/17, C12/12, D15/15, E20/20 et F12/12
+> toutes validées par l'utilisateur : 85/85 tests locaux A à F.**
 > CI GitHub Actions [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560) :
 > **3 jobs SUCCESS**, incluant tests 5D-E 20/20, SQL PG17
 > concurrent, 11 assertions de garde historique et archivage fictif.
@@ -469,12 +479,13 @@ non suivi effacé. Le SQL F reste non installable.
 > anciennes RPC réelles **non corrigées** ;
 > passerelle Admin uniquement simulée et **NON DÉPLOYÉE**.
 >
-> **Prochaine action immédiate** : recette locale `qa:lot5d:f`
-> **12/12 attendus**, lint et build ; la CI F a déjà **5/5 jobs SUCCESS**.
-> **Après GO distinct** : vérifier une copie fidèle du schéma réel,
-> corriger les parcours directs et écrans Parent/Enseignant,
-> concevoir la passerelle Admin authentifiée, puis seulement
-> étudier la migration canonique. **Rien à installer encore.**
+> **Point de reprise après validation F** : CI F
+> [run #44338121662](https://github.com/ramon77777/schoolnet/actions/runs/44338121662)
+> **5/5 jobs SUCCESS** ; recette locale F **12/12**, lint sans erreur,
+> build réussi. **Prochaine phase uniquement avec un GO distinct** :
+> tester un schéma fidèle du serveur, auditer les accès directs/RLS et
+> les écrans Parent/Enseignant, concevoir la passerelle Admin réelle.
+> **Aucune migration ni déploiement autorisé.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**

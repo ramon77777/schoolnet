@@ -1,7 +1,7 @@
 # SCHOOLNET — Lot 5D-F | Compatibilité des RPC historiques complètes et architecture Admin
 
 **Date :** 18 novembre 2026  
-**Statut :** GitHub Actions PostgreSQL 17 **5/5 jobs SUCCESS** ; recette locale F **à valider par l'utilisateur**  
+**Statut :** GitHub Actions PostgreSQL 17 **5/5 jobs SUCCESS** ; recette locale F **12/12 VALIDÉE par l'utilisateur le 18/11/2026**  
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon, à ne pas fusionner**.  
 **Production :** aucun SQL exécuté en écriture dans Supabase principal ; `main` et Vercel production inchangés.
@@ -86,7 +86,7 @@ des bulletins et des documents. **Cela ne prouve pas l'intégrité d'une
 base de production : les tables fictives restent simplifiées.**
 
 **Recettes locales déjà confirmées par l'utilisateur :** Lots A à E =
-**73/73**. **Lot F : 12 tests hors réseau à vérifier en local**,
+**73/73**. **Lot F : 12/12 tests hors réseau validés en local**,
 séparément des scénarios SQL exécutés dans GitHub Actions.
 
 ## 4. Passerelle Admin réelle : architecture proposée (PAS implémentée)
@@ -188,25 +188,37 @@ La maquette hors réseau de 5D-E,
 **À ce stade : ni les protections F, ni le finaliseur, ni la passerelle
 Admin réelle ne sont installés ou disponibles en production.**
 
-## 6. Recette locale attendue
+## 6. Recette locale du Lot 5D-F — **VALIDÉE**
 
-Exécuter dans le terminal PowerShell du projet, **sans lancer de SQL** :
+Le 18 novembre 2026, l'utilisateur a transmis la sortie complète du
+terminal PowerShell dans `D:\Bakary\10 autres\schoolnet`, branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:f
-npm run lint
-npm run build
-git status --short
-```
+- `git pull --ff-only` **réussi** (`4920c68..f3ec13f`), sans conflit.
+- `npm run qa:lot5d:f` : **12/12 tests réussis, 0 échec**.
+- `npm run lint` : **0 erreur**, 1 avertissement connu
+  `react-hooks/exhaustive-deps` dans
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **succès**, Vite v7.3.1, 867 modules transformés.
+  Browserslist obsolète et gros bundle signalés sans bloquer le build.
+- L'état Git est inchangé pour les fichiers locaux préexistants :
+  `tsconfig.app.tsbuildinfo` modifié, les trois scripts
+  `schoolnet-student-auth-*-local.mjs` et
+  `test-schoolnet-student-auth-flow-mock.mjs` ainsi que
+  `supabase/proposals/staged/` **conservés**.
 
-**Attendu :** `qa:lot5d:f` **12/12**, ESLint 0 erreur
-(1 warning historique `EnrollmentRecordsPage.tsx:161`),
-build Vite réussi ; les fichiers non suivis et
-`tsconfig.app.tsbuildinfo` restent intacts.
-En cas d'erreur Git, ne pas utiliser `reset --hard` ou `clean`.
+**Total des recettes locales A+B+C+D+E+F : 85/85 tests validés.**
+Ne pas compter les assertions SQL PostgreSQL 17 CI une deuxième fois
+dans ce total.
 
-**Aucun SQL Editor, aucun `supabase db push`, aucune activation
-de l'année, aucune fusion `main` ni publication Vercel.**
+**Portée de la validation :** exécution locale des tests de contrat,
+lint et build, ainsi que CI PostgreSQL fictive validée auparavant.
+**Aucun backend Admin authentifié n'est déployé**, les cinq RPC
+historiques réelles de Supabase principal restent inchangées et le
+dossier déjà actif dans l'année cible interdit encore toute bascule.
+La migration finale nécessite une revue sur schéma fidèle, une
+qualification métier et de **nouveaux accords spécifiques**.
+
+**Interdictions maintenues :** aucune écriture dans Supabase principal,
+aucun `supabase db push`, aucune activation du flag de passage annuel,
+aucune fusion dans `main` ni publication Vercel.
