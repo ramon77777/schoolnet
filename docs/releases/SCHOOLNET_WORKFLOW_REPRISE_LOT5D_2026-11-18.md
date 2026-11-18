@@ -237,35 +237,39 @@ sont documentées dans le rapport, sans révocation globale imprudente.
 - Ne jamais modifier ou « corriger » le dossier actif 2026–2027 par déduction
   ou à partir de la date système. Faire un audit métier et un choix approuvé.
 
-## 5. Étape IMMÉDIATE — recette locale 5D-D après CI isolée
+## 5. Recette locale 5D-D — **VALIDÉE PAR L'UTILISATEUR**
 
-**Validé par l'utilisateur** : `qa:lot5d:a` 9/9, `qa:lot5d:b` 17/17,
-`qa:lot5d:c` 12/12, lint 0 erreur et build Vite réussi.
-Tous les fichiers non suivis ont été **conservés** après fast-forward
-sur `feature/schoolnet-lot5d-a-securisation-20261118`.
+Le 18/11/2026, après `git pull --ff-only` réussi (branche
+`feature/schoolnet-lot5d-a-securisation-20261118`,
+fast-forward `f93d228..dce9eeb`), l'utilisateur a transmis :
 
-**Prochaine vérification locale ciblée (aucune écriture SQL)** :
-mettre à jour la branche puis lancer la recette D, lint et build.
+- `npm run qa:lot5d:d` : **15/15 réussis**, zéro échec.
+- `npm run lint` : **0 erreur**, 1 warning préexistant
+  `react-hooks/exhaustive-deps` dans `EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **réussi**, 867 modules Vite transformés.
+  Browserslist ancien et bundle principal important restent des
+  avertissements non bloquants.
+- `git status --short` avant/après inchangé : `tsconfig.app.tsbuildinfo`
+  modifié par build, trois scripts locaux non suivis, ainsi que
+  `supabase/proposals/staged/` conservés.
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:d
-npm run lint
-npm run build
-git status --short
-```
+**Récapitulatif validé localement :** A **9/9**, B **17/17**,
+C **12/12**, D **15/15** soit **53/53 tests locaux** sur ces quatre
+commandes, hors lint/build. Recette SQL **18/18** et scénarios de
+concurrence/permis PostgreSQL 17 **réussis sur CI fictive**
+(run [#44322527431](https://github.com/ramon77777/schoolnet/actions/runs/44322527431)).
 
-Attendu : **15 tests D** et aucun échec, puis lint 0 erreur
-(1 warning React Hook déjà connu) et build réussi.
-Si `git pull --ff-only` refuse, **ne pas forcer**.
-Les fichiers locaux hors suivi et `tsconfig.app.tsbuildinfo` restent
-à conserver sans `git clean -fd`, `git reset --hard` ni stash destructeur.
-**Aucun `supabase db push`, SQL Editor, changement de statut, merge ou Vercel**.
+Cette validation **n'autorise aucune migration réelle** :
+proposition SQL `SANDBOX_ONLY.sql` toujours non installée, accès
+admin à l'année active toujours verrouillé dans la branche et
+**passerelle Admin réelle non implémentée**.
 
-Le candidat `SANDBOX_ONLY.sql` reste une **proposition**. Le module Admin
-historique est toujours en lecture seule pour le passage d'année.
+**Action suivante sous nouveau GO :** examiner la concurrence croisée
+des anciennes fonctions d'inscription, identifier les conséquences
+des affiliations historiques `class_students`, puis concevoir la
+passerelle Admin serveur authentifiée, sans connexion de production
+ni installation de SQL. Aucun travail de cette prochaine phase
+n'est présumé autorisé par les tests ci-dessus.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -273,9 +277,9 @@ historique est toujours en lecture seule pour le passage d'année.
 1. **Audit technique terminé en lecture seule.** Examen métier du
    dossier actif 2026–2027 par un responsable habilité : **à faire**,
    sans changement de statut automatique.
-2. **Candidat consolidé / 18 tests SQL isolés validés ;** le job
-   de concurrence, permissions et classe a été ajouté. Lire le résultat
-   GitHub Actions et demander la recette locale `qa:lot5d:d`.
+2. **Candidat consolidé / 18 tests SQL fictifs validés et concurrence CI réussie ;**
+   recette locale `qa:lot5d:d` **15/15 validée par l'utilisateur**.
+   Pas de migration ni de backend Admin réel installé.
 3. Définir la politique d'année SCHOOLNET globale et le parcours
    des établissements ; la gestion S3-C reste **distincte**.
 4. Compléter la recette fidèle au vrai schéma, tester la **concurrence croisée
@@ -313,17 +317,21 @@ historique est toujours en lecture seule pour le passage d'année.
 > - `docs/releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
-> PR #15 **brouillon** ; `main` et Vercel existant inchangés.
-> Recette locale **A9/9 B17/17 C12/12 réussie** et build OK ;
-> recette `qa:lot5d:d` **à faire sur le PC**.
-> Audit réel **lecture seule**, 43 migrations, classe unique par année,
-> ancienne RPC directe encore présente en Supabase.
-> Candidat transactionnel SQL privé non installé ; job PG17 de concurrence
-> et de permissions sur données fictives en CI ; lire les logs de CI
-> avant de considérer ce jalon comme validé.
-> Année 2025–2026 courante (1 actif), cible 2026–2027 (1 actif
-> **d'un élève différent**), blocage métier maintenu.
+> PR #15 **brouillon**, `main` et Vercel existant non modifiés.
+> **Recettes locales A9/9, B17/17, C12/12, D15/15 validées** :
+> 53/53 ; lint 0 erreur (1 avertissement connu), build OK.
+> **CI SQL PostgreSQL 17 fictive** 18/18 et scénarios de deux
+> sessions, RLS, droits et classe réussis (run #44322527431).
+> Audit du Supabase principal **SELECT uniquement**, 43 migrations,
+> année 2025–2026 courante (1 actif), cible 2026–2027 déjà occupée
+> (1 actif **d'un autre apprenant**) : **bascule strictement bloquée**.
+> Candidat SQL transactionnel **NON INSTALLÉ**, ancienne RPC directe
+> toujours présente côté Supabase et passerelle Admin encore simulée.
+> **Prochaine phase à autoriser explicitement** : concurrence croisée
+> avec les RPC legacy, revue des liens historiques, architecture puis
+> code serveur Admin verrouillé. Aucune migration SQL ni changement
+> de données réelles autorisés.
 >
-> **Pas de modification des dossiers réels, aucune installation SQL
-> principale, aucun flag d'écriture, aucune fusion `main` et aucune
-> publication Vercel sans nouvelle autorisation explicite.**
+> **Ne pas nettoyer les scripts locaux, modifier Supabase principal,
+> activer les écritures, fusionner `main` ou déployer Vercel
+> sans autorisation spécifique.**
