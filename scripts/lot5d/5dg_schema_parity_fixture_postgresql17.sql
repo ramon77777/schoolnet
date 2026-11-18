@@ -28,6 +28,12 @@ CREATE TABLE public.student_enrollment_documents (
 ALTER TABLE public.school_years ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.class_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_enrollment_documents ENABLE ROW LEVEL SECURITY;
+-- The real profile SELECT grant/RLS is needed by the legacy INVOKER trigger
+-- public.validate_class_student_role() during direct class_students INSERT.
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON public.profiles TO authenticated;
+CREATE POLICY fixture_admin_profiles_select ON public.profiles
+ FOR SELECT TO authenticated USING (public.is_admin());
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.school_years TO anon,authenticated;
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.class_students TO anon,authenticated;
 GRANT SELECT,INSERT,DELETE ON public.student_enrollment_documents TO authenticated;
