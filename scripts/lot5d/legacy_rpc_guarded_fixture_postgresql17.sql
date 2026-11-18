@@ -14,7 +14,7 @@ AS $safe_legacy$
 DECLARE
   year_id uuid;
   year_name text;
-  class_name text;
+  v_class_name text;
   current_year boolean;
   target_status public.student_enrollment_status;
   enrollment_id uuid;
@@ -27,12 +27,12 @@ BEGIN
   PERFORM pg_catalog.set_config('lock_timeout','3s',true);
   LOCK TABLE public.school_years IN SHARE MODE;
   SELECT sy.id,sy.name,sy.is_current,c.name
-    INTO year_id,year_name,current_year,class_name
+    INTO year_id,year_name,current_year,v_class_name
     FROM public.classes c
     JOIN public.school_years sy ON
       (sy.id=c.school_year_id OR (c.school_year_id IS NULL AND sy.name=c.school_year))
     WHERE c.id=p_class_id;
-  IF year_id IS NULL OR class_name IS NULL THEN
+  IF year_id IS NULL OR v_class_name IS NULL THEN
     RAISE EXCEPTION 'fixture: class/year not found';
   END IF;
   target_status:=CASE WHEN current_year
@@ -62,7 +62,7 @@ BEGIN
   INSERT INTO public.class_students(class_id,student_id)
     VALUES(p_class_id,p_student_id) ON CONFLICT DO NOTHING;
   IF current_year THEN
-    UPDATE public.profiles SET class_name=class_name
+    UPDATE public.profiles SET class_name=v_class_name
       WHERE id=p_student_id;
   END IF;
   RETURN pg_catalog.jsonb_build_object(
@@ -77,9 +77,9 @@ CREATE OR REPLACE FUNCTION public.admin_set_student_enrollment_status(
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog
 AS $safe_status$
 DECLARE
-  student_id uuid;
-  class_id uuid;
-  enrollment_year uuid;
+  v_student_id uuid;
+  v_class_id uuid;
+  v_enrollment_year uuid;
   current_year boolean;
   new_status public.student_enrollment_status;
   actor_id uuid;
@@ -98,11 +98,11 @@ BEGIN
   PERFORM pg_catalog.set_config('lock_timeout','3s',true);
   LOCK TABLE public.school_years IN SHARE MODE;
   SELECT e.student_id,e.class_id,e.school_year_id,sy.is_current
-    INTO student_id,class_id,enrollment_year,current_year
+    INTO v_student_id,v_class_id,v_enrollment_year,current_year
     FROM public.student_enrollments e
     JOIN public.school_years sy ON sy.id=e.school_year_id
     WHERE e.id=p_enrollment_id FOR UPDATE OF e;
-  IF student_id IS NULL THEN RAISE EXCEPTION 'fixture: enrollment missing'; END IF;
+  IF v_student_id IS NULL THEN RAISE EXCEPTION 'fixture: enrollment missing'; END IF;
   IF new_status='active' AND NOT COALESCE(current_year,false) THEN
     RAISE EXCEPTION 'fixture: cannot reactivate non-current year'
       USING ERRCODE='42501';
@@ -110,11 +110,11 @@ BEGIN
   UPDATE public.student_enrollments SET status=new_status,
     notes=COALESCE(p_note,notes),updated_by=actor_id WHERE id=p_enrollment_id;
   IF new_status='active' THEN
-    PERFORM public.admin_upsert_student_enrollment(student_id,class_id);
+    PERFORM public.admin_upsert_student_enrollment(v_student_id,v_class_id);
   ELSIF new_status IN ('draft','withdrawn','cancelled') THEN
-    DELETE FROM public.class_students WHERE student_id=student_id AND class_id=class_id;
+    DELETE FROM public.class_students WHERE student_id=v_student_id AND class_id=v_class_id;
   END IF;
-  RETURN pg_catalog.jsonb_build_object('status',new_status::text,'student_id',student_id);
+  RETURN pg_catalog.jsonb_build_object('status',new_status::text,'student_id',v_student_id);
 END;
 $safe_status$;
 
