@@ -38,6 +38,10 @@ jobs:
         run: npm run qa:lot5d:d
       - name: Verifier Lot 5D-E (archives, RPC legacy et passerelle en mock)
         run: npm run qa:lot5d:e
+      - name: Verifier Lot 5D-F (RPC completes hors reseau)
+        run: npm run qa:lot5d:f
+      - name: Verifier Lot 5D-G (catalogue reel, voies directes, passerelle mock)
+        run: npm run qa:lot5d:g
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -270,3 +274,72 @@ jobs:
       - name: Concurrence finaliseur avec RPC statut COMPLETE
         shell: bash
         run: bash scripts/lot5d/5df_run_cross_postgresql17.sh status
+
+  # 5D-G: direct-write + archived-document guard on metadata-aligned synthetic
+  # PostgreSQL, never on the principal Supabase project. Do not deploy.
+  lot5d_direct_paths:
+    name: Lot 5D-G - droits RLS, ecritures directes et archives PG17 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prouver base locale fictive et aucun secret Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test "$PGUSER" = "postgres"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Installer uniquement des fixtures PG17 et les gardes SANDBOX_ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_schema_parity_fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql
+      - name: Verifier droits Admin et anon avant cloture sous ROLLBACK
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_direct_paths_pre_postgresql17.sql
+      - name: Creer une piece et une decision fictives
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_prepare_document_postgresql17.sql
+      - name: Finaliser une annee fictive sans donnees reelles
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_finalize_document_postgresql17.sql
+      - name: Verifier archives immuables et nouvelle annee utilisable (ROLLBACK)
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_direct_paths_post_postgresql17.sql
+      - name: Controler compteurs fictifs apres la recette ROLLBACK
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")
+          docs=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")
+          test "$count" = "1"
+          test "$docs" = "1"
