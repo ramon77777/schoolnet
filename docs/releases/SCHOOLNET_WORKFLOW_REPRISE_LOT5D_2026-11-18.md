@@ -287,6 +287,48 @@ RPC directe de changement d'année encore non neutralisée côté réel,
 affichage des dernières classes historiques côté Parent/Enseignant,
 test sur schéma réellement fidèle et passerelle serveur encore inexistante.
 
+### 5D-G : **AUDIT RLS RÉEL + VOIES DIRECTES + PASSERELLE MOCK — CI VALIDÉE, LOCAL À FAIRE**
+
+Le 18/11/2026, sur la PR #15 **en brouillon** :
+[rapport technique et limites du Lot 5D-G](./SCHOOLNET_LOT5DG_AUDIT_RLS_PASSERELLE_2026-11-18.md).
+
+- **Audit en SELECT uniquement du Supabase principal** : catalogue RLS,
+  privilèges de table, colonnes, contraintes et triggers réels, sans
+  accès aux fiches personnelles ou modification du schéma.
+- **Voies de modification identifiées** :
+  `school_years` et `class_students` conservent des droits Admin directs
+  sous RLS ; `student_enrollments` n'a pas de privilèges directs
+  `authenticated`, malgré ses policies, et passe par les RPC ;
+  `student_enrollment_documents` accepte INSERT/DELETE Admin.
+  L'interface Admin peut encore créer/supprimer des années **inactives**,
+  ce qui doit rester autorisé.
+- **Candidat complémentaire SANDBOX_ONLY** :
+  `supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql`
+  préserve les métadonnées documentaires des années clôturées,
+  sans empêcher les nouvelles pièces de l'année cible.
+- **Blocage critique restant** : `AdminEnrollmentDocuments.tsx`
+  retire un fichier Storage **avant** la suppression des métadonnées.
+  Les policies du bucket ne tiennent pas compte du passage 5D.
+  **Le trigger de métadonnées ne doit donc PAS être installé seul**.
+  Revoir ensemble Storage RLS, contrôle serveur et UI avant GO.
+- **Passerelle Admin** :
+  `scripts/lot5d/5dg_admin_gateway_reference.mjs` teste en pur mock
+  l'authentification, la session non révoquée, le rôle global Admin,
+  le rate-limit, l'origine, le préflight et l'audit. **Aucun serveur réel,
+  endpoint, secret ni connexion SQL n'est créé.**
+- **CI** : [run #44342623526](https://github.com/ramon77777/schoolnet/actions/runs/44342623526),
+  **6/6 jobs SUCCESS** dont PostgreSQL 17 fictif G, `qa:lot5d:g`
+  **20/20 en CI**, lint/build réussis. PostgreSQL G vérifie les
+  droits RLS et documents en 2 phases, avec `ROLLBACK` pour les tests.
+- **Recette locale G : À FAIRE**. Cumul précédemment confirmé par
+  l'utilisateur : A–F **85/85**. Le total atteindra **105/105**
+  après validation locale de G **20/20**.
+
+**Aucune migration 5D installée, aucune donnée Supabase principale
+modifiée, aucune fusion ni publication de production.** Une copie fidèle
+du schéma avec Storage isolé et une vraie passerelle sécurisée restent
+indispensables ; l'année cible 2026–2027 déjà active demeure bloquante.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -411,6 +453,26 @@ distincts de ces tests locaux, ont réussi dans GitHub Actions sur
 des **données fictives**. Aucune installation des propositions SQL F,
 aucun véritable backend Admin et aucune validation de production.
 
+### Prochaine recette locale — Lot 5D-G
+
+Tests **hors réseau** uniquement, déjà réussis en CI. À effectuer
+sur ton poste Windows, depuis la branche de PR #15 :
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:g
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu : 20/20 G**, lint 0 erreur (warning React Hook déjà connu),
+build Vite réussi et conservation des fichiers non suivis.
+**Cumul A–F 85/85 validé**, G en attente d'acceptation locale.
+Le SQL G ne peut être utilisé que dans le job PostgreSQL 17 fictif.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -431,7 +493,12 @@ aucun véritable backend Admin et aucune validation de production.
 5. **5D-F : cinq RPC historiques complètes préparées et CI validée ;**
    tests locaux F **12/12 validés**, choix de la passerelle Admin et
    vérification des chemins non couverts (RLS direct et demandes publiques).
-6. Soumettre une future migration finale et son éventuelle installation
+6. **5D-G** : audit RLS/droits/Storage en lecture seule, CI 6/6
+   et mock gateway 20/20 validés en CI ; recette locale à confirmer.
+   **Garde documentaire SQL insuffisant seul** : l'ordre actuel
+   Storage.remove() avant métadonnées doit être protégé côté Storage
+   et métier sur un environnement isolé.
+7. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -463,6 +530,7 @@ aucun véritable backend Admin et aucune validation de production.
 > - `docs/releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DE_CONCURRENCE_RPC_ARCHIVES_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DF_RPC_COMPLETES_PASSERELLE_ADMIN_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5DG_AUDIT_RLS_PASSERELLE_2026-11-18.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -479,12 +547,16 @@ aucun véritable backend Admin et aucune validation de production.
 > anciennes RPC réelles **non corrigées** ;
 > passerelle Admin uniquement simulée et **NON DÉPLOYÉE**.
 >
-> **Point de reprise après validation F** : CI F
-> [run #44338121662](https://github.com/ramon77777/schoolnet/actions/runs/44338121662)
-> **5/5 jobs SUCCESS** ; recette locale F **12/12**, lint sans erreur,
-> build réussi. **Prochaine phase uniquement avec un GO distinct** :
-> tester un schéma fidèle du serveur, auditer les accès directs/RLS et
-> les écrans Parent/Enseignant, concevoir la passerelle Admin réelle.
+> **Point de reprise après CI G** : `qa:lot5d:g` **20/20**
+> et [GitHub Actions #44342623526](https://github.com/ramon77777/schoolnet/actions/runs/44342623526)
+> **6/6 jobs SUCCESS**, sans accès d'écriture au Supabase principal.
+> **Local G À FAIRE** ; A à F **85/85 validés**. Année cible déjà occupée.
+> **Bloqueur documentaire** : Storage.remove() est appelé avant la
+> suppression SQL, sans garde de clôture sur le bucket ; ne pas installer
+> la seule protection SQL G. La passerelle G reste **un mock sans réseau**.
+> **Prochaine action immédiate :** pull de la branche, `qa:lot5d:g`,
+> lint et build. Puis décision distincte sur le correctif Storage/UI,
+> l'audit de classe Parent/Enseignant et le backend Admin réel.
 > **Aucune migration ni déploiement autorisé.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
