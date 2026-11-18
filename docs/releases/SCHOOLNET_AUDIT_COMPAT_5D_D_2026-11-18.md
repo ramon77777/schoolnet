@@ -101,7 +101,7 @@ l'idempotence après conflit, et les permissions simulées
 `anon` / élève / Admin. Le job qualité a réussi avec
 `qa:lot5d:d` (15 tests statiques), lint, build et tests existants.
 
-**Recette locale D de l'utilisateur :** reste à effectuer.
+**Recette locale D de l'utilisateur : réussie (15/15)**, lint 0 erreur (1 warning historique), build Vite réussi et fast-forward Git sans conflit. Les fichiers locaux hors suivi sont préservés.
 Le succès sur fixtures synthétiques **n'établit pas** la compatibilité
 exhaustive avec le vrai schéma SQL.
 
@@ -180,7 +180,7 @@ clé `service_role` dans le navigateur et aucune migration de rôle SQL.
 | Audit de compatibilité avec vrai schéma (SELECT uniquement) | **Effectué** |
 | Nouvelle CI avec 2 sessions, rôles et garde classe | **Réussie**, run #44322527431, schéma fictif |
 | Contrat mock Admin : 15 tests statiques | **Réussi en CI**, non déployé |
-| Recette locale `qa:lot5d:d` de l'utilisateur | **À faire** |
+| Recette locale `qa:lot5d:d` de l'utilisateur | **Validée 15/15**, 18/11/2026 ; lint 0 erreur, build réussi |
 | Revue métier et dossier actif dans année cible | **À faire** |
 | Passerelle backend Admin, migration canonique et tests proches du réel | **Non implémentés / prochain GO distinct** |
 | Installation Supabase principal, merge main, Vercel | **Interdits sans autorisation spécifique** |
