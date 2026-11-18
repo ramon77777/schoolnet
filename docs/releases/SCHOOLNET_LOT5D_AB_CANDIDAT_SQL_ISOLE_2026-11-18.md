@@ -95,21 +95,25 @@ est `schoolnet_lot5d_ci` ; le code de la CI refuse de passer si l'hôte
 ou le nom de base sont inattendus. Elle n'a ni connexion Supabase,
 ni clef `service_role`, ni projet Vercel.
 
-Les **15 vérifications SQL prévues** couvrent : existence du calendrier,
+Les **18 vérifications SQL prévues** couvrent : existence du calendrier,
 permissions de fonctions, refuser UPDATE/RPC legacy/DELETE, décisions
 manquantes, rôle étudiant, redoublement invalide, dossier actif d'un autre
 élève en cible, présence d'une classe officielle, injection d'erreur
 après bascule et rollback, succès nominal, idempotence, rejet d'une
-seconde clé et immutabilité du journal.
+seconde clé, immutabilité du journal, blocage d'un **brouillon** cible,
+**départ sans dossier cible** et **réinscription vers un niveau supérieur**.
 
 Les tests **`qa:lot5d:c`** sont des tests **statiques**. Ils ne prouvent
 **pas** l'exécution du SQL par PostgreSQL. Le schéma fictif est une
 **représentation partielle** : il ne valide pas à lui seul tous les
 triggers, policies, dépendances et fonctions du Supabase réel.
 
-**Statut de recette** : tant que l'exécution du job PostgreSQL 17 et
-les retours locaux n'ont pas été lus, l'intégration SQL demeure
-**non vérifiée en conditions réelles**. Même après réussite, les
+**Statut de recette** : le premier job PostgreSQL 17 éphémère (15 scénarios)
+et la vérification GitHub Actions de build/tests ont **réussi** pour le
+commit `10d7912` (run `44316739463`). Le scénario a ensuite été enrichi
+à **18 vérifications**, dont le résultat GitHub Actions doit être confirmé
+à nouveau. La validation locale par l'utilisateur n'est pas encore faite.
+Le caractère **entièrement fictif** de la recette reste inchangé. Même après réussite, les
 contrôles de concurrence à deux sessions, permissions via véritable
 backend Admin et compatibilité exhaustive avec le schéma existant
 restent à effectuer avant installation.
@@ -137,7 +141,7 @@ de `schoolnet_2.0`. Les fichiers locaux non suivis doivent être préservés.
 
 ## 6. Points encore bloquants
 
-1. Confirmer les résultats du job SQL isolé et corriger tout échec
+1. Confirmer la nouvelle exécution des **18 cas** du job SQL isolé et corriger tout échec
    de compilation, de trigger ou de scénario **sur cette branche uniquement**.
 2. Réaliser l'examen métier du dossier actif 2026–2027 :
    aucun statut modifié automatiquement.
