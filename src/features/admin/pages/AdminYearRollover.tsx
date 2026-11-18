@@ -19,6 +19,7 @@ import {
   type RolloverRun,
 } from "@/features/enrollments/lib/schoolYearRolloverApi";
 import { areSchoolYearRolloverWritesBlocked } from "@/features/enrollments/lib/schoolYearRolloverWritePolicy";
+import { inspectSchoolYearRolloverSnapshot } from "@/features/enrollments/lib/schoolYearRolloverPreflight";
 
 const INITIAL_CATALOG: EnrollmentCatalog = { years: [], classes: [], students: [] };
 
@@ -204,7 +205,20 @@ export default function AdminYearRollover() {
     return !sourceClass || sourceClass.school_id !== null ||
       sourceClass.learning_context === "school";
   });
+  // B : diagnostic visible uniquement. L'autorisation finale restera exclusivement SQL.
+  const preflight = inspectSchoolYearRolloverSnapshot({
+    years: catalog.years,
+    classes: catalog.classes,
+    enrollments,
+    sourceYearId: currentYear?.id ?? null,
+    targetYearId: targetYear?.id ?? null,
+  });
+  const additionalPreflightIssues = preflight.issues.filter((issue) =>
+    ["CURRENT_YEAR_NOT_UNIQUE", "SOURCE_DUPLICATE_STUDENT",
+     "SOURCE_CLASS_WRONG_YEAR"].includes(issue.code),
+  );
   const warnings = [
+    ...additionalPreflightIssues.map((issue) => issue.message),
     ...(activeSource.length === 0 ? ["Aucune inscription active pour l'année courante."] : []),
     ...(targetClasses.length === 0 ? ["L'année cible ne possède pas de classe."] : []),
     ...(targetAnomalies.length > 0
@@ -222,7 +236,7 @@ export default function AdminYearRollover() {
   ];
   const busy = loadingBase || loadingPlan || Boolean(savingStudentId) || finalizing;
   const canFinalize = !busy && !isDemo && !readOnlyRuntime && !migrationPending && !run &&
-    Boolean(currentYear && targetYear) && warnings.length === 0 &&
+    Boolean(currentYear && targetYear) && preflight.issues.length === 0 && warnings.length === 0 &&
     confirmName.trim() === targetYear?.name;
 
   function editDraft(studentId: string, change: Partial<DecisionDraft>) {
@@ -389,7 +403,20 @@ export default function AdminYearRollover() {
 
       {targetYear && <section className="sn-card p-5 md:p-6">
         <h2 className="text-lg font-bold text-slate-950">2. Contrôles préalables</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <div role="status" className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-semibold">Lot 5D-B — diagnostic préparatoire local, sans écriture</p>
+          <p className="mt-1">
+            Dossiers actifs source : {preflight.sourceActive} · Dossiers cible existants :
+            {" "}{preflight.targetExisting} · Dossiers actifs/terminés dans la cible :
+            {" "}{preflight.targetActiveOrCompleted}.
+          </p>
+          <p className="mt-1">
+            Les contrôles complets des droits, des affectations d'établissement S3-C,
+            des conflits et de la transaction restent à réaliser côté serveur.
+            Ces indicateurs n'autorisent aucune bascule.
+          </p>
+        </div>
+        <p className="mt-3 text-sm text-slate-600">
           Les dossiers historiques restent inchangés pendant la préparation.
           La validation finale refait ces contrôles côté Supabase.
         </p>
@@ -493,7 +520,7 @@ export default function AdminYearRollover() {
                       {draft.decision === "leave" && "Aucun nouveau dossier ne sera créé."}
                       {plannedClass && draft.decision === "re_enroll" && "Classe choisie : " + plannedClass.name}
                     </span>
-                    <button type="button" className="sn-btn-primary" disabled={studentBusy}
+                    <button type="button" className="sn-btn-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-0" disabled={studentBusy}
                       onClick={() => void submitDecision(row.student_id)}>
                       {savingStudentId === row.student_id ? "Enregistrement…" : "Enregistrer la décision"}
                     </button>
@@ -530,7 +557,7 @@ export default function AdminYearRollover() {
             placeholder={targetYear?.name || "Nom de l'année scolaire"} />
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" className="sn-btn-primary" disabled={!canFinalize}>
+          <button type="submit" className="sn-btn-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-0" disabled={!canFinalize}>
             {finalizing ? "Clôture en cours…" : "Valider et activer l'année suivante"}
           </button>
           <p className="text-xs text-slate-500">
