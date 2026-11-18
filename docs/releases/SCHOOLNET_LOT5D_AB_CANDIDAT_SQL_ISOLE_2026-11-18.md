@@ -145,9 +145,12 @@ de `schoolnet_2.0`. Les fichiers locaux non suivis doivent être préservés.
 
 ## 6. Points encore bloquants
 
-1. **Recette SQL isolée 18/18 validée.** Effectuer maintenant la QA
-   locale `npm run qa:lot5d:c`, `npm run lint`, `npm run build` et
-   examiner les résultats utilisateur avant le GO suivant.
+1. **Recette SQL isolée 18/18 validée, et QA locale A9/B17/C12 réussie.**
+   La phase 5D-D a ajouté la **concurrence entre deux sessions PostgreSQL**
+   et les contrôles de permissions (CI réussie,
+   [run #44322527431](https://github.com/ramon77777/schoolnet/actions/runs/44322527431)).
+   La commande **`npm run qa:lot5d:d`** (15 tests statiques) reste à faire
+   sur le PC de l'utilisateur avant de poursuivre.
 2. Réaliser l'examen métier du dossier actif 2026–2027 :
    aucun statut modifié automatiquement.
 3. Auditer les usages historiques de `class_students` et
@@ -155,8 +158,10 @@ de `schoolnet_2.0`. Les fichiers locaux non suivis doivent être préservés.
 4. Définir le **backend Admin** à rôle SQL dédié avec vérification
    forte de l'identité et origine officielle (aucun `GRANT`
    privilégié vers une API publique).
-5. Mettre en place un banc de test de **concurrence multi-sessions** et
-   une recette de schéma cible fidèle à Supabase, toujours hors production.
+5. Le banc **concurrent à deux sessions** est désormais opérationnel
+   sur PostgreSQL fictif (CI verte). Continuer par des scénarios avec les
+   **RPC legacy concurrentes** et un banc encore plus fidèle au schéma réel,
+   toujours hors production.
 6. Soumettre un **nouveau GO distinct** pour préparer la migration
    Supabase canonique et un **autre GO** avant toute application réelle.
 7. Ne pas fusionner la PR #15 ni publier sur Vercel tant que le parcours
@@ -175,3 +180,6 @@ implicitement avec le nouveau candidat. Cette dette de migration doit
 tests visibles → autorisation de fusion → `main` → Vercel **existant**,
 et séparément permissions SQL / sauvegarde / installation Supabase
 après GO explicites.
+## 7. Reprise phase 5D-D
+
+Voir [audit de compatibilité réelle et concurrence 5D-D](./SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md). Cette phase est **non déployée** et n'autorise pas la migration SQL principale.
