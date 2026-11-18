@@ -42,6 +42,8 @@ jobs:
         run: npm run qa:lot5d:f
       - name: Verifier Lot 5D-G (catalogue reel, voies directes, passerelle mock)
         run: npm run qa:lot5d:g
+      - name: Verifier Lot 5D-H (integrite Storage et classes historiques)
+        run: npm run qa:lot5d:h
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -343,3 +345,75 @@ jobs:
           docs=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")
           test "$count" = "1"
           test "$docs" = "1"
+
+  # Lot 5D-H - separate fictional Postgres instance. DO NOT use real Storage.
+  # Storage schema is a simplified RLS fixture; never SQL-delete real files.
+  lot5d_storage_hardening:
+    name: Lot 5D-H - Storage RLS sans effacement et archive (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuser toute connexion Supabase externe
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test "$PGUSER" = "postgres"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Installer uniquement les fixtures et protections SQL SANDBOX_ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_schema_parity_fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dh_storage_objects_fixture_postgresql17.sql
+      - name: Prouver la suppression permise par ancienne RLS fictive sous ROLLBACK
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dh_storage_delete_before_postgresql17.sql
+      - name: Appliquer le garde Storage H UNIQUEMENT a la fixture jetable
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dh_storage_delete_SANDBOX_ONLY.sql
+      - name: Preparer et finaliser un dossier scolaire fictif (G, sans reseau)
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_prepare_document_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_finalize_document_postgresql17.sql
+      - name: Prouver refus DELETE, maintien SELECT/INSERT et conservation d'archives
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dh_storage_delete_after_postgresql17.sql
+      - name: Verifier les compteurs Storage fictifs et annees apres ROLLBACK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "1"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM storage.objects")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")" = "1"
