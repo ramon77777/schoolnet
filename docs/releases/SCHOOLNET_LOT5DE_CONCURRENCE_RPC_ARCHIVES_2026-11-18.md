@@ -1,7 +1,7 @@
 # SCHOOLNET — Lot 5D-E : concurrence RPC historiques, archives, passerelle Admin (simulation)
 
 **Date :** 18 novembre 2026  
-**Statut :** PR #15, **GitHub uniquement**, CI PostgreSQL fictive **réussie**, **recette locale E à effectuer**  
+**Statut :** PR #15, **GitHub uniquement**, CI PostgreSQL fictive **réussie**, **recette locale E validée 20/20 le 18/11/2026**  
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **Production :** aucune intervention sur Supabase principal, `main` ou Vercel.
 
@@ -148,26 +148,27 @@ démontrent donc **pas** que le serveur principal est déjà protégé.
 Les transactions isolées et la proposition de guards restent à
 consolider et à vérifier sur une **copie fidèle** avant toute activation.
 
-## 5. Prochaine recette locale et décisions
+## 5. Recette locale 5D-E validée et décisions suivantes
 
-L'utilisateur doit récupérer la branche puis lancer ces tests **sans SQL** :
+L'utilisateur a confirmé le 18 novembre 2026 sa recette depuis
+`D:\\Bakary\\10 autres\\schoolnet`, sur la branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
+`git pull --ff-only` **réussi** (`dce9eeb..4920c68`),
+`npm run qa:lot5d:e` **20/20**, ESLint **0 erreur**
+(1 avertissement connu `EnrollmentRecordsPage.tsx:161`),
+`npm run build` **réussi** (867 modules Vite).
+Les avertissements Browserslist et taille du bundle sont non bloquants.
+Les scripts non suivis, les propositions SQL locales et
+`tsconfig.app.tsbuildinfo` n'ont pas été supprimés.
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:e
-npm run lint
-npm run build
-git status --short
-```
+**Cumul local A à E : 73/73 tests validés.**
+Cette recette n'exécute **aucun SQL réel** : elle vérifie le contrat
+hors réseau ; les tests à deux sessions PostgreSQL 17 ont été réussis
+**séparément en CI** sur données fictives. La passerelle Admin
+reste mock, les RPC de production ne sont pas corrigées et
+l'année cible 2026–2027 déjà occupée demeure bloquante.
 
-**Attendu : `qa:lot5d:e` 20/20**, lint 0 erreur avec avertissement
-React Hook connu, build réussi. Les scripts locaux non suivis doivent
-rester intacts. En cas de conflit Git, s'arrêter et transmettre
-le message ; **pas de `git clean`, `reset --hard`, `supabase db push`**.
-
-Après ce GO local, resteront à décider séparément :
+Après cette validation locale, resteront à décider séparément :
 1. La qualification métier du dossier actif 2026–2027.
 2. Le traitement des archives et de la classe affichée côté Parent/
    Enseignant après passage annuel ; pas de suppression d'historique.

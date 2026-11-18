@@ -199,7 +199,7 @@ fidélité de tous les triggers du vrai schéma et qualification métier du
 dossier cible déjà actif. Une authentification réelle de la passerelle et
 un rôle SQL dédié sont à concevoir avant un GO de migration.
 
-### 5D-E : **CONCURRENCE RPC LEGACY + ARCHIVES + PASSERELLE MOCK — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-E : **CONCURRENCE RPC LEGACY + ARCHIVES + PASSERELLE MOCK — CI ET LOCAL VALIDÉS**
 
 Livrable sur la même branche, toujours dans la PR #15 **en brouillon**,
 sans installation SQL ni code serveur déployé :
@@ -240,8 +240,9 @@ sans installation SQL ni code serveur déployé :
 dans le Supabase principal**. Les nouveaux tests prouvent la réponse
 du **modèle corrigé en sandbox**, pas l'absence de conflit sur
 production. Le dossier cible actif 2026–2027 bloque toujours
-toute bascule réelle. La recette locale E **n'a pas encore été
-fournie par l'utilisateur**.
+toute bascule réelle. La recette locale E **a été validée par l'utilisateur le 18/11/2026 : 20/20**,
+lint 0 erreur (1 avertissement React Hook connu), build Vite réussi.
+Cette validation ne vaut pas autorisation d'écriture SQL réelle.
 
 ### Situation métier à résoudre
 
@@ -281,7 +282,7 @@ sont documentées dans le rapport, sans révocation globale imprudente.
 - Ne jamais modifier ou « corriger » le dossier actif 2026–2027 par déduction
   ou à partir de la date système. Faire un audit métier et un choix approuvé.
 
-## 5. Recette locale 5D-D validée ; **5D-E à effectuer**
+## 5. Recettes locales 5D-D et 5D-E — **VALIDÉES**
 
 Le 18/11/2026, après `git pull --ff-only` réussi (branche
 `feature/schoolnet-lot5d-a-securisation-20261118`,
@@ -315,25 +316,32 @@ passerelle Admin serveur authentifiée, sans connexion de production
 ni installation de SQL. Aucun travail de cette prochaine phase
 n'est présumé autorisé par les tests ci-dessus.
 
-### Prochain test local — Lot 5D-E
+### Recette locale 5D-E — **VALIDÉE LE 18 NOVEMBRE 2026**
 
-Le banc SQL PostgreSQL du Lot 5D-E a réussi dans GitHub Actions
-sur une base fictive. Il reste à valider les nouveaux tests **locaux** :
+L'utilisateur a transmis la sortie complète du terminal PowerShell sur
+`D:\\Bakary\\10 autres\\schoolnet`. Branche confirmée :
+`feature/schoolnet-lot5d-a-securisation-20261118`.
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:e
-npm run lint
-npm run build
-git status --short
-```
+- `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118` :
+  **fast-forward réussi**, de `dce9eeb` vers `4920c68`, sans conflit.
+- `npm run qa:lot5d:e` : **20 tests, 20 réussis**, 0 échec.
+- `npm run lint` : **0 erreur**, 1 avertissement déjà connu
+  `react-hooks/exhaustive-deps` dans
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **réussi**, TypeScript + Vite, **867 modules**,
+  `vite v7.3.1`. Avertissements non bloquants : données Browserslist
+  anciennes, bundle JS principal volumineux.
+- `git status --short` avant/après : `tsconfig.app.tsbuildinfo` modifié
+  et les trois scripts locaux non suivis ainsi que
+  `supabase/proposals/staged/` **conservés**.
 
-**Attendu : 20/20 tests E**, ESLint 0 erreur (1 avertissement
-React Hook déjà connu), build réussi. Aucun lancement de SQL,
-aucun déploiement. Conserver les fichiers locaux non suivis ;
-si Git refuse de synchroniser, s'arrêter et envoyer le message.
+**Total recettes locales A+B+C+D+E : 9+17+12+15+20 =
+73/73 tests réussis.** Tests SQL en CI sur fixtures PostgreSQL 17
+distincts de ce cumul local. Aucune écriture sur Supabase principal,
+aucune migration installée, aucune fusion de la PR #15, aucune mise en
+production Vercel décidée. La réussite de 5D-E ne rend pas la bascule
+annuelle opérationnelle : anciennes RPC réelles et backend Admin privé
+toujours à sécuriser sous nouveau GO.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -347,7 +355,7 @@ si Git refuse de synchroniser, s'arrêter et envoyer le message.
 3. Définir la politique d'année SCHOOLNET globale et le parcours
    des établissements ; la gestion S3-C reste **distincte**.
 4. **5D-E : concurrence croisée avec RPC legacy simulées, gel des archives
-   et mock Admin validés en CI** ; effectuer la recette locale E 20/20.
+   et mock Admin validés en CI** ; recette locale E **20/20 validée par l'utilisateur**.
    Ensuite, auditer **les définitions complètes des RPC de production**,
    tester une copie fidèle du vrai schéma, revoir les écrans historiques
    Parent/Enseignant et préparer un véritable backend Admin avec un rôle
@@ -387,7 +395,7 @@ si Git refuse de synchroniser, s'arrêter et envoyer le message.
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
 > **Recette locale A9/9, B17/17, C12/12, D15/15 validée : 53/53 ;
-> recette locale E (20 tests) À FAIRE.**
+> recette locale E **20/20 VALIDÉE** : **73/73 tests locaux A à E**.**
 > CI GitHub Actions [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560) :
 > **3 jobs SUCCESS**, incluant tests 5D-E 20/20, SQL PG17
 > concurrent, 11 assertions de garde historique et archivage fictif.
@@ -399,12 +407,10 @@ si Git refuse de synchroniser, s'arrêter et envoyer le message.
 > anciennes RPC réelles **non corrigées** ;
 > passerelle Admin uniquement simulée et **NON DÉPLOYÉE**.
 >
-> **Prochaine action immédiate :** l'utilisateur synchronise la branche
-> et exécute `npm run qa:lot5d:e`, `npm run lint`,
-> `npm run build`, puis transmet les résultats.
-> Après GO séparé : revoir les fonctions legacy réelles, les
-> écrans historiques Parent/Enseignant, préparer un backend Admin
-> authentifié et une migration canonique, toujours **sans installer**.
+> **Prochaine étape (GO distinct requis)** : revoir les anciennes RPC
+> de production complètes, les écrans Parent/Enseignant et la
+> fidélité du schéma isolé ; concevoir un backend Admin réellement
+> authentifié et une migration canonique. **Rien à installer encore.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
