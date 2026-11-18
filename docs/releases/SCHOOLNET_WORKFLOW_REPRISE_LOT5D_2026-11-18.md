@@ -1,6 +1,6 @@
 # SCHOOLNET — Workflow de reprise et avancement au 18 novembre 2026
 
-> **DOCUMENT DE REPRISE ACTUEL — à ouvrir en premier lorsque nous reprenons SCHOOLNET.**
+> **DOCUMENT DE REPRISE ACTUEL — Audit serveur 5D-B validé en lecture seule le 18/11/2026 ; aucune installation SQL.**
 >
 > Statuts distincts : **PUBLIÉ**, **TESTÉ LOCAL**, **PRÉPARÉ GITHUB**, **EN ATTENTE D'AUTORISATION**.
 > Ce document complète [le workflow directeur historique](../WORKFLOW_DIRECTEUR_SCHOOLNET_2_0_2026-11-10.md) sans réécrire son historique.
@@ -72,7 +72,7 @@ Branche : `feature/schoolnet-lot5d-a-securisation-20261118`.
 - La recette visuelle des deux pages, le code et les tests ont été validés.
 - **La PR est volontairement toujours en brouillon, sans fusion et sans déploiement**.
 
-### 5D-B : **PRÉPARATION GITHUB, RECETTE LOCALE À EFFECTUER**
+### 5D-B, phase diagnostic : **TESTS LOCAUX VALIDÉS + AUDIT SERVEUR LECTURE SEULE TERMINÉ**
 
 Dans la **même branche et la même PR #15** :
 
@@ -99,17 +99,50 @@ Dans la **même branche et la même PR #15** :
 - `package.json` : `npm run qa:lot5d:b`.
 - `.github/workflows/schoolnet-quality.yml` : contrôle B ajouté aux PR.
 
+**Recette locale B du 18/11 validée par l'utilisateur :** 
+`qa:lot5d:a` 9/9, `qa:lot5d:b` 17/17, ESLint 0 erreur
+(1 avertissement React Hook historique), build Vite réussi et captures
+des pages `/app/admin/year-rollover` et `/app/admin/school-years`.
+Le panneau 5D-B s'affiche et les commandes de décision/finalisation
+sont grises et réellement désactivées.
+
+**Audit Supabase principal terminé en lecture seule :** voir 
+[rapport d'audit serveur 5D-B](./SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md).
+43 migrations, aucune RPC 5D finale installée, ancienne RPC directe présente,
+aucun trigger 5D-A, protections RLS existantes mais pas de verrou métier SQL.
+La source et la cible ont chacune 1 dossier actif, pour **deux élèves différents**.
+
 **Attention : le SQL transactionnel 5D-B n'est PAS encore implémenté et
 aucune fonction serveur n'est installée.** Ce jalon constitue un diagnostic
 et une spécification sécurisée, pas une activation.
 
-### Anomalie principale à résoudre
+### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
 | --- | --- | ---: | --- |
 | 2025–2026 | Oui | 1 | Source legacy du passage envisagé. |
 | 2026–2027 | Non | 1 | Dossier déjà actif dans la cible : **blocage obligatoire**. |
 | 2027–2028 | Non | 0 | Aucune bascule décidée. |
+
+**Précision issue de l'audit :** les deux dossiers actifs ne constituent **pas**
+un doublon d'élève interannuel (0 paire de dossiers actifs avec le même
+`student_id` sur deux années). Les deux classes sont en contexte
+`legacy_unclassified`, cohérentes avec leur année. La situation bloquante
+est une année cible **déjà occupée par un dossier actif distinct** ; le
+responsable doit qualifier ce dossier avant toute clôture/bascule.
+La base contient 4 événements d'inscriptions, 2 `class_students`,
+2 `class_teachers` et 0 classe ou affectation S3-C officielle.
+Les 1 affiliation d'établissement active restent indépendantes des dossiers
+legacy.
+
+**Risque SQL confirmé :** la RPC `admin_set_current_school_year` contrôle
+le rôle Admin et verrouille la table des années, mais ne contrôle pas
+la clôture des dossiers source/cible ni l'audit métier. Les anciens
+`admin_upsert_student_enrollment` et `admin_set_student_enrollment_status`
+peuvent modifier `class_students` et `profiles.class_name`. Le passage
+5D définitif ne doit pas les réutiliser sans preuve d'innocuité.
+Les alertes Security Advisors sur les fonctions `SECURITY DEFINER`
+sont documentées dans le rapport, sans révocation globale imprudente.
 
 **Interdictions absolues :**
 - Ne pas utiliser la RPC historique `admin_set_current_school_year` en production :
@@ -121,53 +154,56 @@ et une spécification sécurisée, pas une activation.
 - Ne jamais modifier ou « corriger » le dossier actif 2026–2027 par déduction
   ou à partir de la date système. Faire un audit métier et un choix approuvé.
 
-## 5. Étape IMMÉDIATE au retour utilisateur — recette B locale
+## 5. Étape IMMÉDIATE à la reprise — après validation locale et audit serveur
 
-Dans le terminal PowerShell de VS Code :
+**Réalisé et validé :** branche GitHub synchronisée jusqu'au commit
+`b20b3ee` avant l'audit, tests `qa:lot5d:a` 9/9 et `qa:lot5d:b`
+17/17, ESLint 0 erreur, build Vite OK, deux captures des interfaces
+Super Admin conformes. Aucun test SQL de mutation en production.
+
+**Audit en lecture seule terminé :**
+[rapport d'audit 5D-B](./SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md).
+L'année 2025–2026 est toujours courante ; l'année cible 2026–2027
+contient 1 dossier actif **d'un autre apprenant**. La politique actuelle
+côté serveur doit être renforcée avant toute activation.
+
+**Action suivante soumise à accord distinct :** préparer sur GitHub la
+**migration SQL consolidée 5D-A+B** et les scénarios de tests sur
+environnement isolé, **sans installation**. Le rapport interdit
+la simple activation du flag de production ou la réutilisation aveugle
+de l'ancienne RPC.
+
+Si une synchronisation documentaire locale est souhaitée, utiliser
+uniquement :
 
 ```powershell
 git status --short
 git branch --show-current
 git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:a
-npm run qa:lot5d:b
-npm run lint
-npm run build
-git status --short
-npm run dev
 ```
 
-Si `git pull` refuse à cause d'un fichier modifié/non suivi :
-**arrêter, conserver les fichiers et transmettre le message**. Ne pas
-supprimer ou masquer les modifications locales.
-Le résultat attendu est `qa:lot5d:a` **9/9**, `qa:lot5d:b` **17/17**
-(sous réserve de la recette réelle), ESLint 0 erreur et build réussi.
-
-Pages à contrôler avec compte Super Admin, sans aucune écriture :
-- `http://localhost:5173/app/admin/school-years` : activation directe
-  suspendue, années courantes inchangées.
-- `http://localhost:5173/app/admin/year-rollover` : nouveau panneau
-  « Lot 5D-B — diagnostic préparatoire local » ; année source 2025–2026,
-  cible 2026–2027, dossier cible actif signalé, **boutons réellement désactivés
-  ET visiblement grisés**.
-
-**La validation de cette étape dépend des résultats réels de l'utilisateur.
-Aucune validation de B par simple ajout du code dans GitHub.**
+Les fichiers locaux hors suivi et `tsconfig.app.tsbuildinfo` modifié
+doivent être conservés ; **ne pas** utiliser `git clean -fd`,
+`git reset --hard` ni `supabase db push`. Sur refus Git, s'arrêter
+et faire examiner le message.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
-**5D-B / ÉTAPE SERVEUR (NON ENCORE AUTORISÉE)** :
-1. Auditer le dossier actif 2026–2027 avec le responsable du cas (sans
-   écraser ni changer de statut automatiquement).
-2. Concevoir la migration SQL **consolidée** 5D-A+B, explicitement
-   anti-contournement, compatible transactions et contrôles S3-C.
-3. Séparer les réinscriptions legacy des affectations des établissements
-   ; définir la politique de passage d'année établissement par établissement.
-4. Tester sur environnement isolé : cas conformes et rejets, concurrence,
-   idempotence, RLS/permissions, journal et rollback intégral, **sans
-   toucher aux données réelles**.
-5. Soumettre l'installation SQL à autorisation explicite, avec préflight
-   et sauvegarde, avant toute écriture sur le projet principal.
+**5D-B / ÉTAPE DE CONCEPTION SERVEUR (EN ATTENTE D'AUTORISATION)** :
+1. **Audit technique terminé en lecture seule.** Examen métier du
+   dossier actif 2026–2027 par un responsable habilité : **à faire**,
+   sans changement de statut automatique.
+2. Concevoir sur GitHub la migration SQL **consolidée** 5D-A+B :
+   neutralisation du changement direct de l'année, vérifications
+   transactionnelles, rôles serveur, isolement S3-C, journal et idempotence.
+3. Formaliser la politique d'année SCHOOLNET globale et le parcours
+   des établissements, sans mélanger inscriptions legacy et affectations.
+4. Tester sur environnement **isolé avec données fictives** :
+   cas conformes et rejets, concurrence, RLS, journal et `ROLLBACK`.
+   Aucun test mutateur dans Supabase principal.
+5. Demander une **autorisation distincte** pour installer une migration
+   consolidée et ciblée dans le projet principal après sauvegarde et
+   contrôles de préflight ; ensuite seulement, recette métier réelle.
 
 **APRÈS ACTIVATION SQL AUTORISÉE** :
 - Recette métier contrôlée, puis fusion PR #15 et publication sur le **Vercel
@@ -190,9 +226,17 @@ Aucune validation de B par simple ajout du code dans GitHub.**
 
 ## 8. Règle de reprise
 
-> **À la prochaine conversation :** « SCHOOLNET — reprise depuis
-> `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`.
-> Branche `feature/schoolnet-lot5d-a-securisation-20261118`, PR #15 brouillon.
-> 5D-A local validé ; 5D-B diagnostic et spécification sur GitHub,
-> attendre `npm run qa:lot5d:b` + captures locales. Pas de SQL,
-> pas de merge `main`, pas de Vercel sans mon GO. »
+> **Prochaine conversation SCHOOLNET :**
+> Reprendre à partir de
+> `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`
+> et de
+> `docs/releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md`.
+> Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
+> PR #15 **brouillon**, main et Vercel inchangés.
+> **5D-A validé localement ; 5D-B diagnostic local validé (17/17) et
+> audit SQL lecture seule terminé.** Année 2025–2026 courante,
+> 1 actif source / 1 actif cible **pour deux élèves différents**.
+> Avant toute suite SQL : qualifier le dossier cible et obtenir
+> un GO distinct pour concevoir le finaliseur transactionnel en GitHub
+> et le tester en isolation. **Pas de SQL en production, pas de
+> passage d'année, pas de fusion, pas de Vercel sans autorisation.**
