@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  ENROLLMENT_DOCUMENT_BROWSER_DELETE_BLOCKED,
+  ENROLLMENT_DOCUMENT_DELETE_NOTICE,
+  persistEnrollmentDocumentSafely,
+} from "@/features/enrollments/lib/enrollmentDocumentSafety";
 
 // Lot 5.B : les pieces justificatives sont reservees a l'administration.
 // La table et le bucket sont disponibles apres migration autorisee, pas avant.
@@ -127,31 +132,44 @@ export default function AdminEnrollmentDocuments({
     setError(null);
     setSuccess(null);
     try {
-      const { error: storageError } = await supabase.storage
-        .from(BUCKET)
-        .upload(objectPath, file, { contentType: file.type, upsert: false });
-      if (storageError) throw storageError;
-
-      const { error: metadataError } = await supabase
-        .from("student_enrollment_documents")
-        .insert({
-          enrollment_id: enrollmentId,
-          document_type: documentType,
-          original_filename: file.name,
-          storage_path: objectPath,
-          mime_type: file.type,
-          size_bytes: file.size,
-        });
-
-      if (metadataError) {
-        const { error: cleanupError } = await supabase.storage
-          .from(BUCKET).remove([objectPath]);
-        if (cleanupError) {
-          throw new Error(
-            `Enregistrement du fichier incomplet. Nettoyage automatique impossible : ${messageFrom(cleanupError)}. Informez l'administration.`,
-          );
-        }
-        throw metadataError;
+      const outcome = await persistEnrollmentDocumentSafely(
+        async () => {
+          const { error: storageError } = await supabase.storage
+            .from(BUCKET)
+            .upload(objectPath, file, { contentType: file.type, upsert: false });
+          if (storageError) throw storageError;
+        },
+        async () => {
+          // Check one metadata row was returned. On ambiguous network errors
+          // NEVER delete the object: the SQL insert may have committed.
+          const { data: saved, error: metadataError } = await supabase
+            .from("student_enrollment_documents")
+            .insert({
+              enrollment_id: enrollmentId,
+              document_type: documentType,
+              original_filename: file.name,
+              storage_path: objectPath,
+              mime_type: file.type,
+              size_bytes: file.size,
+            })
+            .select("id")
+            .single();
+          if (metadataError || !saved?.id) {
+            throw metadataError ?? new Error("Enregistrement non confirmé.");
+          }
+        },
+      );
+      if (outcome === "storage_failed") {
+        throw new Error("Le dépôt du fichier a échoué. Vous pouvez réessayer.");
+      }
+      if (outcome === "metadata_unconfirmed") {
+        setFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+        throw new Error(
+          "Fichier transmis, mais enregistrement au registre non confirmé. " +
+          "Le fichier a été conservé pour vérification administrative. " +
+          "Ne refaites pas ce dépôt sans contrôle du dossier.",
+        );
       }
 
       setFile(null);
@@ -190,37 +208,6 @@ export default function AdminEnrollmentDocuments({
     }
   }
 
-  async function remove(item: DocumentRow) {
-    if (disabled || busyId !== null) return;
-    if (!window.confirm(
-      `Supprimer définitivement « ${item.original_filename} » du dossier scolaire ?`,
-    )) return;
-    setBusyId(item.id);
-    setError(null);
-    setSuccess(null);
-    try {
-      const { error: storageError } = await supabase.storage
-        .from(BUCKET).remove([item.storage_path]);
-      if (storageError) throw storageError;
-      const { data: deletedRows, error: metadataError } = await supabase
-        .from("student_enrollment_documents")
-        .delete()
-        .eq("id", item.id)
-        .eq("enrollment_id", enrollmentId)
-        .select("id");
-      if (metadataError || deletedRows?.length !== 1) {
-        throw new Error(
-          `Fichier supprimé du stockage, mais le registre n'a pas été actualisé. ${metadataError ? messageFrom(metadataError) : "La ligne du dossier n'a pas été supprimée."} Réessayez la suppression.`,
-        );
-      }
-      setSuccess("Pièce justificative supprimée.");
-      await reload();
-    } catch (cause) {
-      setError(messageFrom(cause));
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4" aria-label="Pièces justificatives">
@@ -240,6 +227,11 @@ export default function AdminEnrollmentDocuments({
         <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
           Les pièces justificatives ne sont pas encore activées sur Supabase.
           L'administration pourra déposer des fichiers après validation de la migration dédiée.
+        </p>
+      )}
+      {!disabled && !pendingActivation && ENROLLMENT_DOCUMENT_BROWSER_DELETE_BLOCKED && (
+        <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          {ENROLLMENT_DOCUMENT_DELETE_NOTICE}
         </p>
       )}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
@@ -283,8 +275,8 @@ export default function AdminEnrollmentDocuments({
                     <button type="button" className="sn-btn-ghost" disabled={busyId !== null || saving} onClick={() => void download(item)}>
                       {busyId === item.id ? "Traitement…" : "Télécharger"}
                     </button>
-                    <button type="button" className="sn-btn-ghost text-red-600" disabled={busyId !== null || saving} onClick={() => void remove(item)}>
-                      Supprimer
+                    <button type="button" className="sn-btn-ghost cursor-not-allowed text-slate-500 opacity-60" disabled={ENROLLMENT_DOCUMENT_BROWSER_DELETE_BLOCKED || busyId !== null || saving} title={ENROLLMENT_DOCUMENT_DELETE_NOTICE}>
+                      Suppression suspendue
                     </button>
                   </div>
                 </div>
