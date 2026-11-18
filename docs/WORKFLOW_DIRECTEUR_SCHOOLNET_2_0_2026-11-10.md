@@ -1,18 +1,16 @@
-> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-B DIAGNOSTIC VALIDÉ EN LOCAL + AUDIT SUPABASE LECTURE SEULE TERMINÉ.**
+> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-A+B : CANDIDAT SQL CONSOLIDÉ PRÉPARÉ SUR GITHUB, QA POSTGRES ISOLÉE EN ATTENTE.**
 >
-> À lire AVANT de reprendre le projet :
-> [workflow actualisé Lot 5D](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md)
-> et [rapport d'audit serveur 5D-B](./releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md).
-> Le journal historique ci-dessous reste conservé ; utiliser ces deux
-> documents pour les derniers statuts, chiffres et verrous.
+> Documents à lire AVANT toute reprise :
+> [workflow opérationnel Lot 5D](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md),
+> [audit serveur lecture seule](./releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md),
+> [candidat SQL consolidé et banc de recette PostgreSQL 17](./releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md).
 >
-> - **PRODUCTION :** `main` (Lot 5C et S2-A à S3-C déjà publiés) et Vercel existant `schoolnet-snowy.vercel.app` **inchangés** durant le Lot 5D.
-> - **LOT 5D-A :** recette locale réussie (9/9 tests), contrôle de l'activation directe retiré de l'interface ; **pas de protection serveur 5D installée**.
-> - **LOT 5D-B :** recette locale du 18/11 réussie (**17/17 tests**, ESLint 0 erreur, build OK et captures conformes) ; audit SQL **SELECT uniquement** du projet principal, **43 migrations** ; aucune nouvelle fonction SQL finalisatrice installée.
-> - **CONSTAT :** 2025–2026 est l'année courante (1 actif), 2026–2027 n'est pas courante mais comporte aussi 1 actif ; **les deux dossiers concernent des élèves différents**. 0 affectation S3-C officielle pour le moment. La RPC `admin_set_current_school_year` subsiste côté serveur, sans contrôles de clôture des dossiers.
-> - **BRANCHE :** `feature/schoolnet-lot5d-a-securisation-20261118` ; [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon**, à conserver sans fusion ni déploiement.
-> - **PROCHAINE ÉTAPE SOUMISE AU GO :** qualification métier du dossier cible puis conception d'une **migration transactionnelle consolidée 5D-A+B**, sans toucher à Supabase principal, et tests isolés avec `ROLLBACK`.
-> - **VERROUS :** ne pas activer l'année directe, ne pas lancer `supabase db push`, ne pas installer la migration historique 5D ou une proposition 5D-A seule, ne pas définir `VITE_SCHOOLNET_LOT5D_WRITES_ENABLED=true`, ne pas fusionner `main` ni publier Vercel sans autorisation spécifique.
+> - **Déjà validé en local :** Lot 5D-A 9/9, Lot 5D-B 17/17, lint 0 erreur, build OK, captures Super Admin conformes.
+> - **Audit de Supabase principal :** 43 migrations, année courante 2025–2026 (1 actif) et année cible 2026–2027 (1 actif d'un **autre** élève). Aucune SQL 5D installée, ancienne RPC directe toujours présente côté serveur.
+> - **Préparation nouvelle :** candidat SQL 5D-A+B sous `supabase/proposals/...` (**SANDBOX_ONLY**, pas `migrations/`), déclencheurs de verrouillage de l'année active, décisions, finaliseur privé, journal, idempotence, intégrité S3-C. Fixtures fictives et tests transactionnels PostgreSQL 17 isolés dans GitHub Actions, **résultats à vérifier**.
+> - **PR et production :** `feature/schoolnet-lot5d-a-securisation-20261118`, [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon** ; `main` et projet Vercel existant `schoolnet-snowy.vercel.app` inchangés pour le Lot 5D.
+> - **Prochaine action :** récupérer l'exécution de `npm run qa:lot5d:c`, la recette PostgreSQL 17 éphémère et les captures / retours locaux ; analyser les écarts de schéma, classes et effets legacy avant GO de migration.
+> - **Interdits :** aucune modification du Supabase principal, aucune réparation automatique du dossier 2026–2027, aucun `supabase db push`, aucune activation directe d'année, aucune ouverture de flag d'écriture, aucun merge `main` ou déploiement Vercel sans autorisation nouvelle.
 
 ---
 
