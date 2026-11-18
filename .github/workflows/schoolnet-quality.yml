@@ -34,6 +34,8 @@ jobs:
         run: npm run qa:lot5d:b
       - name: Verifier Lot 5D-C (candidat consolide, securite hors reseau)
         run: npm run qa:lot5d:c
+      - name: Verifier Lot 5D-D (concurrence et contrat backend non deploye)
+        run: npm run qa:lot5d:d
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
