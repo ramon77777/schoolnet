@@ -221,12 +221,15 @@ export default function AdminRequestResolutionPanel({
   return (
     <div className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4" aria-label="Rattachement vérifié">
       <div>
-        <h3 className="font-extrabold text-slate-950">🔗 Rattachement vérifié</h3>
+        <h3 className="font-extrabold text-slate-950">Famille et inscription scolaire</h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-600">
-          Retrouvez les comptes puis confirmez le lien familial avant toute finalisation.
+          Le rattachement familial et l'affectation scolaire sont deux opérations distinctes. Un enfant activé peut être lié à son parent avant la création de sa classe.
         </p>
       </div>
       {!loading && !migrationPending && request.status !== "rejected" && (
+        <details className="rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-slate-800">Gérer les invitations Parent / Tuteur</summary>
+        <div className="border-t border-slate-100 p-3">
         <AdminFamilyInvitationManager
           request={request}
           disabled={disabled}
@@ -253,8 +256,12 @@ export default function AdminRequestResolutionPanel({
             setLinkExists(null);
           }}
         />
+        </div></details>
       )}
       {!disabled && !loading && !error && !resolution && request.status !== "rejected" && (
+        <details className="rounded-xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-slate-800">Reconnaissance des comptes et classes</summary>
+        <div className="border-t border-slate-100 p-3">
         <AdminEnrollmentRequestPreflight
           request={request}
           users={users}
@@ -273,11 +280,12 @@ export default function AdminRequestResolutionPanel({
             setLinkExists(null);
           }}
         />
+        </div></details>
       )}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {success && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p>}
       {disabled ? (
-        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Rattachements réels interdits en mode démonstration.</p>
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Actions de rattachement désactivées pour cet aperçu ou ce compte de démonstration.</p>
       ) : loading ? (
         <p className="text-sm text-slate-600">Chargement des rattachements…</p>
       ) : migrationPending ? (

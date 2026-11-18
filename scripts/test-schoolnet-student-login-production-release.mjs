@@ -15,13 +15,17 @@ test('02 - production login keeps captcha mandatory',()=>{
  assert.match(client,/mode === 'production' && \(!captchaToken/);
  assert.match(edge,/TURNSTILE_SECRET_KEY/);
  assert.match(edge,/challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
- assert.match(edge,/result\.hostname!==new URL\(ORIGIN\)\.hostname/);
+ assert.match(edge,/result\.hostname!==new URL\(trustedOrigin\)\.hostname/);
 });
-test('03 - pilot UUID is required before any credential verification',()=>{
+test('03 - server rollout must use explicit canary or general release',()=>{
  assert.match(edge,/SCHOOLNET_STUDENT_PILOT_REQUEST_ID/);
- assert.match(edge,/!isUuid\(pilotId\)/);
- assert.match(edge,/record\.request_id\.toLowerCase\(\)===pilotId/);
- assert.ok(edge.indexOf('if(!enabled||url!==PROD') < edge.indexOf('const svc=createClient'));
+ assert.match(edge,/SCHOOLNET_STUDENT_CANARY_REQUEST_ID/);
+ assert.match(edge,/SCHOOLNET_STUDENT_GENERAL_RELEASE_ENABLED/);
+ assert.match(edge,/!cohortAuthorized/);
+ assert.match(edge,/schoolnetStudentRolloutAllowed/);
+ assert.ok(edge.indexOf("if(!enabled||!anon") < edge.indexOf('const svc=createClient'));
+ assert.match(edge,/schoolnetStudentAllowedOrigin/);
+ assert.match(edge,/if\(!trustedOrigin\)/);
 });
 test('04 - login will not be enabled by fabricated or malformed JWT',()=>{
  assert.match(config,/\[functions\.schoolnet-student-login-release\][\s\S]*?verify_jwt = false/);
@@ -42,8 +46,9 @@ test('06 - no browser credential API bypass or technical email leaks',()=>{
  assert.match(core,/account\.email\.endsWith/);
 });
 test('07 - force stop and strict origin supported',()=>{
- assert.match(edge,/SCHOOLNET_STUDENT_LOGIN_ENABLED'\)!=='false'/);
- assert.match(edge,/origin!==ORIGIN/);
+ assert.match(edge,/SCHOOLNET_STUDENT_LOGIN_ENABLED'\)==='true'/);
+ assert.match(edge,/schoolnetStudentAllowedOrigin/);
+ assert.match(edge,/!trustedOrigin/);
  assert.match(edge,/max-age|cache-control/);
 });
 test('08 - untrusted IP cannot disable global and per-code limits',()=>{
@@ -52,4 +57,11 @@ test('08 - untrusted IP cannot disable global and per-code limits',()=>{
  assert.match(edge,/unknown-shared/);
  assert.match(core,/keyedLoginDigest\('phone'/);
  assert.match(core,/studentCodeLookupDigest/);
+});
+
+test('09 - all production and sandbox logins require explicit enable',()=>{
+ assert.match(edge,/SCHOOLNET_STUDENT_LOGIN_ENABLED'\)==='true'/);
+ assert.doesNotMatch(edge,/SCHOOLNET_STUDENT_LOGIN_ENABLED'\)!=='false'/);
+ assert.match(edge,/SCHOOLNET_STUDENT_SANDBOX_ENABLED/);
+ assert.match(edge,/SCHOOLNET_STUDENT_SANDBOX_ORIGIN/);
 });

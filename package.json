@@ -8,7 +8,8 @@
     "prebuild": "node scripts/check-family-readonly.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "qa:lot5c": "npm run lint && npm run build && node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs && node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs scripts/test-schoolnet-lot5c-main-install.mjs && node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",

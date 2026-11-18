@@ -1,0 +1,105 @@
+**MISE À JOUR (16/11/2026) :** la migration du rattachement et la fonction administrative v8 **sont désormais installées sur Supabase principal**. Le frontend reste sur la PR #13 et n'est pas publié sur Vercel ; les tests locaux conservent leurs protections lecture seule. Consultez [le compte rendu backend actuel](releases/SCHOOLNET_LOT5C_PRINCIPAL_DEPLOIEMENT_BACKEND_2026-11-16.md). Certaines indications ci-dessous décrivent l'état antérieur à l'installation.
+
+# SCHOOLNET — Workflow principal et tests locaux (Lot 5.C)
+**16 novembre 2026 — intégration de développement, pas mise en production.**
+
+## Périmètre exact
+- Dépôt principal : `ramon77777/schoolnet`.
+- Branche d'intégration issue de `main` : `integration/schoolnet-lot5c-local-first`.
+- Ancienne PR #12 : historique de conception et d'essais sandbox ; les programmes GitHub Actions à usage unique et les scripts de création de comptes de sandbox **ne sont pas transportés** dans cette branche.
+- Les deux fichiers sous `supabase/proposals/` sont **REVIEW ONLY**. Ils ne doivent pas être exécutés sur le Supabase principal sans revue, sauvegarde et conversion en migration validée.
+- Aucun commit sur `main`, aucune migration SQL, aucun nouveau compte, aucun déploiement d'Edge Function ou sur Vercel au stade de préparation.
+
+## Commandes Windows — PowerShell, depuis le dossier SCHOOLNET existant
+1. Ouvrir VS Code → Terminal → PowerShell, dans le dossier contenant `package.json`.
+2. Vérifier qu'aucune modification personnelle ne serait écrasée :
+
+```powershell
+git status --short
+git branch --show-current
+node --version
+```
+
+Si `git status --short` affiche des fichiers modifiés ou non suivis que vous souhaitez conserver, **ne pas changer de branche tant que ces changements n'ont pas été sauvegardés**. Ne pas exécuter `git reset --hard` ni supprimer les fichiers personnels.
+
+3. Synchroniser les références de GitHub, puis ouvrir l'intégration :
+
+```powershell
+git fetch origin
+git switch --track origin/integration/schoolnet-lot5c-local-first
+git status
+```
+
+Si la branche existe déjà en local, utiliser `git switch integration/schoolnet-lot5c-local-first` puis `git pull --ff-only`. Git doit afficher la branche d'intégration, pas `main`.
+
+4. Vérifier les fonctionnalités **sans lancer de publication** :
+
+La commande rapide disponible à partir de la dernière version GitHub lance le lint, la compilation et **tous les tests locaux du Lot 5.C**, dont les contrôles de la proposition SQL principale :
+
+```powershell
+git pull --ff-only
+npm run qa:lot5c
+```
+
+Tu n'as besoin ni de Docker, ni de `pg_dump`, ni d'installer un serveur PostgreSQL pour développer et vérifier cette branche.
+
+La version détaillée reste disponible :
+
+```powershell
+npm ci
+npm run lint
+npm run build
+node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
+node --test scripts/test-schoolnet-no-email-auto-family-link.mjs scripts/test-schoolnet-student-login-production-release.mjs scripts/test-schoolnet-lot5c-ui-compact.mjs scripts/test-schoolnet-lot5c-sibling-parent-reuse.mjs scripts/test-schoolnet-lot5c-admin-parent-reuse.mjs
+```
+
+Node.js 24 est utilisé par les vérifications GitHub. Ne pas diffuser les valeurs de `.env.local`, les mots de passe ou les clés de service dans les captures.
+
+5. Vérifier l'interface localement :
+
+```powershell
+npm run dev
+```
+
+Ouvrir l'URL Vite affichée dans le terminal (habituellement `http://localhost:5173`), se connecter avec un compte autorisé et contrôler la fenêtre « Administration → Demandes publiques → Examiner », ses trois onglets, la mise en page mobile et le message de lecture seule en développement.
+
+**Important :** la fiche « Apprenant sans e-mail » est volontairement **en lecture seule hors du domaine de production**. Les tests locaux à cette étape sont principalement des tests de code et d'interface ; aucune action réelle d'approbation, d'activation, de refus ou de rattachement ne doit être tentée depuis le navigateur local. Les tests métier sur la base principale auront leur propre phase autorisée et contrôlée.
+
+## Proposition SQL intégrée au dépôt (non exécutée)
+
+`supabase/proposals/20261116_schoolnet_lot5c_MAIN_INSTALL_REVIEW_ONLY.sql` réunit dans **une seule transaction** le déclencheur d'activation familiale et le registre privé d'approbation du Parent existant. Le précontrôle a été adapté après lecture de la structure réelle de `schoolnet_2.0` : les fonctions privées existent, mais la table `schoolnet_student_private.identities` utilisée dans l'ancienne sandbox n'existe pas sur le principal. Les tests contrôlent cette différence.
+
+Cette proposition SQL **n'est pas exécutée pendant un build, les tests ou un git pull**. Elle ne doit pas être appliquée depuis la CI ni automatiquement au déploiement Vercel.
+
+Le dépôt GitHub sauvegarde le **code et son historique**, pas les enregistrements Auth, PostgreSQL ou les fichiers Storage d'un projet Supabase hébergé.
+
+## Contrôles avant toute utilisation réelle
+- Vérifier les sauvegardes Supabase principal (Dashboard → Database → Backups) et disposer d'un plan de restauration. Selon le plan, une exportation logique séparée peut être nécessaire.
+- Examiner en lecture seule les contraintes, politiques RLS, fonctions et triggers existants ; ne pas recopier les données du principal dans un autre environnement.
+- Transformer les propositions SQL en une migration **adaptée à la vraie base**, en préservant les données existantes.
+- Tester un cas réel non destructif ou un compte de test autorisé : invitation Parent, nouvel enfant, connexion, approbation, absence de doublons.
+- Vérifier les secrets et flags de déploiement avant publication, notamment le changement `SCHOOLNET_STUDENT_LOGIN_ENABLED` qui exige `true` explicite dans le nouveau backend. Aucune modification de flags n'est effectuée ici.
+- Confirmer la configuration Vercel : un push/merge vers `main` peut déclencher automatiquement une publication. La connexion Vercel actuelle n'a pas permis d'auditer le projet.
+- Ne fusionner dans `main` qu'après les tests locaux et la validation explicite de l'utilisateur.
+
+## Prochaine recette
+1. Retour utilisateur avec sortie des commandes `npm run lint`, `npm run build` et capture de la fiche locale.
+2. Audit et migration SQL sur le principal avec sauvegarde et validation, puis recette applicative sur des identités prévues à cet effet.
+3. Vérification de configuration Vercel, validation finale, puis seulement publication.
+
+**Rappel :** aucune étape de cette branche n'est un déploiement, une activation générale ou une invitation réelle.
+
+
+## Vérification locale réelle en lecture seule (nouveau mode opt-in)
+
+Le parcours « Accès Apprenant » est désormais préparé pour une **inspection locale du serveur**, sans modifier le domaine Vercel. Cette option est désactivée par défaut :
+
+- Le navigateur local doit être exactement `http://localhost:5173` et utiliser `schoolnet_2.0`.
+- Dans le `.env.local` de Windows, `VITE_SCHOOLNET_ADMIN_LOCAL_INSPECT=true` n'autorise que l'action `inspect`. **Ne pas commiter ce fichier**.
+- **Le serveur doit séparément autoriser** `SCHOOLNET_STUDENT_LOCAL_ADMIN_INSPECT_ENABLED=true`. Il faut aussi déployer la fonction adaptée et vérifier son JWT Admin. Aucun de ces changements serveur n'est effectué dans cette PR.
+- Un navigateur local ne peut **jamais** appeler `approve_parent_reuse`, `prepare` ou `declare_sent` : le navigateur ET le serveur les refusent.
+- La fonction de connexion Apprenant `schoolnet-student-login-release` **n'hérite pas** de cette exception locale. Les aperçus Vercel restent en lecture seule.
+
+**Ne pas activer la variable locale avant que l'Edge Function et la proposition SQL aient fait l'objet de leur revue et d'une validation séparée.** Avant cette étape, le panneau conserve son mode « Prévisualisation en lecture seule », sans erreur réseau.
+
+Après mise à jour du code, la commande `npm run qa:lot5c` vérifie aussi ces autorisations d'origine, sans aucun accès aux données.
