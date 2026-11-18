@@ -1,18 +1,19 @@
-> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-D : RECETTE LOCALE 15/15 ET CONCURRENCE PG17 CI VALIDÉES — PROD INCHANGÉE.**
+> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-E : 3 JOBS CI VALIDÉS, RECETTE LOCALE 20 TESTS À EFFECTUER.**
 >
-> À lire AVANT de reprendre :
-> [workflow Lot 5D](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md),
-> [audit serveur réel 5D-B](./releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md),
-> [candidat SQL consolidé 5D-A+B](./releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md),
-> [compatibilité réelle, concurrence et passerelle 5D-D](./releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md).
+> Références : [workflow de reprise Lot 5D](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md),
+> [audit serveur 5D-B](./releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md),
+> [candidat transactionnel 5D-A+B](./releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md),
+> [compatibilité et concurrence 5D-D](./releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md),
+> [rapport 5D-E RPC legacy et archives](./releases/SCHOOLNET_LOT5DE_CONCURRENCE_RPC_ARCHIVES_2026-11-18.md).
 >
-> - **Validé localement par l'utilisateur :** `qa:lot5d:a` **9/9**, `qa:lot5d:b` **17/17**, `qa:lot5d:c` **12/12**, `qa:lot5d:d` **15/15**, soit **53/53** sur les quatre lots, lint **0 erreur** (1 avertissement React Hook historique), build Vite réussi ; branche synchronisée par fast-forward `f93d228..dce9eeb` et fichiers locaux conservés.
-> - **Réussite GitHub Actions :** [run #44322527431](https://github.com/ramon77777/schoolnet/actions/runs/44322527431), deux jobs **SUCCESS** sur commit `dd3bc707`. Test SQL en base PostgreSQL 17 fictive (18 scénarios + **2 sessions concurrentes** + rôle et RLS + garde classe/année), et tests statiques `qa:lot5d:d` 15/15, lint/build/Edge checks. Ces essais **ne sont pas un feu vert de production**.
-> - **Supabase principal (SELECT exclusivement) :** toujours **43 migrations**, année courante **2025–2026** avec 1 dossier actif ; année cible **2026–2027** avec 1 dossier actif **d'un autre élève** ; aucun finaliseur 5D installé. Dossier cible **bloquant** pour la politique 5D v1.
-> - **Candidat SQL :** `supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql` seulement, jamais une migration déployée. Nouvelle passerelle Admin **documentée et simulée dans scripts/**, aucun service ni endpoint réel.
-> - **Branche/PR :** `feature/schoolnet-lot5d-a-securisation-20261118` ; [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon**, `main` et Vercel `schoolnet-snowy.vercel.app` inchangés pendant 5D.
-> - **Prochaine étape sous nouveau GO :** audit de la concurrence croisée des RPC legacy et des liens de classe historiques, puis préparation de la véritable passerelle Admin privée. **Aucun lancement de migration ni installation Supabase, ni fusion, ni publication Vercel** sans accord distinct.
-> - **Interdits :** aucune modification des données Supabase, aucun `supabase db push`, aucune exécution `SANDBOX_ONLY.sql` en SQL Editor principal, aucune activation directe d'année, aucun flag d'écriture, aucune fusion `main`, aucun Vercel sans GO distinct.
+> - **Local déjà validé par l'utilisateur :** lots A **9/9**, B **17/17**, C **12/12**, D **15/15** = **53/53**, ESLint 0 erreur (warning React Hook connu) et build Vite réussi. Scripts non suivis et `tsconfig.app.tsbuildinfo` conservés.
+> - **CI GitHub :** [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560), **3 jobs SUCCESS** : qualité lint/build/Edge, 18 scénarios SQL historiques + concurrence, et nouveau **5D-E** sur un PostgreSQL 17 fictif distinct. **20/20 tests E dans GitHub Actions**, 11 assertions SQL de concurrence RPC/gel d'archives, parent/bulletin/document/ancienne classe fictifs préservés. **Local E pas encore testé par l'utilisateur.**
+> - **Supabase principal — audit exclusivement SELECT :** 43 migrations ; année courante **2025–2026**, 1 dossier actif ; cible **2026–2027**, 1 dossier actif **d'un autre apprenant**. 1 bulletin, 2 liens Parent-Enfant, 4 événements d'inscription, 2 rattachements de classe historiques, 0 document ; **aucune mutation**.
+> - **Livraison préparée sur PR #15 :** `supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql` propose le gel post-clôture des dossiers et liens de classe ; `scripts/lot5d/legacy_rpc_guarded_fixture_postgresql17.sql` propose la lecture d'année **après** verrou, en **simulation partielle uniquement**. `scripts/lot5d/admin_gateway_dryrun.mjs` est **un mock hors réseau**, pas un véritable backend.
+> - **Branche/production :** `feature/schoolnet-lot5d-a-securisation-20261118`, [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon** ; `main` et Vercel `schoolnet-snowy.vercel.app` inchangés pour le Lot 5D. **Aucune migration 5D installée.**
+> - **Prochaine action :** dans VS Code, `git status --short`, `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118`, `npm run qa:lot5d:e`, `npm run lint`, `npm run build`, `git status --short` ; transmettre le terminal (attendu **20/20 E**).
+> - **Après un GO distinct seulement :** revue complète des RPC historiques et des pages Parent/Enseignant, vrai backend Admin à authentification forte, migration consolidée, tests proches de Supabase réel ; aucune activation automatique du dossier cible.
+> - **Interdits :** SQL Editor principal, `supabase db push`, toute modification des données ou de l'année courante, déploiement des propositions `SANDBOX_ONLY`, activation `VITE_SCHOOLNET_LOT5D_WRITES_ENABLED`, fusion `main` et publication Vercel sans autorisation explicite.
 
 ---
 
