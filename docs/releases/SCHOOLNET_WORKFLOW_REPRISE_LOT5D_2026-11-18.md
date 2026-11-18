@@ -199,6 +199,50 @@ fidélité de tous les triggers du vrai schéma et qualification métier du
 dossier cible déjà actif. Une authentification réelle de la passerelle et
 un rôle SQL dédié sont à concevoir avant un GO de migration.
 
+### 5D-E : **CONCURRENCE RPC LEGACY + ARCHIVES + PASSERELLE MOCK — CI VALIDÉE, LOCAL À FAIRE**
+
+Livrable sur la même branche, toujours dans la PR #15 **en brouillon**,
+sans installation SQL ni code serveur déployé :
+
+- [Rapport 5D-E — concurrence, historiques et passerelle simulée](./SCHOOLNET_LOT5DE_CONCURRENCE_RPC_ARCHIVES_2026-11-18.md).
+- `supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql` :
+  proposition de triggers privés qui bloquent, après une finalisation
+  5D enregistrée, toute réécriture d'un dossier **ou d'une ancienne
+  affectation** de l'année source.
+- `scripts/lot5d/legacy_rpc_guarded_fixture_postgresql17.sql` :
+  **simulation partielle** des anciennes RPC `admin_upsert_student_enrollment`
+  et `admin_set_student_enrollment_status`, avec verrou
+  `school_years IN SHARE MODE` AVANT lecture du calendrier ;
+  **aucune RPC réelle n'est modifiée**.
+- `scripts/lot5d/legacy_cross_*.sql` et
+  `run_legacy_cross_postgresql17.sh` : deuxième session Admin
+  simulée en concurrence avec la finalisation, `lock timeout`,
+  puis tests de la nouvelle année et du gel des anciennes classes.
+- Simulation avec **parent_links, bulletin, document fictif et lien
+  class_students historique**, comparés avant/après via digest.
+  Le vrai Supabase comporte actuellement 1 bulletin, 2 liens parentaux,
+  4 événements et 0 document : tous préservés (aucune écriture réelle).
+- `scripts/lot5d/admin_gateway_dryrun.mjs` :
+  orchestrateur **purement fictif et hors réseau** des étapes
+  Auth → rôle global Admin → requête stricte → transaction mock.
+  **Aucun endpoint HTTP ni rôle SQL serveur réel**.
+- `scripts/test-schoolnet-lot5d-e-legacy-cross.mjs` :
+  **20 tests statiques et fonctionnels hors réseau**,
+  commande `npm run qa:lot5d:e`.
+- GitHub Actions `schoolnet-quality.yml` : **3 jobs SUCCESS**
+  au [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560),
+  dont un **nouveau PostgreSQL 17 indépendant**, sans Supabase réel.
+  Le job de qualité a validé **20/20** pour E, lint, build et
+  les tests précédents ; le job E a validé **11 assertions SQL**
+  de concurrence et conservation d'archives fictives.
+
+**Limite absolue :** les anciennes RPC ne sont **pas encore corrigées
+dans le Supabase principal**. Les nouveaux tests prouvent la réponse
+du **modèle corrigé en sandbox**, pas l'absence de conflit sur
+production. Le dossier cible actif 2026–2027 bloque toujours
+toute bascule réelle. La recette locale E **n'a pas encore été
+fournie par l'utilisateur**.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -237,7 +281,7 @@ sont documentées dans le rapport, sans révocation globale imprudente.
 - Ne jamais modifier ou « corriger » le dossier actif 2026–2027 par déduction
   ou à partir de la date système. Faire un audit métier et un choix approuvé.
 
-## 5. Recette locale 5D-D — **VALIDÉE PAR L'UTILISATEUR**
+## 5. Recette locale 5D-D validée ; **5D-E à effectuer**
 
 Le 18/11/2026, après `git pull --ff-only` réussi (branche
 `feature/schoolnet-lot5d-a-securisation-20261118`,
@@ -271,6 +315,26 @@ passerelle Admin serveur authentifiée, sans connexion de production
 ni installation de SQL. Aucun travail de cette prochaine phase
 n'est présumé autorisé par les tests ci-dessus.
 
+### Prochain test local — Lot 5D-E
+
+Le banc SQL PostgreSQL du Lot 5D-E a réussi dans GitHub Actions
+sur une base fictive. Il reste à valider les nouveaux tests **locaux** :
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:e
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu : 20/20 tests E**, ESLint 0 erreur (1 avertissement
+React Hook déjà connu), build réussi. Aucun lancement de SQL,
+aucun déploiement. Conserver les fichiers locaux non suivis ;
+si Git refuse de synchroniser, s'arrêter et envoyer le message.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -282,9 +346,12 @@ n'est présumé autorisé par les tests ci-dessus.
    Pas de migration ni de backend Admin réel installé.
 3. Définir la politique d'année SCHOOLNET globale et le parcours
    des établissements ; la gestion S3-C reste **distincte**.
-4. Compléter la recette fidèle au vrai schéma, tester la **concurrence croisée
-   avec les RPC historiques**, vérifier les listes Parent/Enseignant et préparer
-   un véritable backend Admin avec rôle SQL privé et vérification Auth.
+4. **5D-E : concurrence croisée avec RPC legacy simulées, gel des archives
+   et mock Admin validés en CI** ; effectuer la recette locale E 20/20.
+   Ensuite, auditer **les définitions complètes des RPC de production**,
+   tester une copie fidèle du vrai schéma, revoir les écrans historiques
+   Parent/Enseignant et préparer un véritable backend Admin avec un rôle
+   SQL privé et une authentification vérifiée.
 5. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
@@ -310,28 +377,34 @@ n'est présumé autorisé par les tests ci-dessus.
 
 ## 8. Règle de reprise
 
-> **À lire en premier lors de la prochaine conversation SCHOOLNET :**
+> **SCHOOLNET : documents prioritaires pour la reprise**
 > - `docs/releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5DE_CONCURRENCE_RPC_ARCHIVES_2026-11-18.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
-> PR #15 **brouillon**, `main` et Vercel existant non modifiés.
-> **Recettes locales A9/9, B17/17, C12/12, D15/15 validées** :
-> 53/53 ; lint 0 erreur (1 avertissement connu), build OK.
-> **CI SQL PostgreSQL 17 fictive** 18/18 et scénarios de deux
-> sessions, RLS, droits et classe réussis (run #44322527431).
-> Audit du Supabase principal **SELECT uniquement**, 43 migrations,
-> année 2025–2026 courante (1 actif), cible 2026–2027 déjà occupée
-> (1 actif **d'un autre apprenant**) : **bascule strictement bloquée**.
-> Candidat SQL transactionnel **NON INSTALLÉ**, ancienne RPC directe
-> toujours présente côté Supabase et passerelle Admin encore simulée.
-> **Prochaine phase à autoriser explicitement** : concurrence croisée
-> avec les RPC legacy, revue des liens historiques, architecture puis
-> code serveur Admin verrouillé. Aucune migration SQL ni changement
-> de données réelles autorisés.
+> PR #15 **brouillon**, `main` et Vercel existant inchangés.
+> **Recette locale A9/9, B17/17, C12/12, D15/15 validée : 53/53 ;
+> recette locale E (20 tests) À FAIRE.**
+> CI GitHub Actions [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560) :
+> **3 jobs SUCCESS**, incluant tests 5D-E 20/20, SQL PG17
+> concurrent, 11 assertions de garde historique et archivage fictif.
+> Audit Supabase principal **SELECT uniquement**, 43 migrations,
+> année 2025–2026 courante (1 actif), cible 2026–2027 (1 actif
+> d'un autre élève), 1 bulletin, 2 parent_links, 4 événements,
+> 2 liens legacy : **aucune donnée modifiée**.
+> Candidat SQL A+B et garde E **NON INSTALLÉS** ;
+> anciennes RPC réelles **non corrigées** ;
+> passerelle Admin uniquement simulée et **NON DÉPLOYÉE**.
 >
-> **Ne pas nettoyer les scripts locaux, modifier Supabase principal,
-> activer les écritures, fusionner `main` ou déployer Vercel
+> **Prochaine action immédiate :** l'utilisateur synchronise la branche
+> et exécute `npm run qa:lot5d:e`, `npm run lint`,
+> `npm run build`, puis transmet les résultats.
+> Après GO séparé : revoir les fonctions legacy réelles, les
+> écrans historiques Parent/Enseignant, préparer un backend Admin
+> authentifié et une migration canonique, toujours **sans installer**.
+> **Ne pas toucher aux dossiers réels, SQL Editor principal,
+> `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
