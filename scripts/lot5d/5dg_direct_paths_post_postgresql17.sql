@@ -3,7 +3,7 @@
 BEGIN;
 SELECT pg_catalog.set_config('request.jwt.claim.sub','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true);
 SET LOCAL ROLE authenticated;
-DO $5dg_post$
+DO $g5d_post$
 DECLARE
  old_enroll uuid;
  target_enroll uuid;
@@ -67,9 +67,9 @@ BEGIN
   THEN RAISE EXCEPTION 'G-POST 07: historical data/audit changed'; END IF;
   RAISE NOTICE 'G-POST 07: source document and audit retained';
 END;
-$5dg_post$;
+$g5d_post$;
 RESET ROLE;
-DO $5dg_final_status$
+DO $g5d_final_status$
 BEGIN
  IF NOT EXISTS (
    SELECT 1 FROM public.student_enrollments e
@@ -78,10 +78,10 @@ BEGIN
  ) THEN RAISE EXCEPTION 'G-POST 07B: old enrollment not completed'; END IF;
  RAISE NOTICE 'G-POST 07B: old enrollment status completed';
 END;
-$5dg_final_status$;
+$g5d_final_status$;
 -- UPDATE has no authenticated grant in real schema, but SQL trigger still
 -- protects privileged SQL clients. Superuser bypasses RLS but not triggers.
-DO $5dg_pg$
+DO $g5d_pg$
 DECLARE
  source_document uuid;
  blocked boolean;
@@ -97,6 +97,6 @@ BEGIN
  IF NOT blocked THEN RAISE EXCEPTION 'G-POST 08: privileged archived update allowed'; END IF;
  RAISE NOTICE 'G-POST 08: no archived update even privileged';
 END;
-$5dg_pg$;
+$g5d_pg$;
 ROLLBACK;
 \echo 'PASS - 5D-G: 8 postfinalization archive, RLS and business assertions; ROLLBACK'

@@ -5,7 +5,7 @@
 BEGIN;
 SET LOCAL lock_timeout='3s';
 SET LOCAL statement_timeout='30s';
-DO $5dg_preflight$
+DO $g5d_preflight$
 BEGIN
  IF pg_catalog.current_database()<>'schoolnet_lot5d_ci'
     OR pg_catalog.current_setting('server_version_num')::int<170000
@@ -19,7 +19,7 @@ BEGIN
  THEN RAISE EXCEPTION '5D-G: PostgreSQL 17 disposable fixture expected.'
    USING ERRCODE='42501'; END IF;
 END;
-$5dg_preflight$;
+$g5d_preflight$;
 
 CREATE FUNCTION schoolnet_private.guard_lot5dg_closed_document()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog
@@ -61,7 +61,7 @@ CREATE TRIGGER trg_lot5dg_freeze_archived_enrollment_document
  FOR EACH ROW EXECUTE FUNCTION schoolnet_private.guard_lot5dg_closed_document();
 REVOKE ALL ON FUNCTION schoolnet_private.guard_lot5dg_closed_document()
  FROM PUBLIC,anon,authenticated,service_role;
-DO $5dg_postcheck$
+DO $g5d_postcheck$
 BEGIN
  IF NOT EXISTS (
    SELECT 1 FROM pg_catalog.pg_trigger WHERE tgname='trg_lot5dg_freeze_archived_enrollment_document'
@@ -71,6 +71,6 @@ BEGIN
  THEN RAISE EXCEPTION '5D-G: failed to install sandbox trigger or revoke execute.'
    USING ERRCODE='42501'; END IF;
 END;
-$5dg_postcheck$;
+$g5d_postcheck$;
 COMMIT;
 -- SANDBOX_ONLY. NOT FOR REAL SUPABASE DATABASE.

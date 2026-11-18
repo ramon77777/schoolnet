@@ -3,13 +3,13 @@
 -- Difference: uploaded_by references public.profiles here, auth.users in production.
 -- This fixture is NOT a production schema clone.
 \set ON_ERROR_STOP on
-DO $5dg_base_guard$
+DO $g5d_base_guard$
 BEGIN
  IF pg_catalog.current_database()<>'schoolnet_lot5d_ci'
     OR pg_catalog.current_setting('server_version_num')::int<170000
  THEN RAISE EXCEPTION '5D-G: disposable PG17 only'; END IF;
 END;
-$5dg_base_guard$;
+$g5d_base_guard$;
 CREATE TABLE public.student_enrollment_documents (
  id uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid(),
  enrollment_id uuid NOT NULL REFERENCES public.student_enrollments(id) ON DELETE RESTRICT,

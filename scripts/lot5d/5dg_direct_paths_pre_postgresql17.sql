@@ -11,7 +11,7 @@ FROM public.student_enrollments e
 WHERE e.student_id='11111111-1111-4111-8111-111111111111'
 AND e.school_year_id='20252025-2025-4025-8025-202520252025';
 SET LOCAL ROLE authenticated;
-DO $5dg_pre$
+DO $g5d_pre$
 DECLARE
  source_doc uuid;
  source_enroll uuid;
@@ -50,10 +50,10 @@ BEGIN
   DELETE FROM public.student_enrollment_documents WHERE id=source_doc;
   RAISE NOTICE 'G-PRE 05: normal preclose document add/delete preserved';
 END;
-$5dg_pre$;
+$g5d_pre$;
 RESET ROLE;
 SET LOCAL ROLE anon;
-DO $5dg_anon$
+DO $g5d_anon$
 DECLARE visible_rows integer;
 BEGIN
  SELECT count(*) INTO visible_rows FROM public.school_years;
@@ -61,7 +61,7 @@ BEGIN
   RAISE EXCEPTION 'G-PRE 06: anon sees RLS protected school calendar'; END IF;
  RAISE NOTICE 'G-PRE 06: anon table-level grants do not bypass authenticated-only RLS';
 END;
-$5dg_anon$;
+$g5d_anon$;
 RESET ROLE;
 ROLLBACK;
 \echo 'PASS - 5D-G: six preclose direct-privilege assertions rolled back'
