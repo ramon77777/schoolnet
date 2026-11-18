@@ -1,16 +1,19 @@
-> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-A VALIDÉ EN LOCAL / LOT 5D-B EN PRÉPARATION SUR GITHUB.**
+> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-B DIAGNOSTIC VALIDÉ EN LOCAL + AUDIT SUPABASE LECTURE SEULE TERMINÉ.**
 >
-> Le **workflow à suivre à partir de maintenant** est [SCHOOLNET — Reprise Lot 5D (18 novembre 2026)](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md). Ce document fait foi pour les statuts récents ; les entrées historiques ci-dessous sont conservées mais leurs chiffres de migration/état ne doivent pas remplacer ceux de l'audit du 18 novembre.
+> À lire AVANT de reprendre le projet :
+> [workflow actualisé Lot 5D](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md)
+> et [rapport d'audit serveur 5D-B](./releases/SCHOOLNET_AUDIT_SERVEUR_LOT5DB_2026-11-18.md).
+> Le journal historique ci-dessous reste conservé ; utiliser ces deux
+> documents pour les derniers statuts, chiffres et verrous.
 >
-> - **PRODUCTION :** `main` au commit `2761d73`, PR #13/#14 fusionnées, projet **Vercel SCHOOLNET existant** `schoolnet-snowy.vercel.app`. Lot 5C et S2-A à S3-C publiés ; interfaces Parent/Admin/Établissement contrôlées sur captures, sans en déduire une recette métier d'écriture.
-> - **SUPABASE PRINCIPAL :** `anttmbhaphkhmkoqsofd`, **43 migrations** auditées ; migration historique 5D non installée. 2025–2026 courante (1 dossier actif) et 2026–2027 non courante (1 dossier actif) : **anomalie bloquante**, à régulariser après audit, jamais automatiquement.
-> - **LOT 5D-A :** branche `feature/schoolnet-lot5d-a-securisation-20261118`, [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **en brouillon**, tests 9/9, lint/build et captures locales **validés** ; aucune fusion/installation SQL/Vercel.
-> - **LOT 5D-B (en cours) :** diagnostic source/cible et classes S3-C, meilleure visibilité des commandes désactivées, audit SQL SELECT-only, spécification transactionnelle **NON INSTALLABLE**, tests `npm run qa:lot5d:b` et CI préparés dans la même PR. **Recette locale B pas encore faite** par l'utilisateur.
-> - **PROCHAINE ACTION :** `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118`, `npm run qa:lot5d:a`, `npm run qa:lot5d:b`, `npm run lint`, `npm run build`, captures locales. Conserver le stash, les scripts locaux et `supabase/proposals/staged/`.
-> - **INTERDICTIONS :** aucune activation directe de l'année, `supabase db push`, SQL de passage 5D, `VITE_SCHOOLNET_LOT5D_WRITES_ENABLED=true`, merge `main` ou déploiement tant qu'un GO distinct n'est pas donné.
->
-> **Après validation locale B :** (1) revue métier du dossier cible actif ; (2) SQL transactionnel consolidé 5D-A+B et isolation S3-C, tests sandbox/ROLLBACK ; (3) accord avant migration principale ; (4) recette métier, merge et publication Vercel ; (5) retour au backlog scolaire et inscriptions non traitées.
->
+> - **PRODUCTION :** `main` (Lot 5C et S2-A à S3-C déjà publiés) et Vercel existant `schoolnet-snowy.vercel.app` **inchangés** durant le Lot 5D.
+> - **LOT 5D-A :** recette locale réussie (9/9 tests), contrôle de l'activation directe retiré de l'interface ; **pas de protection serveur 5D installée**.
+> - **LOT 5D-B :** recette locale du 18/11 réussie (**17/17 tests**, ESLint 0 erreur, build OK et captures conformes) ; audit SQL **SELECT uniquement** du projet principal, **43 migrations** ; aucune nouvelle fonction SQL finalisatrice installée.
+> - **CONSTAT :** 2025–2026 est l'année courante (1 actif), 2026–2027 n'est pas courante mais comporte aussi 1 actif ; **les deux dossiers concernent des élèves différents**. 0 affectation S3-C officielle pour le moment. La RPC `admin_set_current_school_year` subsiste côté serveur, sans contrôles de clôture des dossiers.
+> - **BRANCHE :** `feature/schoolnet-lot5d-a-securisation-20261118` ; [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon**, à conserver sans fusion ni déploiement.
+> - **PROCHAINE ÉTAPE SOUMISE AU GO :** qualification métier du dossier cible puis conception d'une **migration transactionnelle consolidée 5D-A+B**, sans toucher à Supabase principal, et tests isolés avec `ROLLBACK`.
+> - **VERROUS :** ne pas activer l'année directe, ne pas lancer `supabase db push`, ne pas installer la migration historique 5D ou une proposition 5D-A seule, ne pas définir `VITE_SCHOOLNET_LOT5D_WRITES_ENABLED=true`, ne pas fusionner `main` ni publier Vercel sans autorisation spécifique.
+
 ---
 
 > **POINT DE REPRISE SCHOOLNET — 12/11/2026 — B.5.2 : PREMIÈRE OBSERVATION `password` AUTH RÉELLE VALIDÉE.** Après la migration sandbox `schoolnet_auth_sandbox_b52_fix_hook_conflict_no_select`, le test local Parent fictif `signInWithPassword` a réussi (mot de passe généré en mémoire, aucune communication de clé ni d'email). **Lecture SQL de `onqlsvphmrqhelislpry` : 1 observation `authentication_method=password`, état `token_pre_issue_unverified`, 12/11/2026 **11:51:47 UTC**, liée par `(user_id,session_id)` à **1 vraie session** de `auth.sessions`; **0 observation orpheline**. La cause préalablement soupçonnée (`ON CONFLICT` demandant `SELECT` au rôle Auth) est désormais confortée par ce test réussi après correctif ; aucun `GRANT SELECT` ajouté, RLS forcée et policy restreinte inchangées. **Sandbox : 2 Auth, 1 observation pré-émission non vérifiée, 0 dossier/événement B.2, 3 migrations. Principal `anttmbhaphkhmkoqsofd` : 10 Auth, 35 migrations, 0 invitation/événement, inchangé.** STOP à toute activation familiale : `password` observé + session corrélée ne vaut pas preuve indépendante de changement de mot de passe lié à une invitation. PR #6 brouillon, pas de Vercel. Suite B.5.2 autorisée : test ciblé `token_refresh`, puis `recovery`, avec vérification SQL après chacun, sans écriture hors sandbox. [Rapport B.5.2 actualisé](./lot-5-c-b2-b52-correction-hook-insert-2026-11-12.md).
