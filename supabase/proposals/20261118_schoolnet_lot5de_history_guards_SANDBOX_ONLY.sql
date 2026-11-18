@@ -1,5 +1,6 @@
 -- SCHOOLNET 2.0 | LOT 5D-E | PROPOSITION SQL COMPLEMENTAIRE.
 -- SANDBOX_ONLY: jamais en Supabase principal, jamais dans supabase/migrations.
+-- NE PAS placer dans supabase/migrations/ ni executer sur la production.
 -- Ne constitue PAS une migration autonome. A fusionner, apres revue, dans
 -- UNE migration canonique consolidee de 5D-A+B+D+E.
 -- Schema/roles reutilises depuis la fixture PostgreSQL 17 uniquement.
