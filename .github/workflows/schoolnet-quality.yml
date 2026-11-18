@@ -98,6 +98,9 @@ jobs:
           set -euo pipefail
           count=$(psql -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_years WHERE is_current AND name='2025-2026'")
           test "$count" = "1"
+      - name: Verifier les contraintes classe et role du schema de production en fixture
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/schema_compatibility_postgresql17.sql
       - name: Simuler deux sessions concurrentes et verifier replay idempotent
         shell: bash
         run: bash scripts/lot5d/run_concurrency_postgresql17.sh
