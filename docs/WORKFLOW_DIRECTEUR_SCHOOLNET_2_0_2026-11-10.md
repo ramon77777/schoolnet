@@ -1,4 +1,4 @@
-> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-D : CONCURRENCE / PERMISSIONS PG17 VALIDÉES EN CI, RECETTE LOCALE À FAIRE.**
+> **POINT DE REPRISE PRIORITAIRE — 18/11/2026 — LOT 5D-D : RECETTE LOCALE 15/15 ET CONCURRENCE PG17 CI VALIDÉES — PROD INCHANGÉE.**
 >
 > À lire AVANT de reprendre :
 > [workflow Lot 5D](./releases/SCHOOLNET_WORKFLOW_REPRISE_LOT5D_2026-11-18.md),
@@ -6,12 +6,12 @@
 > [candidat SQL consolidé 5D-A+B](./releases/SCHOOLNET_LOT5D_AB_CANDIDAT_SQL_ISOLE_2026-11-18.md),
 > [compatibilité réelle, concurrence et passerelle 5D-D](./releases/SCHOOLNET_AUDIT_COMPAT_5D_D_2026-11-18.md).
 >
-> - **Validé localement par l'utilisateur :** `qa:lot5d:a` **9/9**, `qa:lot5d:b` **17/17**, `qa:lot5d:c` **12/12**, ESLint **0 erreur** (1 warning historique), build Vite réussi, branche synchronisée avec conservation de tous les fichiers locaux.
+> - **Validé localement par l'utilisateur :** `qa:lot5d:a` **9/9**, `qa:lot5d:b` **17/17**, `qa:lot5d:c` **12/12**, `qa:lot5d:d` **15/15**, soit **53/53** sur les quatre lots, lint **0 erreur** (1 avertissement React Hook historique), build Vite réussi ; branche synchronisée par fast-forward `f93d228..dce9eeb` et fichiers locaux conservés.
 > - **Réussite GitHub Actions :** [run #44322527431](https://github.com/ramon77777/schoolnet/actions/runs/44322527431), deux jobs **SUCCESS** sur commit `dd3bc707`. Test SQL en base PostgreSQL 17 fictive (18 scénarios + **2 sessions concurrentes** + rôle et RLS + garde classe/année), et tests statiques `qa:lot5d:d` 15/15, lint/build/Edge checks. Ces essais **ne sont pas un feu vert de production**.
 > - **Supabase principal (SELECT exclusivement) :** toujours **43 migrations**, année courante **2025–2026** avec 1 dossier actif ; année cible **2026–2027** avec 1 dossier actif **d'un autre élève** ; aucun finaliseur 5D installé. Dossier cible **bloquant** pour la politique 5D v1.
 > - **Candidat SQL :** `supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql` seulement, jamais une migration déployée. Nouvelle passerelle Admin **documentée et simulée dans scripts/**, aucun service ni endpoint réel.
 > - **Branche/PR :** `feature/schoolnet-lot5d-a-securisation-20261118` ; [PR #15](https://github.com/ramon77777/schoolnet/pull/15) **brouillon**, `main` et Vercel `schoolnet-snowy.vercel.app` inchangés pendant 5D.
-> - **Prochaine action :** l'utilisateur lance `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118`, `npm run qa:lot5d:d`, `npm run lint`, `npm run build`, `git status --short`. Puis revue des usages historiques des classes et de la concurrence avec anciennes RPC.
+> - **Prochaine étape sous nouveau GO :** audit de la concurrence croisée des RPC legacy et des liens de classe historiques, puis préparation de la véritable passerelle Admin privée. **Aucun lancement de migration ni installation Supabase, ni fusion, ni publication Vercel** sans accord distinct.
 > - **Interdits :** aucune modification des données Supabase, aucun `supabase db push`, aucune exécution `SANDBOX_ONLY.sql` en SQL Editor principal, aucune activation directe d'année, aucun flag d'écriture, aucune fusion `main`, aucun Vercel sans GO distinct.
 
 ---
