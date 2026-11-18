@@ -79,13 +79,13 @@ test("S3-C 05 - route restreinte et navigation locale", async () => {
   assert.match(router,/school\/assignments/);
   assert.match(router,/<LocalSchoolAssignments \/>/);
   assert.match(nav,/\/app\/school\/assignments/);
-  assert.match(dashboard,/Préparer les affectations/);
+  assert.match(dashboard,/Consulter les affectations/);
 });
 
-test("S3-C 06 - l'interface est en attente SQL et lecture seule Preview", async () => {
+test("S3-C 06 - l'interface reste en lecture seule Preview apres installation", async () => {
   const page = await read("../src/features/schools/pages/LocalSchoolAssignments.tsx");
   assert.match(page,/Prévisualisation SCHOOLNET — lecture seule/);
-  assert.match(page,/S3-C — Activation du module en attente/);
+  assert.match(page,/S3-C — Catalogue momentanément indisponible/);
   assert.match(page,/!readOnlyPreview && !isDemo/);
   assert.match(page,/readOnlyPreview \|\| busy/);
   assert.match(page,/window\.confirm/);
@@ -180,7 +180,7 @@ test("S3-C 13 - audit des six evenements sans effacer l'ancien audit", async () 
   assert.match(sql,/school_student_reactivated/);
 });
 
-test("S3-C 14 - recette rollback reel, aucune migration permanente S3-C", async () => {
+test("S3-C 14 - recette rollback reel et migration canonique historisee", async () => {
   const qa = await read("../supabase/verification/20261117_s3c_class_assignments_rollback.sql");
   assert.match(qa,/NE JAMAIS COMMIT/);
   assert.match(qa,/S3C_ASSIGNMENTS_ROLES_TENANT_YEAR_SUBJECT_PREVIEW_HISTORY_ROLLBACK_PASS/);
@@ -189,7 +189,11 @@ test("S3-C 14 - recette rollback reel, aucune migration permanente S3-C", async 
   assert.match(qa,/v_direct_table_denied/);
   assert.match(qa,/events_before/);
   assert.doesNotMatch(qa,/^\s*COMMIT\s*;/im);
-  assert.equal(existsSync(new URL("../supabase/migrations/20261117_s3c_school_class_assignments.sql",import.meta.url)),false);
+  const canonical = new URL("../supabase/migrations/20261118083254_schoolnet_s3c_class_assignments.sql", import.meta.url);
+  assert.equal(existsSync(canonical),true);
+  const canonSql = await read("../supabase/migrations/20261118083254_schoolnet_s3c_class_assignments.sql");
+  assert.match(canonSql,/MIGRATION CANONIQUE DEJA INSTALLEE/);
+  assert.match(canonSql,/DO \$verify_s3c\$/);
 });
 
 test("S3-C 15 - journal d'affectations immuable, prive et filtre par ecole", async () => {
