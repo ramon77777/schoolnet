@@ -90,7 +90,8 @@ test("5D-D 12 - PRIVILEGE execute absent de tous les roles API", async () => {
   const sql=await read("../supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql");
   assert.match(sql,/REVOKE ALL ON FUNCTION schoolnet_private\.guard_lot5d_year_switch/);
   assert.match(sql,/FROM PUBLIC,anon,authenticated,service_role/);
-  assert.doesNotMatch(sql,/\bGRANT EXECUTE\b[\s\S]{0,80}\b(?:anon|authenticated|service_role)\b/i);
+  const executableSql=sql.replace(/--[^\n]*/g,"");
+  assert.doesNotMatch(executableSql,/\bGRANT\s+EXECUTE\s+ON\s+FUNCTION[\s\S]{0,250}\bTO\s+(?:anon|authenticated|service_role)\b/i);
 });
 test("5D-D 13 - scripts de concurrence, droits et contraintes reels references CI", async () => {
   const wf=await read("../.github/workflows/schoolnet-quality.yml");
