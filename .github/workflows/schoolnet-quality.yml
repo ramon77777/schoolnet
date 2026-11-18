@@ -44,6 +44,8 @@ jobs:
         run: npm run qa:lot5d:g
       - name: Verifier Lot 5D-H (integrite Storage et classes historiques)
         run: npm run qa:lot5d:h
+      - name: Verifier Lot 5D-I (Parents annuels et revue documentaire, hors reseau)
+        run: npm run qa:lot5d:i
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -59,6 +61,8 @@ jobs:
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-student-no-email-admin/index.ts supabase/functions/schoolnet-student-login-release/index.ts
       - name: Verifier les fonctions famille deja presentes
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
+      - name: Verifier syntaxe de la fonction Parent annuelle NON deployee
+        run: deno check --node-modules-dir=auto supabase/functions/schoolnet-parent-current-class/index.ts
       - name: Tests famille deja presents
         run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
 
@@ -417,3 +421,64 @@ jobs:
           test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "1"
           test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM storage.objects")" = "0"
           test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")" = "1"
+
+  # Lot 5D-I: private SQL request/audit only. The document is never deleted.
+  # All SQL changes here are in a disposable PostgreSQL 17 CI instance.
+  lot5d_document_review:
+    name: Lot 5D-I - demande documentaire privee et historique (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verifier aucune connexion externe et PostgreSQL fictif
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test "$PGUSER" = "postgres"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Charger base fictive, gardes 5D et proposition I non installable
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_schema_parity_fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5di_document_review_SANDBOX_ONLY.sql
+      - name: Tester demandes idempotentes, controle Admin et blocage de bascule
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5di_document_review_postgresql17.sql
+      - name: Verifier que les tests n ont conserve aucune requete
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM schoolnet_private.document_deletion_reviews")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM schoolnet_private.document_deletion_review_events")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "0"
