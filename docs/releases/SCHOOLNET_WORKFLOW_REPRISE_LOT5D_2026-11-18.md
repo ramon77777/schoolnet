@@ -375,6 +375,40 @@ Le 18/11/2026 sur la PR #15 en brouillon :
 Aucune migration 5D, aucun rôle nouveau, aucun déploiement** ;
 2026–2027 occupée par un autre élève reste un blocage métier.
 
+### 5D-I : **LECTURE ANNUELLE PARENT AUTORISÉE + REVUE DOCUMENTAIRE PRIVÉE — CI VALIDÉE, LOCAL À FAIRE**
+
+[Rapport détaillé du Lot 5D-I](./SCHOOLNET_LOT5DI_LECTURE_PARENT_REVUE_DOCUMENTAIRE_2026-11-18.md)
+
+- **Fonction serveur Parent préparée :**
+  `supabase/functions/schoolnet-parent-current-class/index.ts` et
+  `supabase/functions/_shared/lot5diParentAnnualRead.ts`.
+  Vraie implémentation Deno de la lecture, avec `auth.getUser`,
+  rôle `parent` relu en base, liens `parent_links` limités à
+  l'identité JWT, inscriptions `active` de l'année `is_current`
+  uniquement, sortie minimale.
+  **Flag serveur désactivé par défaut, fonction non déployée,
+  frontend Parent non raccordé.**
+- **Proposition de revue documentaire `SANDBOX_ONLY` :**
+  `supabase/proposals/20261118_schoolnet_lot5di_document_review_SANDBOX_ONLY.sql`.
+  Registre privé de demande + événement d'audit,
+  contrôle Admin global, verrou année, idempotence et refus
+  d'une bascule sur année avec demande non résolue.
+  **Aucune suppression physique et aucun backup effectué.**
+- **Recettes CI** : [run #44353622841](https://github.com/ramon77777/schoolnet/actions/runs/44353622841),
+  **8/8 jobs SUCCESS**, `qa:lot5d:i` **30/30 tests Node**,
+  compilation Deno Edge réussie et 8 assertions SQL
+  PostgreSQL 17 en `ROLLBACK`, données fictives seulement.
+- **Recette locale I À FAIRE** : A–H **129/129 déjà validés**,
+  I **30/30 attendus** ; cumul local A–I attendu **159/159**.
+- **Points bloquants** : véritable sauvegarde, empreinte et reprise
+  documentaire non implémentées ; vérification des sessions/rate-limit
+  avant déploiement Parent ; UI Parent non connectée ;
+  année cible 2026–2027 déjà occupée.
+
+**Aucun SQL installé sur le projet principal, aucun endpoint déployé,
+aucune fusion main ni mise en production. Toutes les protections
+non déployées restent à l'étude sous nouveau GO.**
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -572,6 +606,27 @@ ne crée pas de backend Admin authentifié, ne garantit pas encore
 les objets Storage du vrai service et ne résout pas l'année
 cible 2026–2027 déjà occupée.
 
+### Prochaine recette locale — Lot 5D-I
+
+La CI **8/8 jobs** est réussie, y compris les **30 tests I**.
+Depuis le terminal PowerShell SCHOOLNET :
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:i
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu :** `qa:lot5d:i` **30/30**, lint **0 erreur**
+(1 warning React Hook historique), build Vite réussi.
+Ne pas supprimer les scripts non suivis ni les propositions
+SQL locales. Cumul A–H **129/129 déjà validé** ; A–I
+**159/159 attendu après ta validation**.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -603,7 +658,14 @@ cible 2026–2027 déjà occupée.
    en CI et en local ; 10/10 tests Parent du Lot 5.C validés
    en local et CI 7/7 jobs SUCCESS.** La vraie suppression privée,
    la lecture annuelle parentale et les tests Storage API restent ouverts.
-8. Soumettre une future migration finale et son éventuelle installation
+8. **5D-I** : lecture annuelle Parent à serveur Auth réel préparée,
+   **non déployée et désactivée**, revue documentaire SQL privée
+   `SANDBOX_ONLY` sans effacement, idempotence et blocage
+   de la clôture avec demande en attente. CI **8/8**, tests I
+   **30/30**, recette locale **à faire**. Sauvegarde/restauration
+   Storage, rôle SQL dédié et parcours annuel Parent réel
+   restent à valider.
+9. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -637,6 +699,7 @@ cible 2026–2027 déjà occupée.
 > - `docs/releases/SCHOOLNET_LOT5DF_RPC_COMPLETES_PASSERELLE_ADMIN_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DG_AUDIT_RLS_PASSERELLE_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DH_ARCHIVES_STORAGE_CLASSES_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5DI_LECTURE_PARENT_REVUE_DOCUMENTAIRE_2026-11-18.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -681,6 +744,16 @@ cible 2026–2027 déjà occupée.
 > annuelle Parent/Enseignant et passerelle Admin authentifiée.
 > **Année cible occupée : aucune bascule autorisée.**
 > **Aucune migration ni déploiement autorisé.**
+> **Prochaine action immédiate après CI Lot 5D-I** :
+> [8/8 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44353622841),
+> `qa:lot5d:i` **30/30 en CI**. Faire les tests **localement**,
+> lint et build pour viser **159/159 recettes A–I**.
+> Fonction Parent annuelle compilée mais **OFF/non déployée** ;
+> requête documentaire privée `SANDBOX_ONLY` auditée en PostgreSQL 17
+> fictif, **aucune suppression et aucun backup réel**.
+> La suppression directe du navigateur reste suspendue ;
+> la cible 2026–2027 occupée reste **bloquante**.
+> **Pas de SQL principal, pas de main, pas de déploiement Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
