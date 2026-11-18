@@ -333,7 +333,7 @@ modifiée, aucune fusion ni publication de production.** Une copie fidèle
 du schéma avec Storage isolé et une vraie passerelle sécurisée restent
 indispensables ; l'année cible 2026–2027 déjà active demeure bloquante.
 
-### 5D-H : **ARCHIVAGE STORAGE SANS SUPPRESSION DANGEREUSE ET CLASSES HISTORIQUES — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-H : **ARCHIVAGE STORAGE SANS SUPPRESSION DANGEREUSE ET CLASSES HISTORIQUES — CI ET LOCAL VALIDÉS**
 
 Le 18/11/2026 sur la PR #15 en brouillon :
 [rapport H](./SCHOOLNET_LOT5DH_ARCHIVES_STORAGE_CLASSES_2026-11-18.md).
@@ -361,9 +361,15 @@ Le 18/11/2026 sur la PR #15 en brouillon :
 - **CI** : [run #44349058440](https://github.com/ramon77777/schoolnet/actions/runs/44349058440),
   **7/7 jobs SUCCESS**, `qa:lot5d:h` **24/24** en CI, PG17
   H valide en isolé, lint et build réussis.
-- **Recette locale H À FAIRE :** A–G déjà **105/105 validés**,
-  H **24/24 attendus**, soit **129/129** après confirmation.
-  Relancer aussi les **10 tests Parent du Lot 5.C** séparément.
+- **Recette locale H : VALIDÉE LE 18 NOVEMBRE 2026** :
+  l'utilisateur a effectué un `git pull --ff-only` sans conflit
+  (`20125ba..c9ad909`), `qa:lot5d:h` **24/24**, les
+  **10/10 tests historiques Parent du Lot 5.C** séparément,
+  `npm run lint` **0 erreur** (1 warning React Hook connu) et
+  `npm run build` **réussi** (Vite v7.3.1, **868 modules**).
+  **Total des tests locaux 5D-A à H : 129/129**,
+  les 10 tests Parent étant distincts de ce total.
+  Aucun fichier local non suivi n'a été supprimé.
 
 **Aucune suppression Storage sécurisée par un backend réel n'existe.
 Aucune migration 5D, aucun rôle nouveau, aucun déploiement** ;
@@ -528,27 +534,43 @@ elle ne valide pas un backend Admin réellement authentifié,
 la sécurité des fichiers Storage ni l'installation SQL en
 production. Aucune fonction 5D réelle n'a été installée.
 
-### Prochaine recette locale — Lot 5D-H
+### Recette locale du Lot 5D-H — **VALIDÉE LE 18 NOVEMBRE 2026**
 
-La CI **7/7 jobs** et les **24 tests H** sont validés sur GitHub.
-Exécuter dans PowerShell de SCHOOLNET, sans SQL réel :
+L'utilisateur a transmis la sortie complète PowerShell, depuis
+`D:\Bakary\10 autres\schoolnet`, sur la branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:h
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
-git status --short
-```
+- `git status --short` puis `git branch --show-current` :
+  branche vérifiée, état local contrôlé avant/après.
+- `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118` :
+  **fast-forward réussi** de `20125ba` vers `c9ad909`,
+  sans conflit ni perte des fichiers locaux.
+- `npm run qa:lot5d:h` : **24/24 tests réussis**, aucun échec.
+- `node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs` :
+  **10/10 tests de non-régression Parent réussis**,
+  vérifiés à part du total A–H.
+- `npm run lint` : **0 erreur** ; 1 warning connu
+  `react-hooks/exhaustive-deps` dans
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **TypeScript et Vite réussis**,
+  Vite v7.3.1, **868 modules** ; remarques non bloquantes
+  Browserslist et taille du bundle principal.
+- `git status --short` final **inchangé** :
+  `tsconfig.app.tsbuildinfo` modifié, scripts
+  `schoolnet-student-auth-sandbox-local.mjs`,
+  `test-schoolnet-student-auth-flow-mock.mjs`,
+  `test-schoolnet-student-auth-sandbox-local.mjs`
+  et `supabase/proposals/staged/` non suivis **préservés**.
 
-**Attendu :** H **24/24**, Parent historique **10/10**, ESLint
-zéro erreur (un avertissement préexistant), build Vite réussi,
-fichiers locaux non suivis conservés. **A à G 105/105** restent
-validés ; objectif de cumul **129/129** après la recette H.
-Le SQL Storage H est **SANDBOX_ONLY**, non installable.
+**Cumul des recettes locales A à H : 9 + 17 + 12 + 15 + 20
++ 12 + 20 + 24 = 129/129 tests validés.** Les 10 tests Parent
+Lot 5.C, ainsi que les essais SQL PostgreSQL 17 exécutés
+en CI, sont confirmés **séparément**, sans double comptage.
+
+La validation n'installe pas la politique Storage `SANDBOX_ONLY`,
+ne crée pas de backend Admin authentifié, ne garantit pas encore
+les objets Storage du vrai service et ne résout pas l'année
+cible 2026–2027 déjà occupée.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -577,8 +599,9 @@ Le SQL Storage H est **SANDBOX_ONLY**, non installable.
    et métier sur un environnement isolé.
 7. **5D-H :** suppression navigateur suspendue, réponse SQL incertaine
    conservée, politique Storage refusant DELETE seulement en PG17 fictif,
-   et étiquetage Parent/Enseignant corrigé. **24 tests H et 7 jobs CI
-   validés** ; recette locale H à recevoir. La vraie suppression privée,
+   et étiquetage Parent/Enseignant corrigé. **24/24 tests H validés
+   en CI et en local ; 10/10 tests Parent du Lot 5.C validés
+   en local et CI 7/7 jobs SUCCESS.** La vraie suppression privée,
    la lecture annuelle parentale et les tests Storage API restent ouverts.
 8. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
@@ -618,7 +641,8 @@ Le SQL Storage H est **SANDBOX_ONLY**, non installable.
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
 > **Recettes locales A9/9, B17/17, C12/12, D15/15, E20/20,
-> F12/12 et G20/20 validées par l'utilisateur : 105/105 tests locaux A à G.**
+> F12/12, G20/20 et H24/24 validées : 129/129 tests locaux A à H.**
+> Les 10/10 tests Parent du Lot 5.C sont validés séparément.
 > CI GitHub Actions [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560) :
 > **3 jobs SUCCESS**, incluant tests 5D-E 20/20, SQL PG17
 > concurrent, 11 assertions de garde historique et archivage fictif.
@@ -641,18 +665,22 @@ Le SQL Storage H est **SANDBOX_ONLY**, non installable.
 > garde d'archive adapté ; aucune passerelle Admin réelle
 > (uniquement des adaptateurs mock sans réseau), schéma de test non fidèle
 > à l'intégralité de la production et écrans Parent/Enseignant historiques.
-> **Lot 5D-H en CI validé** : [run #44349058440](https://github.com/ramon77777/schoolnet/actions/runs/44349058440)
-> **7/7 jobs SUCCESS** et **24/24 tests H** hors réseau.
-> Suppression navigateur suspendue, fichier conservé si SQL
-> non confirmé ; politique Storage H en **SANDBOX_ONLY**.
-> Parent/Enseignant distinguent classe historique et données fictives ;
-> accès Parent à l'année active pas encore implémenté.
-> **Prochaine action : recette locale `qa:lot5d:h` 24/24 +
-> tests Parent historiques 10/10, lint, build** ;
-> A–G **105/105** déjà validés, objectif A–H **129/129**.
-> **Après GO distinct** : vraie passerelle Admin, correction Storage
-> côté serveur avec reprise, lecture annuelle Parent/Enseignant et
-> tests Auth/Storage fidèles. **Aucune migration ni déploiement.**
+> **Lot 5D-H validé par l'utilisateur le 18/11/2026** :
+> **129/129 tests locaux A–H**, ainsi que **10/10 tests historiques
+> Parent 5.C** vérifiés séparément ; lint 0 erreur, build Vite réussi
+> (868 modules), fast-forward `20125ba..c9ad909` sans conflit.
+> CI [run #44349841500](https://github.com/ramon77777/schoolnet/actions/runs/44349841500)
+> **7/7 jobs SUCCESS** sur le commit documentaire du H.
+> Suppression navigateur suspendue, fichier conservé si SQL non
+> confirmé, proposition de politique Storage H **SANDBOX_ONLY**
+> (NON INSTALLÉE). Parent/Enseignant indiquent la classe historique
+> ou le caractère fictif des données ; lecture de la classe annuelle
+> active Parent pas encore raccordée.
+> **Après GO distinct** : concevoir la suppression privée avec
+> conservation et reprise, tests Auth/Storage fidèles, lecture
+> annuelle Parent/Enseignant et passerelle Admin authentifiée.
+> **Année cible occupée : aucune bascule autorisée.**
+> **Aucune migration ni déploiement autorisé.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**

@@ -4,7 +4,7 @@
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon**  
 **CI vérifiée :** [run #44349058440](https://github.com/ramon77777/schoolnet/actions/runs/44349058440) — **7/7 jobs SUCCESS**, `qa:lot5d:h` **24/24** en CI, lint et build réussis.  
-**Recette locale H :** **À FAIRE par l'utilisateur**. Recettes locales A à G **105/105 déjà validées**.  
+**Recette locale H :** **VALIDÉE LE 18/11/2026, 24/24** ; total Lots 5D-A à H : **129/129** et tests Parent Lot 5.C **10/10** séparément.  
 **Déploiement :** aucun SQL Supabase principal, aucune migration installée, aucune fusion `main`, aucun déploiement Vercel.
 
 ## 1. Motif et risques observés
@@ -170,11 +170,11 @@ téléchargement, le refus Storage en RLS, la cohérence des
 les conflits, les informations indisponibles et l'avertissement
 Enseignant fictif.
 
-**Cumul de tests locaux A à G : 105/105 validés par l'utilisateur.**
-Les **24 tests H sont validés en CI**, mais pas encore localement.
-Cumul local attendu une fois H validé : **129/129**.
-Les 10 tests Parent historiques du Lot 5.C peuvent être relancés
-séparément sans être ajoutés à ce cumul.
+**Cumul A à H : 129/129 tests validés localement par l'utilisateur,
+dont H24/24.** Les **10/10 tests Parent historiques du Lot 5.C**
+ont également été relancés et réussis localement : ils sont
+comptés séparément, tout comme les scénarios SQL CI.
+La CI H reste confirmée à **7/7 jobs SUCCESS**.
 
 ## 6. Blocages avant toute future activation réelle
 
@@ -200,27 +200,40 @@ séparément sans être ajoutés à ce cumul.
    son installation sur Supabase principal, puis la fusion PR
    et enfin le déploiement Vercel.
 
-## 7. Recette locale H demandée
+## 7. Recette locale H — **VALIDÉE LE 18 NOVEMBRE 2026**
 
-Depuis le dossier SCHOOLNET (PowerShell, branche existante) :
+L'utilisateur a exécuté les commandes dans
+`D:\Bakary\10 autres\schoolnet` et transmis le journal complet :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:h
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
-git status --short
-```
+- `git pull --ff-only` : **fast-forward réussi**
+  `20125ba..c9ad909` sans conflit.
+- `npm run qa:lot5d:h` : **24 tests réussis / 24**.
+- `node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs` :
+  **10/10 tests Parent du Lot 5.C réussis** séparément.
+- `npm run lint` : **0 erreur**, 1 avertissement
+  `react-hooks/exhaustive-deps` déjà connu
+  (`EnrollmentRecordsPage.tsx:161`).
+- `npm run build` : **réussi**, Vite v7.3.1,
+  **868 modules**. Avertissements Browserslist et
+  taille du bundle non bloquants.
+- État Git final **inchangé** : `tsconfig.app.tsbuildinfo` modifié,
+  trois scripts locaux non suivis et `supabase/proposals/staged/`
+  **conservés**, aucun fichier local supprimé.
 
-**Attendu :** 24/24 tests H, 10/10 tests Parent historiques,
-lint 0 erreur (1 warning React Hook préexistant),
-build Vite réussi, état local inchangé pour les fichiers
-`tsconfig.app.tsbuildinfo`, les scripts hors Git et
-`supabase/proposals/staged/`.
+**Cumul local A à H : 129/129 tests validés** ; les 10 tests
+Parent historiques sont séparés de ce chiffre. Les tests
+SQL PostgreSQL 17 restent une preuve **CI uniquement sur
+des données fictives**.
 
-Aucun SQL Editor, aucune fonction Storage principale,
-aucun `supabase db push`, aucun `git reset --hard`,
-aucune fusion `main` et aucun déploiement Vercel.
+**Blocages subsistants :** la suppression réelle nécessite
+un backend privé, des tests Storage API/permissions sur environnement
+fidèle et un mécanisme de réconciliation ; le résolveur Parent
+de classe annuelle n'est pas encore connecté à un service autorisé ;
+la passerelle Admin est un mock et l'année 2026–2027 possède
+toujours un dossier actif distinct.
+
+**Interdictions :** aucune installation SQL sur Supabase
+principal (y compris fichiers `SANDBOX_ONLY`), aucun
+`supabase db push`, aucune activation du flag d'écriture,
+aucune fusion `main` ni déploiement Vercel. Tous exigent
+un nouveau GO spécifique.
