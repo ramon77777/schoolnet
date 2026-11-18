@@ -1,5 +1,9 @@
 // SCHOOLNET - Lot 5.D: decisions et changement controle d'annee.
 import { supabase } from "@/lib/supabaseClient";
+import {
+  areSchoolYearRolloverWritesBlocked,
+  SCHOOLNET_YEAR_ROLLOVER_READ_ONLY_MESSAGE,
+} from "./schoolYearRolloverWritePolicy";
 
 export type RolloverDecisionType = "pending" | "re_enroll" | "repeat" | "leave";
 
@@ -97,6 +101,9 @@ export async function getRolloverRecords(
 }
 
 export async function saveRolloverDecision(input: RolloverDraftInput): Promise<void> {
+  if (areSchoolYearRolloverWritesBlocked()) {
+    throw new Error(SCHOOLNET_YEAR_ROLLOVER_READ_ONLY_MESSAGE);
+  }
   const { error } = await supabase.rpc("admin_save_school_year_rollover_decision", {
     p_source_year_id: input.sourceYearId,
     p_target_year_id: input.targetYearId,
@@ -113,6 +120,9 @@ export async function finalizeSchoolYearRollover(
   targetYearId: string,
   confirmYearName: string,
 ): Promise<RolloverResult> {
+  if (areSchoolYearRolloverWritesBlocked()) {
+    throw new Error(SCHOOLNET_YEAR_ROLLOVER_READ_ONLY_MESSAGE);
+  }
   const { data, error } = await supabase.rpc("admin_finalize_school_year_rollover", {
     p_source_year_id: sourceYearId,
     p_target_year_id: targetYearId,
