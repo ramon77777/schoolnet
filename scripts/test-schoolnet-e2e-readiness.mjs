@@ -181,8 +181,9 @@ test("E2E-READINESS 13 - journal prive et legacy non alteres par la proposition 
 test("E2E-READINESS 14 - inventaire SQL SELECT uniquement, sans secret ni e-mail", async () => {
   const sql = await read("../supabase/verification/20261118_schoolnet_e2e_readiness_readonly.sql");
   const statements = sql.replace(/--[^\n]*/g, "").trim();
-  assert.ok(statements.startsWith("SELECT "), "Le diagnostic doit commencer par SELECT");
-  assert.equal(/\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|TRUNCATE|DROP|GRANT|REVOKE|CALL|DO)\b/i.test(statements), false);
+  assert.match(statements, /^SELECT\b/i, "Le diagnostic doit commencer par SELECT");
+  // Les noms de privilèges 'INSERT' dans un SELECT ne sont PAS des instructions DML.
+  assert.equal(/(?:^|;)\s*(?:INSERT|UPDATE|DELETE|CREATE|ALTER|TRUNCATE|DROP|GRANT|REVOKE|CALL|DO)\b/im.test(statements), false);
   assert.equal(/\b(?:password|technical_email|service_role|access_token)\b/i.test(statements), false);
   contains(sql, "installed_flow_migrations");
   contains(sql, "school_year_marked_current");
