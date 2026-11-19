@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { getAdminSchools, type SchoolRecord } from "@/features/schools/lib/schoolManagementApi";
+import { getActiveSchoolAdmins, getAdminSchools, type SchoolRecord } from "@/features/schools/lib/schoolManagementApi";
 import {
   getLocalSchoolAssignmentsCatalog,
   type SchoolAssignmentsCatalog,
 } from "@/features/schools/lib/schoolAssignmentsApi";
-import { buildSchoolPedagogyOverview } from "@/features/schools/lib/schoolPedagogyOverview";
+import { buildSchoolPedagogyOverview, filterSchoolsForLocalAdmin } from "@/features/schools/lib/schoolPedagogyOverview";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -49,10 +49,10 @@ export default function LocalSchoolPedagogy() {
   useEffect(() => {
     if (!canRead || !user?.id) return;
     let cancelled = false;
-    void getAdminSchools()
-      .then((rows) => {
+    void Promise.all([getAdminSchools(), getActiveSchoolAdmins()])
+      .then(([rows, memberships]) => {
         if (cancelled) return;
-        const active = rows.filter((school) => school.status === "active");
+        const active = filterSchoolsForLocalAdmin(rows, memberships, user.id);
         setSchools(active);
         setSchoolsForUser(user.id);
         setSchoolId((previous) =>
