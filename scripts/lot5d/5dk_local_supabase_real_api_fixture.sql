@@ -90,6 +90,10 @@ CREATE POLICY k_admin_docs_read ON public.student_enrollment_documents
 GRANT SELECT ON public.profiles, public.parent_links,
  public.school_years, public.classes, public.student_enrollment_documents
  TO authenticated;
+-- service_role is used ONLY by the local test runner, never by the browser.
+GRANT ALL ON public.profiles, public.parent_links,
+ public.school_years, public.classes, public.student_enrollments,
+ public.student_enrollment_documents TO service_role;
 REVOKE ALL ON public.student_enrollments FROM anon,authenticated;
 REVOKE ALL ON public.student_enrollment_documents FROM anon;
 REVOKE ALL ON public.profiles, public.parent_links FROM anon;
