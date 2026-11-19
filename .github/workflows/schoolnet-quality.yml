@@ -46,6 +46,8 @@ jobs:
         run: npm run qa:lot5d:h
       - name: Verifier Lot 5D-I (Parents annuels et revue documentaire, hors reseau)
         run: npm run qa:lot5d:i
+      - name: Verifier Lot 5D-J (sessions Parent et Storage HTTP fictifs, sans Internet)
+        run: npm run qa:lot5d:j
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -482,3 +484,31 @@ jobs:
           test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM schoolnet_private.document_deletion_review_events")" = "0"
           test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")" = "0"
           test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "0"
+
+  # Lot 5D-J: local-only transport sandbox. No Supabase URL or credentials.
+  # Existing SQL/Edge proposals stay untouched; no deploy, no live Storage.
+  lot5d_http_isolation:
+    name: Lot 5D-J - sessions Auth et sauvegarde binaire HTTP locaux
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SCHOOLNET_LOT5DJ_MODE: loopback-fixture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prouver execution sans cible Supabase ni secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$SCHOOLNET_LOT5DJ_MODE" = "loopback-fixture"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          node --version
+      - name: Executer les 40 scenarios Auth, Parent et fichiers seulement en HTTP loopback
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test scripts/test-schoolnet-lot5d-j-isolated-http.mjs
