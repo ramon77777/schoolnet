@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
   const project = Deno.env.get("SUPABASE_URL") ?? "";
   const origin = req.headers.get("origin") ?? "";
   const allowHostedConfiguration =
-    project === EXPECTED_PROJECT && origin === EXPECTED_ORIGIN;
+    !(project !== EXPECTED_PROJECT || origin !== EXPECTED_ORIGIN);
   const allowDisposableLocalFixture =
     Deno.env.get("SCHOOLNET_LOT5DM_DISPOSABLE_EDGE_HTTP") ===
       "loopback-fixture-20261119" &&
