@@ -52,6 +52,8 @@ jobs:
         run: npm run qa:lot5d:k
       - name: Verifier Lot 5D-L (session revokee, quota durable, refus navigateur)
         run: npm run qa:lot5d:l
+      - name: Verifier Lot 5D-M (garde Edge HTTP strict et donnees fictives)
+        run: npm run qa:lot5d:m
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)

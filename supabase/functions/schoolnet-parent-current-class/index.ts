@@ -1,4 +1,4 @@
-// SCHOOLNET 5D-L | PREPARED AUTH/SESSION/RATE-LIMIT Edge Function. NOT DEPLOYED.
+// SCHOOLNET 5D-M | AUTH/SESSION/RATE-LIMIT Edge: isolated HTTP fixture. NOT DEPLOYED.
  // No supabase/config.toml entry or UI caller. Disabled without explicit
  // server flag and exact production project + origin. No write operations.
  // Must pass Auth/Storage sandbox review and separate user GO before deploy.
@@ -13,6 +13,12 @@ import {
 
 const EXPECTED_PROJECT = "https://anttmbhaphkhmkoqsofd.supabase.co";
 const EXPECTED_ORIGIN = "https://schoolnet-snowy.vercel.app";
+// 5D-M: explicitly opt-in to disposable Supabase CLI Docker ONLY.
+// Hosted URLs can NEVER match these local addresses. Not a deployment flag.
+const ISOLATED_TEST_ORIGIN = "http://127.0.0.1:54321";
+const ISOLATED_TEST_PROJECTS = new Set([
+  "http://kong:8000", "http://127.0.0.1:54321",
+]);
 const OPTIONS = {auth: {persistSession: false, autoRefreshToken: false, detectSessionInUrl: false}};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -38,7 +44,15 @@ Deno.serve(async (req: Request) => {
   const enabled = Deno.env.get("SCHOOLNET_LOT5DI_PARENT_READ_ENABLED") === "true";
   const project = Deno.env.get("SUPABASE_URL") ?? "";
   const origin = req.headers.get("origin") ?? "";
-  if (!enabled || project !== EXPECTED_PROJECT || origin !== EXPECTED_ORIGIN) {
+  const allowHostedConfiguration =
+    project === EXPECTED_PROJECT && origin === EXPECTED_ORIGIN;
+  const allowDisposableLocalFixture =
+    Deno.env.get("SCHOOLNET_LOT5DM_DISPOSABLE_EDGE_HTTP") ===
+      "loopback-fixture-20261119" &&
+    !Deno.env.get("DENO_DEPLOYMENT_ID") &&
+    ISOLATED_TEST_PROJECTS.has(project) &&
+    origin === ISOLATED_TEST_ORIGIN;
+  if (!enabled || !(allowHostedConfiguration || allowDisposableLocalFixture)) {
     return new Response("Forbidden", {status: 403});
   }
   if (req.method === "OPTIONS") return respond(200, {ok: true}, origin);
