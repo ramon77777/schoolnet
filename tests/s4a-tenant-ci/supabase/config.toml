@@ -1,0 +1,8 @@
+# SCHOOLNET - base Supabase locale et jetable en CI, jamais hebergee.
+project_id = "schoolnet_s4a_tenant_ci"
+
+[db]
+major_version = 15
+
+[db.seed]
+enabled = false

@@ -1,0 +1,66 @@
+name: SCHOOLNET S4-A - recette SQL A/B isolee
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4a-tenant-ci.yml'
+      - 'tests/s4a-tenant-ci/**'
+      - 'supabase/proposals/s3c_school_class_assignments.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schoolnet-s4a-tenant-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tenant-ab:
+    name: RPC S3-C dans Supabase local jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout en lecture seule
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Installer Supabase CLI v2 epingle
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+
+      - name: Controle des outils et du perimetre
+        run: |
+          set -euo pipefail
+          supabase --version
+          psql --version
+          test -f tests/s4a-tenant-ci/supabase/config.toml
+          test -f supabase/proposals/s3c_school_class_assignments.sql
+
+      - name: Demarrer un Supabase local minimal
+        working-directory: tests/s4a-tenant-ci
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+      - name: Appliquer uniquement les fixtures et la proposition S3-C au local
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4a-tenant-ci/fixtures/legacy-minimal.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
+
+      - name: Tester les ecoles A et B puis rollback
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4a-tenant-ci/fixtures/tenant-a-b.sql
+
+      - name: Supprimer le sandbox local
+        if: always()
+        working-directory: tests/s4a-tenant-ci
+        run: supabase stop --no-backup || true
