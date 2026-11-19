@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {buildSchoolPedagogyOverview} from "../src/features/schools/lib/schoolPedagogyOverview.ts";
+import {buildSchoolPedagogyOverview,filterSchoolsForLocalAdmin} from "../src/features/schools/lib/schoolPedagogyOverview.ts";
 
 const fixture=()=>({
   school_id:"ecole-a",events:[],classes:[],students:[],teachers:[],
@@ -114,4 +114,39 @@ test("S4-A 16 - modules historiques restent verrouillés en navigation locale",(
 test("S4-A 17 - écran en lecture seule : zéro mutation depuis S4-A",()=>{
  const s=read("../src/features/schools/pages/LocalSchoolPedagogy.tsx");
  assert.doesNotMatch(s,/\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.upload\(|schoolnet_school_assign_student/);
+});
+
+// Contrôles du sélecteur : la visibilité SQL des écoles peut être plus large
+// que les écoles administrables (ex. même compte school_admin A, teacher B).
+const schoolFor=(id,status="active")=>({id,status});
+const membershipFor=(schoolId,userId,role="school_admin",status="active")=>({
+  school_id:schoolId,user_id:userId,member_role:role,status,
+});
+
+test("S4-A 18 - un administrateur A et enseignant B ne voit que A",()=>{
+  const schools=[schoolFor("A"),schoolFor("B")];
+  const memberships=[membershipFor("A","u"),membershipFor("B","u","teacher")];
+  assert.deepEqual(filterSchoolsForLocalAdmin(schools,memberships,"u").map(x=>x.id),["A"]);
+});
+test("S4-A 19 - une appartenance admin revoquee ou d'un tiers est refusee",()=>{
+  const schools=[schoolFor("A"),schoolFor("B")];
+  const memberships=[membershipFor("A","u","school_admin","revoked"),membershipFor("B","autre")];
+  assert.deepEqual(filterSchoolsForLocalAdmin(schools,memberships,"u"),[]);
+});
+test("S4-A 20 - ecole suspendue exclue meme si admin actif",()=>{
+  const schools=[schoolFor("A","suspended"),schoolFor("B")];
+  const memberships=[membershipFor("A","u"),membershipFor("B","u")];
+  assert.deepEqual(filterSchoolsForLocalAdmin(schools,memberships,"u").map(x=>x.id),["B"]);
+});
+test("S4-A 21 - plusieurs administrations legitimes restent accessibles",()=>{
+  const schools=[schoolFor("A"),schoolFor("B"),schoolFor("C")];
+  const memberships=[membershipFor("A","u"),membershipFor("B","u","parent"),membershipFor("C","u")];
+  assert.deepEqual(filterSchoolsForLocalAdmin(schools,memberships,"u").map(x=>x.id),["A","C"]);
+});
+test("S4-A 22 - echec ferme sans identite et verification du raccordement UI",()=>{
+  assert.deepEqual(filterSchoolsForLocalAdmin([schoolFor("A")],[membershipFor("A","u")],""),[]);
+  assert.deepEqual(filterSchoolsForLocalAdmin([schoolFor("A")],[],"u"),[]);
+  const source=read("../src/features/schools/pages/LocalSchoolPedagogy.tsx");
+  assert.match(source,/Promise\\.all\\(\\[getAdminSchools\\(\\), getActiveSchoolAdmins\\(\\)\\]\\)/);
+  assert.match(source,/filterSchoolsForLocalAdmin\\(rows, memberships, user\\.id\\)/);
 });
