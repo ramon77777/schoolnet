@@ -162,6 +162,20 @@ BEGIN
    RAISE EXCEPTION 'S4-B.1: cours propre, actif et compatible requis.'
    USING ERRCODE='42501'; END IF;
 
+ -- Avant de controler la matiere, refuser explicitement un cours
+ -- DEJA rattache a une autre affectation, y compris apres revocation.
+ -- La contrainte UNIQUE(course_id) reste la protection atomique de
+ -- reference en cas d'appels concurrents.
+ IF EXISTS(
+  SELECT 1 FROM schoolnet_private.school_course_links l
+  WHERE l.course_id=p_course_id
+    AND (l.school_id<>v_school OR l.class_id<>v_class
+      OR l.school_year_id<>v_year OR l.subject_id<>v_subject
+      OR l.teacher_id<>v_uid OR l.teacher_assignment_id<>p_assignment_id)
+ ) THEN
+   RAISE EXCEPTION 'S4-B.1: cours deja rattache a une autre affectation.'
+   USING ERRCODE='23505'; END IF;
+
  -- Aucun eleve V1, progression ou co-enseignant exterieur ne doit
  -- etre transporte implicitement dans un contexte officiel.
  IF EXISTS(SELECT 1 FROM public.course_enrollments e WHERE e.course_id=p_course_id)
