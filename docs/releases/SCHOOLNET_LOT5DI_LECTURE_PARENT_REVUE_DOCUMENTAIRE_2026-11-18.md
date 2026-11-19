@@ -4,7 +4,7 @@
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **Pull request :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon**  
 **CI :** [run #44353622841](https://github.com/ramon77777/schoolnet/actions/runs/44353622841), **8/8 jobs SUCCESS**, tests I **30/30**, compilation Deno, lint et Vite réussis.  
-**Recette locale I :** **à valider par l'utilisateur** ; Lots A à H **129/129 validés**.  
+**Recette locale I :** **VALIDÉE LE 19 NOVEMBRE 2026, 30/30** ; cumul A à I **159/159 tests locaux validés** ; Parent 5.C **10/10 séparément**.  
 **Production :** Supabase principal en **lecture seule**, `main` non fusionné, Vercel inchangé, aucune fonction Edge déployée, aucune proposition SQL installée.
 
 ## 1. Objectif et frontière de sécurité
@@ -184,10 +184,11 @@ Le test SQL reste une **fixture simplifiée**, pas une reproduction
 complète de Supabase Auth et Storage ; aucune session réelle, aucun
 fichier réel et aucune donnée scolaire du principal ne sont utilisés.
 
-**Tests locaux A–H confirmés par l'utilisateur : 129/129.**
-Les 30 tests I ont réussi en CI, **recette locale I à recevoir**.
-Une fois I validé localement, le cumul A–I sera de **159/159** ;
-les 10 tests historiques du Parent Lot 5.C restent séparés.
+**Tests locaux A–I confirmés par l'utilisateur le 19 novembre 2026 :
+159/159, dont I 30/30.** Les tests historiques du
+Parent Lot 5.C sont également **10/10 réussis** en local
+et comptés séparément ; les essais SQL PostgreSQL 17 sont
+eux aussi distincts du total local.
 
 ## 5. Réserves et prochaine séquence
 
@@ -205,26 +206,43 @@ les 10 tests historiques du Parent Lot 5.C restent séparés.
   publiques : recette de compatibilité exhaustive nécessaire
   avant toute migration canonique.
 
-## 6. Recette locale — à faire
+## 6. Recette locale — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-Dans le terminal PowerShell du projet SCHOOLNET :
+Journal transmis par l'utilisateur depuis PowerShell, dossier
+`D:\Bakary\10 autres\schoolnet` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:i
-npm run lint
-npm run build
-git status --short
-```
+- Branche attendue `feature/schoolnet-lot5d-a-securisation-20261118`.
+- `git pull --ff-only` réussi (`c9ad909..cc466e6`),
+  **sans conflit**.
+- `npm run qa:lot5d:i` : **30/30 tests passés, 0 échec**.
+- Test historique Parent 5.C lancé séparément :
+  **10/10 réussis**, sans double comptage.
+- `npm run lint` : **0 erreur** et 1 warning historique
+  `react-hooks/exhaustive-deps` à
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : TypeScript et Vite **réussis**,
+  Vite v7.3.1, **868 modules**.
+  Avertissements de fraîcheur Browserslist et
+  taille du bundle JavaScript non bloquants.
+- `git status --short` final : état local **préservé** ;
+  modification `tsconfig.app.tsbuildinfo`, trois scripts
+  `scripts/schoolnet-student-auth-*.mjs` et
+  `supabase/proposals/staged/` non suivis conservés.
 
-**Attendu :** I **30/30**, lint **0 erreur**
-(1 warning historique React Hook possible), build Vite réussi,
-scripts locaux non suivis et `supabase/proposals/staged/`
-toujours présents ; `tsconfig.app.tsbuildinfo` inchangé
-par Git hormis sa modification locale connue.
+**Cumul local Lots 5D-A à I : 159/159.**
+Les 10 tests Parent 5.C et les assertions SQL CI
+sont des recettes complémentaires distinctes.
 
-**Ne pas lancer SQL Editor, `supabase db push`,
-`supabase functions deploy`, `git reset --hard`,
-`git clean`, fusion `main` ou déploiement Vercel.**
+Cette confirmation n'autorise pas la mise en production.
+La fonction Parent annuelle reste **OFF et non déployée**,
+les propositions SQL `SANDBOX_ONLY` restent **non installées**,
+et aucune sauvegarde, suppression physique ou réconciliation
+Storage réelle n'a été implémentée.
+Le dossier actif déjà présent dans la cible 2026–2027
+est toujours bloquant pour la bascule scolaire.
+
+**Interdictions maintenues :** aucun SQL sur Supabase
+principal, aucune installation `SANDBOX_ONLY`,
+aucun `supabase db push`, `supabase functions deploy`,
+aucune fusion dans `main` ni déploiement Vercel.
+La suite requiert une nouvelle autorisation distincte.
