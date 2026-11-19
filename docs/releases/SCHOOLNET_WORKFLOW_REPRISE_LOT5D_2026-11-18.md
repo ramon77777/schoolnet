@@ -416,6 +416,45 @@ Aucune migration 5D, aucun rôle nouveau, aucun déploiement** ;
 aucune fusion main ni mise en production. Toutes les protections
 non déployées restent à l'étude sous nouveau GO.**
 
+### 5D-J : **RECETTES AUTH/SESSIONS PARENT ET STORAGE HTTP ISOLÉ — CI VALIDÉE, LOCAL À FAIRE**
+
+Le 19/11/2026 sur la PR #15 **en brouillon** :
+[rapport technique 5D-J](./SCHOOLNET_LOT5DJ_AUTH_SESSIONS_STORAGE_HTTP_2026-11-19.md).
+
+- **Audit Supabase en SELECT uniquement** : les colonnes de
+  `auth.sessions` (`id`, `user_id`, `not_after`) existent ;
+  aucune session réelle ni objet Storage d'élève consulté.
+  Les sessions peuvent nécessiter une vérification de présence
+  autoritative au-delà de `auth.getUser`.
+- **Contrat Parent local** :
+  `scripts/lot5d/5dj_parent_http_security_reference.mjs` ;
+  port `127.0.0.1`, identité/session actives et cohérentes,
+  expiration, rôle `parent` revalidé, rate-limit obligatoire,
+  aucune identité ou rôle accepté du navigateur,
+  réponse minimale. **Adaptateurs fictifs : pas de vraie Auth.**
+- **Simulation de conservation** :
+  `scripts/lot5d/5dj_retention_recovery_reference.mjs` ;
+  copie binaire privée, relecture, taille et SHA-256,
+  attestation fictive, traitement des timeouts incertains et
+  classification des orphelins/manques. **Aucune suppression
+  physique, aucune réparation automatique.**
+- **Tests HTTP réels sur boucle locale** :
+  `scripts/test-schoolnet-lot5d-j-isolated-http.mjs` ;
+  **40/40 tests J**, dont appels au mini-service HTTP Auth/Storage
+  sur `127.0.0.1`. Aucune donnée réelle ni clé cloud.
+- **CI** : [run #44488437331](https://github.com/ramon77777/schoolnet/actions/runs/44488437331),
+  **9/9 jobs SUCCESS**, y compris job J autonome,
+  lot précédent A–I, lint, build et compilation Deno.
+- **Recette locale J : À FAIRE**. A–I **159/159 validés**,
+  J **40/40 attendus**, soit **199/199 A–J** après
+  confirmation. Parent historique **10/10** à relancer séparément.
+
+**Verrous maintenus :** `schoolnet-parent-current-class`
+**OFF/non déployée**, aucune politique Storage J ni migration
+créée, aucune suppression d'objet, aucun backup réel ;
+année cible 2026–2027 occupée. Vraie recette Auth/Storage
+sur sandbox fidèle et accord séparé restent indispensables.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -656,6 +695,29 @@ l'API Storage, la sauvegarde/réconciliation documentaire et la
 lecture Parent réellement autorisée. Pas de SQL principal,
 de migration, de fusion `main` ni de déploiement Vercel.
 
+### Prochaine recette locale — Lot 5D-J
+
+Les **9/9 jobs CI** du 5D-J ont réussi, avec
+**40/40 tests J** sur HTTP isolé. Dans PowerShell :
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:j
+node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu :** **40/40 tests J**, Parent **10/10** à part,
+lint **0 erreur** (warning React Hook historique possible),
+build Vite réussi et fichiers locaux non suivis inchangés.
+Cumul A–I **159/159 déjà validé** ; après J,
+cumul **199/199 à confirmer**. Aucun SQL principal ni
+déploiement n'est autorisé.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -696,7 +758,13 @@ de migration, de fusion `main` ni de déploiement Vercel.
    relancés séparément. Sauvegarde/restauration
    Storage, rôle SQL dédié et parcours annuel Parent réel
    restent à valider.
-9. Soumettre une future migration finale et son éventuelle installation
+9. **5D-J :** contrat HTTP local de vérification des sessions
+   Parent, refus des rôles non autorisés et des pannes rate-limit,
+   copie/lecture/empreinte SHA-256 de pièces fictives et diagnostics
+   de reprise sans suppression. CI **9/9 jobs**, J **40/40** ;
+   recette locale J à confirmer. **Aucune vraie session Supabase
+   ni aucun fichier réel n'ont été utilisés.**
+10. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -731,6 +799,7 @@ de migration, de fusion `main` ni de déploiement Vercel.
 > - `docs/releases/SCHOOLNET_LOT5DG_AUDIT_RLS_PASSERELLE_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DH_ARCHIVES_STORAGE_CLASSES_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DI_LECTURE_PARENT_REVUE_DOCUMENTAIRE_2026-11-18.md`
+> - `docs/releases/SCHOOLNET_LOT5DJ_AUTH_SESSIONS_STORAGE_HTTP_2026-11-19.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -791,6 +860,20 @@ de migration, de fusion `main` ni de déploiement Vercel.
 > sessions/rate-limit, conservation vérifiable et réconciliation,
 > raccordement Parent sous autorisation.
 > **Pas de SQL principal, pas de fusion main, pas de Vercel production.**
+> **Point de reprise après CI du Lot 5D-J (19/11/2026)** :
+> [9/9 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44488437331),
+> `qa:lot5d:j` **40/40 en CI**, tests Auth/Storage en HTTP
+> **strictement local**. Contrat de session révoquée et contrôle
+> SHA-256 de sauvegarde simulés, sans suppression de fichiers.
+> **Recette locale J à faire :** `qa:lot5d:j` **40/40**,
+> Parent 5.C **10/10 séparés**, lint et build.
+> Cumul A–I **159/159 validé**, objectif A–J **199/199**.
+> **Blocages :** Edge Parent I OFF/non déployée, absence
+> de vérification réelle `auth.sessions`/rate-limit,
+> pas de Storage API réelle ni de sauvegarde durable,
+> année cible 2026–2027 déjà occupée.
+> **Aucune migration, aucun changement Supabase principal,
+> aucune fusion main ni mise en production Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
