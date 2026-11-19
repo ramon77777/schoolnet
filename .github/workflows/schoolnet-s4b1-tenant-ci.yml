@@ -1,0 +1,80 @@
+name: SCHOOLNET S4-B.1 - cours officiels A/B isoles
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4b1-tenant-ci.yml'
+      - 'tests/s4b1-tenant-ci/**'
+      - 'supabase/proposals/s4b1_school_course_bridge.sql'
+      - 'src/features/schools/**'
+      - 'src/features/teacher/**'
+      - 'src/routes/router.tsx'
+      - 'src/layouts/DashboardLayout.tsx'
+      - 'scripts/test-schoolnet-s4b1-course-bridge.mjs'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4b1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: S4-B.1 - 18 controles, lint et build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Dependances verrouillees
+        run: npm ci --no-audit --no-fund
+      - name: Tests locaux S4-B.1
+        run: npm run qa:s4b1
+      - name: ESLint
+        run: npm run lint
+      - name: Compilation TypeScript et Vite
+        run: npm run build
+
+  tenant-isolation:
+    name: S4-B.1 - RPC SQL A/B sur Supabase local jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Demarrer Postgres Supabase local, pas de projet heberge
+        working-directory: tests/s4b1-tenant-ci
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Charger uniquement les contrats V1 S3-C et la proposition S4-B.1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/legacy-minimal.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/course-core.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b1_school_course_bridge.sql
+      - name: Tester les droits A/B, le refus des cours V1 et le ROLLBACK
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b1-tenant-ci/fixtures/course-bridge-a-b.sql | tee /tmp/s4b1-result.txt
+          grep -Fq 'S4B1_TENANT_A_B_PASS' /tmp/s4b1-result.txt
+      - name: Arreter Supabase et supprimer tous les volumes CI
+        if: always()
+        working-directory: tests/s4b1-tenant-ci
+        run: supabase stop --no-backup || true

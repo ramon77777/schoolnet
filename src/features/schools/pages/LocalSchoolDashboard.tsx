@@ -93,6 +93,9 @@ export default function LocalSchoolDashboard() {
           <Link to="/app/school/pedagogy" className="sn-btn-primary inline-flex">
             Pilotage pédagogique · S4-A
           </Link>
+          <Link to="/app/school/courses" className="sn-btn-ghost inline-flex">
+            Cours officiels · S4-B.1
+          </Link>
           <Link to="/app/profile" className="sn-btn-ghost inline-flex">
             Consulter mon profil
           </Link>

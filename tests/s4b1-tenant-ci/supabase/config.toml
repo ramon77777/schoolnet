@@ -1,0 +1,8 @@
+# PROJECT LOCAL SCHOOLNET S4-B.1 - JETABLE. Jamais linked.
+project_id = "schoolnet_s4b1_tenant_ci"
+
+[db]
+major_version = 15
+
+[db.seed]
+enabled = false
