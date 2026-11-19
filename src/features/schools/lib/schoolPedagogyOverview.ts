@@ -1,4 +1,5 @@
 import type { SchoolAssignmentsCatalog } from "./schoolAssignmentsApi";
+import type { SchoolMembership, SchoolRecord } from "./schoolManagementApi";
 
 // S4-A - Vue de lecture uniquement, calculée à partir du catalogue S3-C
 // contrôlé côté PostgreSQL pour l'établissement de l'administrateur local.
@@ -96,4 +97,28 @@ export function buildSchoolPedagogyOverview(
     assignedTeacherCount: allTeachers.size,
     teachingAssignmentCount: teachingLinks.size,
   };
+}
+
+// Un administrateur ne doit voir que les établissements où il dispose
+// lui-même d'une appartenance school_admin active, même si la RLS autorise
+// également la lecture d'une autre école au titre d'un rôle local différent.
+// Le contrôle d'accès définitif reste assuré par les RPC PostgreSQL.
+export function filterSchoolsForLocalAdmin(
+  schools: SchoolRecord[],
+  memberships: SchoolMembership[],
+  userId: string,
+): SchoolRecord[] {
+  if (!userId) return [];
+  const administeredSchoolIds = new Set(
+    memberships
+      .filter((membership) =>
+        membership.user_id === userId &&
+        membership.member_role === "school_admin" &&
+        membership.status === "active",
+      )
+      .map((membership) => membership.school_id),
+  );
+  return schools.filter((school) =>
+    school.status === "active" && administeredSchoolIds.has(school.id),
+  );
 }
