@@ -93,7 +93,7 @@ test("5D-N - JWT gateway ON on real disposable Supabase local Edge",async t=>{
    assert.match(edge,/SCHOOLNET_LOT5DM_DISPOSABLE_EDGE_HTTP/);
  });
  await t.test("N02 - real Auth and local PostgreSQL are healthy",async()=>{
-   const r=await fetch(url+"auth/v1/health");
+   const r=await fetch(new URL("/auth/v1/health",url));
    assert.equal(r.ok,true);
    assert.equal(sql("SELECT current_database()"),"postgres");
    assert.equal(sql("SELECT to_regprocedure('public.schoolnet_parent_read_gate(uuid,uuid)') IS NOT NULL"),"t");
