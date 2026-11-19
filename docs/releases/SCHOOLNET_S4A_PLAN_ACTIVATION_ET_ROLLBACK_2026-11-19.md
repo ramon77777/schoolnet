@@ -2,7 +2,7 @@
 
 **Date :** 19 novembre 2026  
 **Périmètre :** pilotage pédagogique d'un établissement ; RPC de synthèse sans noms ni identifiants individuels.  
-**État :** dossier PR n° 17 ; **installation NON autorisée / NON exécutée**.  
+**État actualisé :** autorisation reçue ; **migration installée sur Supabase principal le 19/11/2026** (version `20261119162228`). Fusion GitHub / publication Vercel non effectuées à cette date.  
 **Version candidate inspectée :** commit `659fb6e9` (recontrôler le SHA avant toute installation).
 
 ## 1. Finalité, acquis et limites
@@ -11,7 +11,7 @@ Les 28 tests applicatifs S4-A et la recette A/B SQL sur une base Supabase jetabl
 
 S4-A consomme maintenant une **RPC dédiée**, `public.schoolnet_school_pedagogy_overview(p_school_id uuid)`. Elle expose uniquement des compteurs et des métadonnées scolaires non nominatives. La RPC détaillée S3-C `public.schoolnet_school_assignment_catalog(uuid)` demeure inchangée et continue de servir aux écrans d'affectation existants.
 
-**Le test SQL local ne vaut pas installation Supabase principale.** Le déploiement de la Preview Vercel ne crée aucune fonction dans PostgreSQL : tant que la RPC manque, l'écran candidat échoue volontairement sans repli vers les noms d'élèves et d'enseignants.
+**Mise à jour :** l'installation Supabase principale a été réalisée séparément, après succès de la recette SQL locale. L'écran candidat dispose désormais de la RPC sur le serveur ; la vérification navigateur authentifiée reste distincte.
 
 ## 2. Précontrôle exécuté (production, lecture seule)
 
@@ -76,4 +76,13 @@ Exiger le succès des deux jobs GitHub Actions du nouveau commit : qualité SCHO
 
 Après installation autorisée, exiger le postcontrôle SQL et un essai Preview ciblé. Les scénarios A/B ont déjà été éprouvés sur base locale synthétique : ne pas fabriquer de comptes ou d'affectations sur la production pour les répéter.
 
-**État à la rédaction :** seules des lectures de métadonnées ont été effectuées sur Supabase principal. Aucune DDL, aucun rollback, aucune fusion ni publication de production n'a été effectuée.
+**État actualisé au 19/11/2026 :** la migration S4-A a été exécutée sur Supabase principal, avec `S4A_POSTCHECK_PASS` et sans mutation de données scolaires. Les tests de révocation et le rollback restent limités au sandbox CI ; aucun rollback, aucune fusion GitHub ni publication Vercel n'a été effectuée à cette date.
+
+
+## 7. Compte rendu d'activation réelle — 19 novembre 2026
+
+L'utilisateur a autorisé l'activation SQL. Version enregistrée par Supabase : `20261119162228_schoolnet_s4a_pedagogy_overview`. Le précontrôle et le postcontrôle ont réussi. Un test SQL ciblé exécuté avec une identité scolaire existante simulée au niveau de la session PostgreSQL a vérifié la réponse non nominative, le refus d'une autre école et le refus anonyme ; **ce test ne prétend pas valider un navigateur connecté avec un vrai jeton JWT**.
+
+Aucune table, rôle utilisateur, donnée de cours ou RPC S3-C n'a été modifié. Le rollback disponible dans `supabase/verification/s4a_activation_rollback_manual.sql` demeure prêt mais n'a pas été exécuté en production. L'export local visible du 17/11/2026 reste antérieur à la migration et ne constitue pas une sauvegarde des activités enregistrées depuis cette date.
+
+Une fusion de la PR et un déploiement sur `main` devront être documentés séparément, avec SHA et URL de production.

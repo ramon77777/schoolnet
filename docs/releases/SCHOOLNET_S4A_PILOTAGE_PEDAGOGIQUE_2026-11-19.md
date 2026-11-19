@@ -3,8 +3,8 @@
 **Date :** 19 novembre 2026  
 **Module :** Gestion des établissements → S4 — première tranche fonctionnelle.  
 **Branche :** `feature/schoolnet-s4a-pilotage-pedagogique-20261119`, créée depuis `main` au commit `2761d738`.  
-**Statut :** développement sur GitHub, en attente des tests locaux, de la recette visuelle et de l'accord explicite de fusion/publication.  
-**Hors périmètre :** PR #15 (5D-A à N), PR #16 (recette R0), migrations, comptes Auth, écriture PostgreSQL, Storage et déploiements Vercel.
+**Statut :** développement et 28 tests validés ; migration S4-A installée sur Supabase principal le 19/11/2026 (`20261119162228`) ; PR n° 17 en attente de fusion et de publication Vercel.  
+**Hors périmètre :** PR #15 (5D-A à N), PR #16 (recette R0), modifications de comptes Auth, données scolaires, Storage et fonctions historiques S3-C. La migration S4-A seule a été activée séparément sur Supabase principal.
 
 ## 1. Audit ciblé du code existant
 
@@ -217,3 +217,14 @@ S4-A sont documentés dans
 Ce résultat ne vaut pas autorisation d'installer : le précontrôle doit
 être refait le jour de la migration. Aucune modification du projet
 Supabase principal n'a été réalisée pendant cette préparation.
+
+
+## Reprise V5 — Activation réalisée le 19 novembre 2026
+
+- Migration SQL enregistrée sur Supabase : `20261119162228_schoolnet_s4a_pedagogy_overview`.
+- Fichier historique correspondant, identique au SQL appliqué : `supabase/migrations/20261119162228_schoolnet_s4a_pedagogy_overview.sql`.
+- Vérifications : `S4A_PRECHECK_PASS` avant installation, `S4A_POSTCHECK_PASS` après ; contrôle SQL de lecture avec rôle administrateur d'établissement (sans données modifiées), refus inter-établissements et anonyme.
+- CI GitHub : qualité et recette SQL A/B réussies sur le commit `b93cd301`. Les anciennes validations demeurent acquises.
+- Les deux fonctions S4-A sont installées sur la base principale. La PR n° 17 n'a pas encore été fusionnée à l'heure de cette mise à jour.
+- Une vérification navigateur authentifiée du tableau de bord reste recommandée après publication : le contrôle SQL ne remplace pas une session utilisateur réelle.
+- La sauvegarde locale disponible date du 17 novembre 2026 ; elle ne couvre pas les données ultérieures. Le rollback ciblé des seules fonctions S4-A est validé en CI.
