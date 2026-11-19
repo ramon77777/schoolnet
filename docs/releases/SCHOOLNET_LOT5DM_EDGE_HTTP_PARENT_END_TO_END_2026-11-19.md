@@ -4,7 +4,7 @@
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon**, non fusionnée.  
 **CI :** [GitHub Actions #44501540891](https://github.com/ramon77777/schoolnet/actions/runs/44501540891), **11/11 jobs SUCCESS**, **24/24 contrôles hors réseau** et **25/25 scénarios HTTP Edge réels** (Node affiche 26 tests réussis avec le test parent agrégateur).  
-**Recette locale M :** **à recevoir de l'utilisateur** ; A à L **249/249 tests locaux déjà validés**, objectif A à M **273/273** après les 24 nouveaux tests hors réseau. Les **10/10 tests historiques Parent 5.C**, **21 tests d'intégration K**, **21 L** et **25 M HTTP en CI** sont distincts.  
+**Recette locale M : VALIDÉE LE 19/11/2026 — 24/24** ; cumul A à M **273/273 tests locaux validés**. Les **10/10 tests historiques Parent 5.C**, **21 intégrations K**, **21 intégrations L** et **25 scénarios HTTP M en CI** restent distincts.  
 **Production :** aucune écriture sur les deux Supabase hébergés, aucune fonction Edge déployée, aucun SQL M installé, aucune fusion dans `main` et aucune publication Vercel.
 
 ## 1. Objectif et portée exacte
@@ -182,40 +182,51 @@ restent soumis aux vérifications applicatives.
    par un dossier actif distinct : toute
    bascule reste **interdite** sans décision métier.
 
-## 5. Recette locale 5D-M — à effectuer
+## 5. Recette locale 5D-M — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-Dans PowerShell, depuis
-`D:\Bakary\10 autres\schoolnet` :
+La sortie PowerShell complète fournie par l'utilisateur établit :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+- Branche `feature/schoolnet-lot5d-a-securisation-20261118` confirmée ;
+  `git pull --ff-only` **réussi sans conflit** (`1bf8e5b..77a8bcb`).
+- `npm run qa:lot5d:m` : **24/24 tests réussis**,
+  aucun échec, aucune annulation ni test ignoré.
+- Tests historiques Parent 5.C : **10/10 réussis**,
+  **comptés séparément**.
+- `npm run lint` : **0 erreur**, 1 avertissement React Hook
+  `react-hooks/exhaustive-deps` préexistant,
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **TypeScript/Vite réussi**,
+  Vite v7.3.1, **868 modules transformés**.
+  Avertissements non bloquants : Browserslist ancien
+  et taille du bundle principal.
+- État Git initial/final **inchangé** :
+  `tsconfig.app.tsbuildinfo` reste modifié ;
+  `scripts/schoolnet-student-auth-sandbox-local.mjs`,
+  `scripts/test-schoolnet-student-auth-flow-mock.mjs`,
+  `scripts/test-schoolnet-student-auth-sandbox-local.mjs`
+  et `supabase/proposals/staged/` demeurent
+  non suivis et **préservés**.
 
-npm run qa:lot5d:m
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
+**Cumul local Lots 5D-A à M : 273/273 tests validés.**
+Les 10/10 tests Parent 5.C, les 21 intégrations
+réelles K, 21 L et les 25 scénarios HTTP M
+réalisés dans GitHub Actions sont séparés de ce total.
 
-git status --short
-```
+[CI du code M #44501540891](https://github.com/ramon77777/schoolnet/actions/runs/44501540891)
+et [CI documentaire initiale M #44502231086](https://github.com/ramon77777/schoolnet/actions/runs/44502231086)
+ont chacune réussi **11/11 jobs**.
 
-**Attendu :** M **24/24 hors réseau**,
-Parent 5.C **10/10 séparés**, lint
-**0 erreur** (1 warning historique possible),
-build Vite réussi, aucun changement imprévu
-des scripts non suivis et de
-`supabase/proposals/staged/`.
+**Les limites restent inchangées :** la fonction Edge
+Parent n'est ni déployée ni utilisée par le frontend ;
+`verify_jwt=false` n'existe que dans la configuration
+jetable des tests Docker, **jamais dans le vrai dépôt
+ni en production**. Le SQL `SANDBOX_ONLY` des
+sessions et quotas n'est pas installé en hébergement ;
+le seuil de 12/min nécessite une validation métier,
+la fixture ne reproduit pas les 43 migrations
+du principal, la rétention documentaire durable
+et le conflit de dossier 2026–2027 restent à traiter.
 
-**Bilan local déjà validé A–L : 249/249**.
-Après confirmation M : **A–M 273/273**,
-sans addition des **25 intégrations M**,
-des **21 intégrations K**, **21 L**
-ou des tests historiques Parent 5.C.
-
-**Interdictions :** ni `supabase db push`,
-ni `supabase functions deploy`, ni copie
-de la configuration temporaire
-`verify_jwt=false` dans le vrai dépôt,
-ni `git clean` ou `git reset --hard`,
-ni fusion de `main` ni déploiement Vercel.
+**Aucune migration Supabase hébergée, fusion `main`,
+publication Vercel ou bascule scolaire sans
+une autorisation nouvelle et distincte.**
