@@ -188,7 +188,7 @@ est susceptible de déclencher Vercel automatiquement.
 | G0 État initial GitHub/Supabase | **FAIT — lecture seule**, rapports agrégés, pas de PII exportée |
 | G1 R0 périmètre et critères | **PRÉPARÉ**, soumis à validation du propriétaire |
 | G2/G3 Sécurité des écritures réelles | **NON AUTORISÉES** |
-| G5 Tests locaux Lot 5.C | **À EFFECTUER** dans le worktree séparé |
+| G5 Tests locaux Lot 5.C | **VALIDÉS le 19/11/2026 — 85/85 tests** ; lint 0 erreur (1 warning historique), build Vite réussi (865 modules) |
 | G5 Recette visuelle Parent/Admin | **À EFFECTUER EN LECTURE SEULE** |
 | G6 Preview isolée | **NON NÉCESSAIRE pour ce document seul** ; à décider en cas de correction |
 | G7 Merge/production | **NON AUTORISÉ** |
@@ -198,3 +198,64 @@ est susceptible de déclencher Vercel automatiquement.
 et la recette visuelle en lecture seule, puis confronter
 les écarts éventuels à la PR #13. **Ne pas commencer R1
 tant que la porte de sortie R0 n'est pas clarifiée.**
+
+## 9. Résultat de recette technique locale — 19 novembre 2026
+
+**R0-A : VALIDÉ. R0-B / R0-C / R0-D : NON CLÔTURÉS.**
+
+Le propriétaire a transmis la sortie PowerShell complète
+depuis `D:\Bakary\10 autres\schoolnet`.
+
+- `git fetch origin` : réussi ; nouvelle branche distante
+  `feature/schoolnet-r0-cloture-lot5c-20261119` récupérée.
+- `git worktree add -b review/schoolnet-r0-5c-20261119
+  "..\schoolnet-r0" origin/feature/schoolnet-r0-cloture-lot5c-20261119` :
+  réussi. Nouveau dossier : `D:\Bakary\10 autres\schoolnet-r0`
+  et commit `4c9ce647`. La branche 5D locale initiale n'a
+  pas été changée ; ses trois scripts et SQL non suivis
+  sont restés en place.
+- `npm ci` : installation **réussie** de 355 packages ;
+  **50 alertes d'audit npm** (2 faibles, 31 moyennes,
+  **17 élevées**) à **qualifier séparément avant toute
+  nouvelle publication**. Ces alertes ne prouvent pas
+  à elles seules une vulnérabilité exploitable sur le site ;
+  ne pas exécuter `npm audit fix --force` sans revue
+  de la chaîne de dépendances et des changements.
+- `npm run qa:lot5c` : **85/85 tests passés** :
+  21 tests de garde/rollout, 54 tests 5.C
+  et 10 tests Parent ; aucun échec, aucun test ignoré.
+- `npm run lint` : **0 erreur**, **1 avertissement
+  historique** `react-hooks/exhaustive-deps` à
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **réussi** avec Vite v7.3.1,
+  **865 modules transformés** ; avertissements
+  non bloquants sur Browserslist et taille du bundle.
+- `git status --short` final du **nouveau worktree R0** :
+  **`M tsconfig.app.tsbuildinfo` uniquement**, fichier
+  de cache généré par TypeScript. Il n'est pas commité ;
+  ne pas le supprimer sans besoin. Dossier SCHOOLNET
+  initial et ses fichiers non suivis non touchés.
+- [GitHub Actions du commit initial R0](https://github.com/ramon77777/schoolnet/actions/runs/44516105557) :
+  **SUCCESS**, distinct de la recette PowerShell.
+
+**Ce qui est prouvé :** les tests unitaires, les garde-fous
+du code 5.C et la compilation passent dans un dossier
+indépendant de `main` et de la branche 5D.
+
+**Ce qui ne l'est PAS :** aucune recette navigateur
+Admin/Parent authentifiée de cette étape R0-B ;
+aucune création réelle ou approbation d'un nouvel
+enfant en production ; aucune sauvegarde/restauration
+complète nouvellement testée ; aucune revue de
+l'exploitabilité des alertes npm.
+
+**Prochaine action : R0-B, lecture seule** de
+`/app/admin/enrollment-requests`, puis
+`/app/parent/children`, en vérifiant affichage,
+rôles et mobile, sans cliquer les actions d'écriture.
+Conserver la PR #16 en brouillon. La PR #15
+reste non fusionnée et hors périmètre.
+
+**Aucun GO** de fusion `main`,
+déploiement Vercel, SQL hébergé,
+modification Auth ou Storage.
