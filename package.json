@@ -24,6 +24,8 @@
     "qa:lot5d:h": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-h-storage-parent.mjs",
     "qa:lot5d:i": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-i-parent-document.mjs",
     "qa:lot5d:j": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-j-isolated-http.mjs",
+    "qa:lot5d:k": "node --test scripts/test-schoolnet-lot5d-k-contract.mjs",
+    "qa:lot5d:k:integration": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-k-real-supabase.mjs",
     "qa:e2e:readiness": "node --experimental-strip-types --test scripts/test-schoolnet-e2e-readiness.mjs",
     "qa:sandbox:prepare": "node --test scripts/test-schoolnet-sandbox-preparation.mjs",
     "sandbox:check": "node scripts/check-schoolnet-sandbox-env.mjs"

@@ -48,6 +48,8 @@ jobs:
         run: npm run qa:lot5d:i
       - name: Verifier Lot 5D-J (sessions Parent et Storage HTTP fictifs, sans Internet)
         run: npm run qa:lot5d:j
+      - name: Verifier Lot 5D-K (contrats d'isolement, aucun acces cloud)
+        run: npm run qa:lot5d:k
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -512,3 +514,86 @@ jobs:
         run: |
           set -euo pipefail
           node --experimental-strip-types --test scripts/test-schoolnet-lot5d-j-isolated-http.mjs
+
+  # Lot 5D-K: REAL GoTrue/PostgREST/Storage locally in disposable Docker.
+  # Hosted sandbox has existing experiments: NEVER alter either hosted project.
+  # No hosted API keys, tokens, migrations or linked project are used.
+  lot5d_supabase_local_real_api:
+    name: Lot 5D-K - APIs Supabase Auth/Storage reelles sur stack locale jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les deps du projet existant sans mise a jour
+        run: npm ci --no-audit --no-fund
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+      - name: Preflight CLI, Docker, cibles et interdit hosted
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in SUPABASE_ACCESS_TOKEN SUPABASE_DB_URL DATABASE_URL SUPABASE_PROJECT_ID SUPABASE_SERVICE_ROLE_KEY VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          supabase --version
+          supabase init --help > /dev/null
+          supabase start --help > /dev/null
+          supabase status --help > /dev/null
+          docker info --format '{{.ServerVersion}}'
+      - name: Demarrer une NOUVELLE stack Supabase ephemere sans migrations du repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK_DIR="$RUNNER_TEMP/schoolnet-5dk-stack"
+          mkdir -p "$WORK_DIR"
+          echo "SCHOOLNET_K_STACK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
+          cd "$WORK_DIR"
+          supabase init --yes
+          supabase start --exclude studio,imgproxy,logflare,vector,realtime,supavisor,edge-runtime,postgres-meta
+          supabase status -o env > "$RUNNER_TEMP/schoolnet-5dk-status.env"
+          test -s "$RUNNER_TEMP/schoolnet-5dk-status.env"
+      - name: Exporter les cles LOCALES masquees et les valider
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          . "$RUNNER_TEMP/schoolnet-5dk-status.env"
+          set +a
+          test "$API_URL" = "http://127.0.0.1:54321"
+          test "$DB_URL" = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          printf 'SCHOOLNET_K_LOCAL_URL=%s\n' "$API_URL" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_ANON_KEY=%s\n' "$ANON_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_SERVICE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_DB_URL=%s\n' "$DB_URL" >> "$GITHUB_ENV"
+      - name: Installer seulement les fixtures fictives dans le Postgres LOCAL
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
+      - name: Verifier les 21 vrais parcours Auth, Parent RLS et Storage API
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run qa:lot5d:k:integration
+      - name: Detruire uniquement les conteneurs et volumes de CE CI
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if test -n "$SCHOOLNET_K_STACK_DIR" && test -f "$SCHOOLNET_K_STACK_DIR/supabase/config.toml"; then
+            cd "$SCHOOLNET_K_STACK_DIR"
+            supabase stop --no-backup
+          fi
