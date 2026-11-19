@@ -1,4 +1,4 @@
-// SCHOOLNET 5D-I | PREPARED READ-ONLY Edge Function. NOT DEPLOYED.
+// SCHOOLNET 5D-L | PREPARED AUTH/SESSION/RATE-LIMIT Edge Function. NOT DEPLOYED.
  // No supabase/config.toml entry or UI caller. Disabled without explicit
  // server flag and exact production project + origin. No write operations.
  // Must pass Auth/Storage sandbox review and separate user GO before deploy.
@@ -6,6 +6,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.90.1";
 import {
   readVerifiedParentAnnualClasses,
 } from "../_shared/lot5diParentAnnualRead.ts";
+import {
+  authorizeParentSession,
+  type ParentGateStatus,
+} from "../_shared/lot5dlParentSessionGate.ts";
 
 const EXPECTED_PROJECT = "https://anttmbhaphkhmkoqsofd.supabase.co";
 const EXPECTED_ORIGIN = "https://schoolnet-snowy.vercel.app";
@@ -29,8 +33,8 @@ const deny = (code: number, origin: string) =>
   respond(code, {ok: false, message: "Lecture annuelle indisponible."}, origin);
 
 Deno.serve(async (req: Request) => {
-  // Do not enable until dedicated Auth/session, rate-limit and role tests pass
-  // against a faithful isolated deployment, followed by an explicit GO.
+  // Remains OFF unless separately approved. The 5D-L SQL gate exists ONLY
+  // in disposable CI; it is NOT installed on either hosted Supabase project.
   const enabled = Deno.env.get("SCHOOLNET_LOT5DI_PARENT_READ_ENABLED") === "true";
   const project = Deno.env.get("SUPABASE_URL") ?? "";
   const origin = req.headers.get("origin") ?? "";
@@ -61,9 +65,27 @@ Deno.serve(async (req: Request) => {
   if (!secret) return deny(503, origin);
 
   const service = createClient(project, secret, OPTIONS);
-  const result = await service.auth.getUser(bearer.slice(7));
-  const actorId = result.data.user?.id ?? "";
-  if (result.error || !UUID.test(actorId)) return deny(401, origin);
+  // 5D-L: getUser verifies identity, then a PRIVATE service-role-only RPC
+  // checks auth.sessions AND consumes a persistent, atomic per-Parent quota.
+  // Any uninstalled DB gate, outage or unexpected result fails closed.
+  const access = await authorizeParentSession(bearer.slice(7), {
+    verifyAuthUser: async () => {
+      const verified = await service.auth.getUser(bearer.slice(7));
+      if (verified.error) return null;
+      return verified.data.user ?? null;
+    },
+    checkSessionAndRate: async (actor, session) => {
+      const {data, error} = await service.rpc("schoolnet_parent_read_gate", {
+        p_actor_id: actor,
+        p_session_id: session,
+      });
+      if (error || typeof data !== "string") throw new Error("session_gate_unavailable");
+      return data as ParentGateStatus;
+    },
+  });
+  if (!access.allowed) return deny(access.status, origin);
+  const actorId = access.actorId ?? "";
+  if (!UUID.test(actorId)) return deny(401, origin);
 
   try {
     const data = await readVerifiedParentAnnualClasses({
