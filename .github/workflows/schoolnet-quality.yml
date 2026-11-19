@@ -612,3 +612,94 @@ jobs:
             cd "$SCHOOLNET_K_STACK_DIR"
             supabase stop --no-backup
           fi
+
+  # Lot 5D-M — genuine HTTP Edge Function running in a NEW disposable
+  # local Supabase CLI stack. No hosted project, no migrations, no deployment.
+  # The registered Edge function and its feature flag are in scratch only.
+  lot5d_m_edge_http:
+    name: Lot 5D-M - Edge HTTP reel, session et quota sur Supabase local jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer uniquement les dependances verrouillees
+        run: npm ci --no-audit --no-fund
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+      - name: Prouver Docker et refuser toute cible hebergee
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in SUPABASE_ACCESS_TOKEN SUPABASE_DB_URL DATABASE_URL SUPABASE_PROJECT_ID SUPABASE_SERVICE_ROLE_KEY VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          supabase functions serve --help > /dev/null
+          supabase start --help > /dev/null
+          docker info --format '{{.ServerVersion}}'
+      - name: Preparer la vraie fonction Edge dans un dossier temporaire uniquement
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK_DIR="$RUNNER_TEMP/schoolnet-5dm-stack"
+          mkdir -p "$WORK_DIR"
+          echo "SCHOOLNET_M_STACK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
+          cd "$WORK_DIR"
+          supabase init --yes
+          node "$GITHUB_WORKSPACE/scripts/lot5d/5dm_prepare_edge_http_fixture.mjs" "$WORK_DIR"
+          test -f "$WORK_DIR/supabase/functions/schoolnet-parent-current-class/index.ts"
+          test -f "$WORK_DIR/supabase/functions/.env"
+      - name: Demarrer Auth, PostgreSQL, PostgREST, Storage et VRAIE Edge locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SCHOOLNET_M_STACK_DIR"
+          supabase start --exclude studio,imgproxy,logflare,vector,realtime,supavisor,postgres-meta
+          supabase status -o env > "$RUNNER_TEMP/schoolnet-5dm-status.env"
+          test -s "$RUNNER_TEMP/schoolnet-5dm-status.env"
+      - name: Charger seulement les cles locales masquees
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          . "$RUNNER_TEMP/schoolnet-5dm-status.env"
+          set +a
+          test "$API_URL" = "http://127.0.0.1:54321"
+          test "$DB_URL" = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          printf 'SCHOOLNET_K_LOCAL_URL=%s\n' "$API_URL" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_ANON_KEY=%s\n' "$ANON_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_SERVICE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_DB_URL=%s\n' "$DB_URL" >> "$GITHUB_ENV"
+      - name: Installer SQL SANDBOX_ONLY K puis L dans la BASE JETABLE SEULEMENT
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          test "$SCHOOLNET_K_LOCAL_URL" = "http://127.0.0.1:54321"
+          PGAPPNAME=schoolnet_5dk_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
+          PGAPPNAME=schoolnet_5dl_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dl_parent_session_rate_local_SANDBOX_ONLY.sql
+      - name: Tester 25 requetes HTTP par la fonction Edge reelle non deployee
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run qa:lot5d:m:integration
+      - name: Supprimer UNIQUEMENT les conteneurs et volumes de CE test
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if test -n "$(printenv SCHOOLNET_M_STACK_DIR || true)" && test -f "$SCHOOLNET_M_STACK_DIR/supabase/config.toml"; then
+            cd "$SCHOOLNET_M_STACK_DIR"
+            supabase stop --no-backup
+          fi

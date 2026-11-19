@@ -270,6 +270,6 @@ test("5D-M - actual LOCAL Edge HTTP end-to-end",async t=>{
   assert.equal(sql("SELECT count(*) FROM public.school_years"),"2");
   assert.equal(sql("SELECT count(*) FROM public.student_enrollments"),"3");
   assert.equal(sql("SELECT count(*) FROM public.student_enrollment_documents"),"0");
-  assert.equal(sql("SELECT count(*) FROM public.school_year_rollover_runs") ,"0");
+  assert.equal(sql("SELECT count(*) FROM public.school_years WHERE is_current"),"1");
  });
 });
