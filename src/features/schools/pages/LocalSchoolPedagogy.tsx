@@ -27,83 +27,81 @@ function NumberCard({ value, label, note }: {
 export default function LocalSchoolPedagogy() {
   const { user, loading: authLoading } = useAuth();
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
+  const [schoolsForUser, setSchoolsForUser] = useState("");
   const [schoolId, setSchoolId] = useState("");
-  const [schoolsLoading, setSchoolsLoading] = useState(true);
   const [schoolsError, setSchoolsError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<SchoolAssignmentsCatalog | null>(null);
+  const [catalogForKey, setCatalogForKey] = useState("");
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
 
-  // Liste visible uniquement selon les RLS du compte connecté.
+  const canRead = Boolean(
+    !authLoading && user?.id && !user.isDemo && user.role === "school_admin",
+  );
+  const visibleSchools = canRead && schoolsForUser === user?.id ? schools : [];
+  const waitingSchools = canRead && schoolsForUser !== user?.id;
+  const selectedSchool = visibleSchools.find((school) => school.id === schoolId) ?? null;
+  const requestKey = user?.id && schoolId
+    ? user.id + "|" + schoolId + "|" + revision : "";
+
+  // Les écoles visibles sont associées à l'utilisateur authentifié courant.
   useEffect(() => {
-    if (authLoading) return;
-    if (!user?.id || user.isDemo || user.role !== "school_admin") {
-      setSchools([]);
-      setSchoolId("");
-      setSchoolsLoading(false);
-      setSchoolsError(null);
-      return;
-    }
+    if (!canRead || !user?.id) return;
     let cancelled = false;
-    setSchoolsLoading(true);
-    setSchoolsError(null);
     void getAdminSchools()
       .then((rows) => {
         if (cancelled) return;
         const active = rows.filter((school) => school.status === "active");
         setSchools(active);
+        setSchoolsForUser(user.id);
         setSchoolId((previous) =>
           active.some((school) => school.id === previous)
             ? previous : (active[0]?.id ?? ""),
         );
+        setSchoolsError(null);
       })
       .catch(() => {
         if (cancelled) return;
         setSchools([]);
+        setSchoolsForUser(user.id);
         setSchoolId("");
         setSchoolsError("Impossible de charger les établissements autorisés.");
-      })
-      .finally(() => {
-        if (!cancelled) setSchoolsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [authLoading, user?.id, user?.isDemo, user?.role]);
+  }, [canRead, user?.id]);
 
-  // Un changement d'établissement masque immédiatement les données précédentes.
-  // Toute réponse tardive est ignorée.
+  // Ne montrer qu'une réponse liée à la session, l'école et la révision.
+  // Une réponse réseau tardive ne doit jamais devenir visible après bascule.
   useEffect(() => {
-    setCatalog(null);
-    setCatalogError(null);
-    if (authLoading || !user?.id || user.isDemo ||
-        user.role !== "school_admin" || !schoolId) {
-      setLoadState("idle");
-      return;
-    }
+    if (!canRead || !user?.id || !selectedSchool || !requestKey) return;
     let cancelled = false;
-    setLoadState("loading");
     void getLocalSchoolAssignmentsCatalog(schoolId)
       .then((result) => {
         if (cancelled) return;
         if (result.school_id !== schoolId) throw new Error("Catalogue hors établissement.");
         setCatalog(result);
+        setCatalogForKey(requestKey);
         setLoadState("ready");
+        setCatalogError(null);
       })
       .catch(() => {
         if (cancelled) return;
         setCatalog(null);
+        setCatalogForKey(requestKey);
         setLoadState("error");
         setCatalogError("Catalogue pédagogique indisponible ou accès non autorisé.");
       });
     return () => { cancelled = true; };
-  }, [authLoading, user?.id, user?.isDemo, user?.role, schoolId, revision]);
+  }, [canRead, user?.id, selectedSchool, schoolId, requestKey]);
 
-  const selectedSchool = schools.find((school) => school.id === schoolId) ?? null;
+  const isCatalogLoading = Boolean(selectedSchool && catalogForKey !== requestKey);
+  const isCatalogError = Boolean(selectedSchool && catalogForKey === requestKey && loadState === "error");
   const overview = useMemo(() => {
-    if (!selectedSchool || loadState !== "ready" ||
-        !catalog || catalog.school_id !== schoolId) return null;
+    if (!selectedSchool || catalogForKey !== requestKey ||
+        loadState !== "ready" || !catalog || !(catalog.school_id === schoolId)) return null;
     return buildSchoolPedagogyOverview(catalog, schoolId);
-  }, [selectedSchool, loadState, catalog, schoolId]);
+  }, [selectedSchool, catalogForKey, requestKey, loadState, catalog, schoolId]);
 
   const isDemo = Boolean(user?.isDemo);
   return (
@@ -140,7 +138,7 @@ export default function LocalSchoolPedagogy() {
           <label htmlFor="school-pedagogy-select" className="block text-sm font-semibold text-slate-800">
             Établissement autorisé
           </label>
-          {authLoading || schoolsLoading ? (
+          {authLoading || waitingSchools ? (
             <p role="status" className="text-sm text-slate-600">
               Vérification de vos établissements…
             </p>
@@ -149,11 +147,11 @@ export default function LocalSchoolPedagogy() {
               id="school-pedagogy-select"
               className="sn-input w-full md:max-w-xl"
               value={schoolId}
-              disabled={schools.length === 0}
+              disabled={visibleSchools.length === 0}
               onChange={(event) => setSchoolId(event.target.value)}
             >
-              {schools.length === 0 && <option value="">Aucun établissement autorisé</option>}
-              {schools.map((school) => (
+              {visibleSchools.length === 0 && <option value="">Aucun établissement autorisé</option>}
+              {visibleSchools.map((school) => (
                 <option key={school.id} value={school.id}>
                   {school.name} — {school.code}
                 </option>
@@ -165,8 +163,8 @@ export default function LocalSchoolPedagogy() {
               Code établissement : <span className="font-mono">{selectedSchool.code}</span>
             </p>
           )}
-          {schoolsError && <p role="alert" className="text-sm text-red-700">{schoolsError}</p>}
-          {!schoolsLoading && !schoolsError && schools.length === 0 && (
+          {!waitingSchools && schoolsError && <p role="alert" className="text-sm text-red-700">{schoolsError}</p>}
+          {!waitingSchools && !schoolsError && visibleSchools.length === 0 && (
             <p className="text-sm text-amber-800">
               Aucun établissement actif ne correspond à vos droits. Contactez le Super Administrateur.
             </p>
@@ -182,17 +180,17 @@ export default function LocalSchoolPedagogy() {
             </h2>
             <button type="button" className="sn-btn-ghost"
               onClick={() => setRevision((value) => value + 1)}
-              disabled={loadState === "loading"}>
+              disabled={isCatalogLoading}>
               ↻ Actualiser
             </button>
           </div>
 
-          {loadState === "loading" && (
+          {isCatalogLoading && (
             <div role="status" className="sn-card p-5 text-sm text-slate-600">
               Chargement du catalogue pédagogique autorisé…
             </div>
           )}
-          {loadState === "error" && (
+          {isCatalogError && (
             <div role="alert" className="sn-card border border-red-200 bg-red-50 p-5 text-sm text-red-800">
               {catalogError}
             </div>
