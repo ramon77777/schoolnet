@@ -460,7 +460,7 @@ créée, aucune suppression d'objet, aucun backup réel ;
 année cible 2026–2027 occupée. Vraie recette Auth/Storage
 sur sandbox fidèle et accord séparé restent indispensables.
 
-### 5D-K : **AUTH / STORAGE RÉELS SUR STACK SUPABASE LOCALE ÉPHÉMÈRE — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-K : **AUTH / STORAGE RÉELS SUR STACK SUPABASE LOCALE ÉPHÉMÈRE — CI ET LOCAL VALIDÉS**
 
 Le 19/11/2026, sur la PR #15 **brouillon** :
 [rapport technique détaillé](./SCHOOLNET_LOT5DK_AUTH_STORAGE_REELS_ISOLES_2026-11-19.md).
@@ -496,13 +496,19 @@ Le 19/11/2026, sur la PR #15 **brouillon** :
   conservation de l'historique.
 - **Tests K hors réseau (recette locale) :**
   `scripts/test-schoolnet-lot5d-k-contract.mjs`,
-  **20/20 en CI**, à reproduire localement.
-- **CI** : [run #44493115080](https://github.com/ramon77777/schoolnet/actions/runs/44493115080),
-  **10/10 jobs SUCCESS**, tous les anciens lots A–J
-  encore verts, lint/TypeScript/Vite/Edge sans erreur.
-- **Recette locale K : À FAIRE** : A–J **199/199 validés**,
-  K **20/20 attendus**, soit **219/219** après validation
-  ; Parent historique 5.C **10/10** séparément.
+  **20/20 en CI et en local le 19/11/2026**.
+- **CI** : [run #44493802616](https://github.com/ramon77777/schoolnet/actions/runs/44493802616),
+  **10/10 jobs SUCCESS** sur le commit documentaire initial
+  (et [run #44493115080](https://github.com/ramon77777/schoolnet/actions/runs/44493115080)
+  **10/10** sur le code des tests Supabase), tous les lots
+  antérieurs encore verts.
+- **Recette locale K : VALIDÉE LE 19/11/2026** :
+  `git pull --ff-only` réussi (`5f394be..80b0146`),
+  `npm run qa:lot5d:k` **20/20**, tests Parent 5.C
+  **10/10 séparément**, ESLint **0 erreur**
+  (1 warning React Hook connu), build Vite **réussi**
+  (v7.3.1, **868 modules**). État Git local inchangé.
+  **Cumul des tests locaux A–K : 219/219 validés**.
 
 **Limites avant GO :** la fonction Edge Parent I reste
 OFF/non déployée et ne contrôle pas encore elle-même
@@ -791,34 +797,58 @@ La fonction Parent I reste OFF/non déployée, et la copie
 de rétention et l'audit Storage véritables restent non implémentés.
 L'année cible 2026–2027 est toujours occupée et la bascule interdite.
 
-### Prochaine recette locale — Lot 5D-K
+### Recette locale du Lot 5D-K — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-La CI **10/10 jobs** valide déjà les
-**21 parcours Supabase API réels sur l'instance locale
-éphémère** et les **20 tests K hors réseau**.
-Sur le poste utilisateur, ne lancer que
-les contrôles hors réseau :
+L'utilisateur a exécuté les commandes PowerShell depuis
+`D:\Bakary\10 autres\schoolnet` et transmis la sortie complète :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:k
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
-git status --short
-```
+- `git status --short` et `git branch --show-current` :
+  branche `feature/schoolnet-lot5d-a-securisation-20261118`
+  confirmée, état local vérifié avant et après.
+- `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118` :
+  fast-forward **réussi sans conflit** de `5f394be`
+  vers `80b0146`.
+- `npm run qa:lot5d:k` : **20/20 tests contractuels
+  réussis**, aucun échec, aucun test ignoré.
+- `node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs` :
+  **10/10 tests Parent historiques du Lot 5.C réussis**,
+  calculés séparément du total A–K.
+- `npm run lint` : **0 erreur**, un avertissement
+  `react-hooks/exhaustive-deps` préexistant dans
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **TypeScript et Vite réussis**,
+  Vite v7.3.1, **868 modules**. Les avertissements
+  Browserslist et taille du bundle ne bloquent pas la compilation.
+- `git status --short` final **inchangé** :
+  `tsconfig.app.tsbuildinfo` modifié, fichiers non suivis
+  `scripts/schoolnet-student-auth-sandbox-local.mjs`,
+  `scripts/test-schoolnet-student-auth-flow-mock.mjs`,
+  `scripts/test-schoolnet-student-auth-sandbox-local.mjs`
+  et `supabase/proposals/staged/` **préservés**.
 
-**Attendu : K 20/20**, Parent historique 10/10
-compté séparément, ESLint 0 erreur
-(warning React Hook existant), build Vite réussi.
-Fichiers non suivis et `supabase/proposals/staged/`
-à conserver. Cumul A–J **199/199**, objectif
-A–K **219/219** après validation locale.
-**Ne pas exécuter `qa:lot5d:k:integration` sur le
-poste sans une pile Supabase locale dédiée.**
+**Cumul des tests locaux 5D-A à K : 199 + 20 =
+219/219 tests réussis.** Les 10 tests Parent 5.C et
+les **21/21 intégrations API Supabase réellement locales en CI**
+sont des validations **complémentaires non comptées dans 219**.
+La CI du code K et la CI du rapport initial K ont
+toutes deux réussi leurs **10/10 jobs**.
 
+Cette recette ne valide **pas** les scénarios sur
+le schéma complet du principal : la fixture SQL K
+reste simplifiée et temporaire. La fonction Edge Parent
+n'est **ni déployée ni activée**, et ne contrôle pas encore
+elle-même la révocation des sessions ; rate-limit
+persistant et audit durable de rétention restent absents.
+Les deux projets Supabase hébergés demeurent inchangés.
+
+**Prochaine étape uniquement sous GO distinct :**
+préparer et qualifier la vérification de session
+côté Edge, un quota persistant, les permissions
+sur schéma plus fidèle, et la réconciliation
+documentaire avec une sauvegarde durable.
+
+**Aucune migration sur Supabase principal, aucune fusion
+`main`, aucun déploiement Vercel.**
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -872,10 +902,11 @@ poste sans une pile Supabase locale dédiée.**
    `auth.sessions` vérifié après signOut,
    sauvegarde Storage réelle locale avec SHA-256,
    refus de suppression Admin. **21/21 parcours API
-   réels et 20/20 tests contractuels en CI,
-   10/10 jobs SUCCESS**, recette locale K en attente.
-   Le sandbox hébergé existant et le principal
-   sont restés inchangés.
+   réels en CI, 20/20 tests contractuels K également
+   validés en local le 19/11/2026, cumul A–K
+   219/219**, tests historiques Parent 5.C 10/10
+   séparément ; CI **10/10 jobs SUCCESS**.
+   Le sandbox hébergé et le principal sont inchangés.
 11. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
@@ -991,24 +1022,33 @@ poste sans une pile Supabase locale dédiée.**
 > isolé plus fidèle (vraies sessions fictives, RLS, bucket privé,
 > conservation/reprise prouvées), puis validations produit et sécurité.
 > **Aucune migration, aucune fusion main ni aucun déploiement.**
-> **Point de reprise après CI du Lot 5D-K (19/11/2026)** :
-> [10/10 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44493115080).
-> **21/21 tests d'intégration réels** avec Supabase Auth,
-> PostgREST, sessions et Storage dans une pile Docker jetable,
-> et **20/20 tests K hors réseau en CI**.
-> La CI vérifie RLS des deux familles, vraie révocation
-> `auth.sessions`, accès et suppression Storage,
-> relecture/empreinte du backup privé. **Pas de cloud écrit**.
-> **Recette locale K à faire : `qa:lot5d:k` 20/20**,
-> Parent 5.C 10/10, lint et build ; A–J
-> **199/199 validés**, objectif A–K **219/219**.
-> **Blocages :** endpoint Parent I toujours OFF/non déployé,
-> sans contrôle session réel ou rate-limit persistant ;
-> sauvegarde réelle limitée à la pile de CI,
-> ni restauration métier durable ni protocole complet ;
-> année cible 2026–2027 occupée, bascule interdite.
-> **Pas de SQL Supabase hébergé, pas de fusion
-> `main`, pas de déploiement Vercel.**
+> **Lot 5D-K : validation locale reçue le 19/11/2026** :
+> `qa:lot5d:k` **20/20**, total A–K **219/219
+> tests locaux validés**, Parent 5.C **10/10 séparément**,
+> lint **0 erreur** (1 warning historique), build Vite
+> **réussi** (868 modules), fast-forward
+> `5f394be..80b0146` sans conflit, fichiers locaux
+> non suivis conservés.
+> **CI** : [run #44493802616](https://github.com/ramon77777/schoolnet/actions/runs/44493802616)
+> **10/10 jobs SUCCESS**, plus
+> [run #44493115080](https://github.com/ramon77777/schoolnet/actions/runs/44493115080)
+> **10/10** sur le code : **21/21 tests d'intégration
+> réels API Supabase locale** (GoTrue, PostgREST,
+> `auth.sessions`, RLS, Storage et rétention SHA-256)
+> distincts des 219 tests locaux.
+> **Limites :** intégration exécutée dans une pile
+> jetable à schéma minimal, pas sur une reproduction
+> intégrale du principal. Edge Parent I toujours
+> OFF/non déployée, sans véritable vérification de
+> session révoquée ni quota persistant ; sauvegarde
+> uniquement sur Storage CI local, sans rétention
+> serveur durable ou reprise métier complète.
+> **Année cible 2026–2027 occupée : bascule interdite.**
+> **Prochaine phase sous GO distinct :** sécuriser le
+> vrai parcours Edge, quota et conservation/reprise,
+> puis revoir la compatibilité avec le schéma réel.
+> **Pas de SQL hébergé, pas de fusion `main`
+> ni de déploiement Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**

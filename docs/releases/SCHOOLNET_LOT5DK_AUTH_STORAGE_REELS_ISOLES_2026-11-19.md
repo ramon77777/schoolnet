@@ -4,7 +4,7 @@
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon**  
 **Recette CI :** [GitHub Actions #44493115080](https://github.com/ramon77777/schoolnet/actions/runs/44493115080) — **10/10 jobs SUCCESS** ; **21/21 tests d'intégration Supabase réelle locale** + **20/20 tests contractuels hors réseau**.  
-**Recette locale K :** **en attente de l'utilisateur**. Lots A–J déjà **199/199 validés** ; après K, objectif A–K **219/219**. Les 10 tests Parent historiques 5.C sont séparés.  
+**Recette locale K :** **VALIDÉE LE 19/11/2026 — 20/20** ; cumul Lots 5D-A à K **219/219 tests locaux validés**. Les **10/10 tests historiques Parent 5.C** et les **21/21 intégrations réelles Supabase en CI** sont comptés séparément.  
 **Garde principal :** aucune modification Supabase hébergée, aucune fonction Edge déployée, aucun SQL 5D installé, aucune fusion de `main` et aucune publication Vercel.
 
 ## 1. Pourquoi une vraie pile locale plutôt que le sandbox hébergé
@@ -190,39 +190,60 @@ de test explicite. Le run cité ci-dessus est
    migration du principal, déploiement Edge,
    fusion `main` et publication Vercel.
 
-## 6. Recette locale K — à faire
+## 6. Recette locale K — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-Depuis PowerShell, dans `D:\Bakary\10 autres\schoolnet` :
+L'utilisateur a transmis la sortie PowerShell complète
+du projet `D:\Bakary\10 autres\schoolnet` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+- La branche attendue
+  `feature/schoolnet-lot5d-a-securisation-20261118`
+  était sélectionnée.
+- `git pull --ff-only` a réussi le fast-forward
+  `5f394be..80b0146`, **sans conflit**.
+- `npm run qa:lot5d:k` : **20/20 tests K réussis**,
+  0 échec, 0 test ignoré.
+- Tests Parent historiques du Lot 5.C :
+  **10/10 réussis**, indépendamment du total 5D.
+- `npm run lint` : **0 erreur**, avertissement
+  historique `react-hooks/exhaustive-deps`
+  (`src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`).
+- `npm run build` : **réussi**, Vite v7.3.1,
+  **868 modules** transformés. Avertissements
+  Browserslist et bundle principal non bloquants.
+- Statut Git final **inchangé** :
+  `tsconfig.app.tsbuildinfo` modifié ;
+  `scripts/schoolnet-student-auth-sandbox-local.mjs`,
+  `scripts/test-schoolnet-student-auth-flow-mock.mjs`,
+  `scripts/test-schoolnet-student-auth-sandbox-local.mjs`
+  et `supabase/proposals/staged/` non suivis,
+  **tous préservés**.
 
-npm run qa:lot5d:k
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
+**Cumul local 5D-A à K : 219/219 tests validés.**
+Les **10 tests Parent 5.C** et les
+**21 tests d'intégration réelle des API Supabase
+exécutés dans GitHub Actions** restent des validations
+complémentaires et ne gonflent pas le total local.
 
-git status --short
-```
+La CI du commit K initial
+[run #44493802616](https://github.com/ramon77777/schoolnet/actions/runs/44493802616)
+et la CI du code corrigé
+[run #44493115080](https://github.com/ramon77777/schoolnet/actions/runs/44493115080)
+ont chacune réussi leurs **10/10 jobs**.
 
-**Attendu : 20/20 tests K hors réseau, 10/10
-tests historiques Parent en supplément, lint zéro
-erreur (warning React Hook préexistant),
-build Vite réussi et état local non suivi inchangé.**
+**Attention :** la validation locale K couvre les
+20 tests **hors réseau** ; le script d'intégration
+sur vraies API Supabase a été exécuté exclusivement
+dans la **pile Docker locale éphémère de GitHub Actions**.
+Aucune installation sur Supabase principal ou sur le
+sandbox hébergé ; la fonction Parent n'est ni déployée
+ni activée. La fixture locale n'est pas une copie
+intégrale du schéma principal. La procédure durable
+de sauvegarde, résolution et restauration documentaire
+reste à concevoir et à valider.
 
-**Cumul local déjà validé A–J : 199/199**.
-Après validation des 20 tests K :
-**A–K 219/219**, sans double compter les 10
-tests Parent ni les 21 tests d'intégration
-de la CI.
-
-**Interdictions maintenues :** aucune
-`supabase db push`, aucune commande de
-déploiement Edge, aucune requête d'écriture
-dans les deux projets hébergés, aucun
-`git reset --hard` ou `git clean`,
-aucune fusion `main`, aucun Vercel production.
-Ne pas toucher aux fichiers locaux non suivis
-ni à `supabase/proposals/staged/`.
+**Restrictions maintenues :** aucune migration,
+aucun `supabase db push` ni `supabase functions deploy`,
+aucune fusion dans `main`, aucun déploiement
+Vercel et aucune bascule réelle vers 2026–2027
+tant que le dossier actif existant n'est pas
+résolu par décision métier autorisée.
