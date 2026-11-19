@@ -36,6 +36,8 @@ jobs:
         run: node --test scripts/test-schoolnet-lot5c-main-install.mjs
       - name: Tester deux enfants lies avec ou sans affectation en classe
         run: node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+      - name: S4-A - Controle des donnees pedagogiques par etablissement (hors reseau)
+        run: npm run qa:s4a
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
