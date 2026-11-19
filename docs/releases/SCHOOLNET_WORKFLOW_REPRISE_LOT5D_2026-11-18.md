@@ -569,7 +569,7 @@ de la concurrence révocation/lecture ;
 schéma K simplifié, année cible 2026–2027
 déjà occupée. **Aucun GO production.**
 
-### 5D-M : **VRAIE FONCTION EDGE PARENT TESTÉE VIA HTTP SUR SUPABASE LOCAL — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-M : **VRAIE FONCTION EDGE PARENT TESTÉE VIA HTTP SUR SUPABASE LOCAL — CI ET LOCAL VALIDÉS**
 
 Le 19/11/2026 sur la PR #15 **en brouillon** :
 [rapport technique 5D-M](./SCHOOLNET_LOT5DM_EDGE_HTTP_PARENT_END_TO_END_2026-11-19.md).
@@ -602,17 +602,21 @@ Le 19/11/2026 sur la PR #15 **en brouillon** :
   des inscriptions historiques.
 - **Recette locale hors réseau** :
   `scripts/test-schoolnet-lot5d-m-edge-http-contract.mjs`,
-  **24/24 en CI** ; **à confirmer sur Windows**.
+  **24/24 en CI et confirmés sur Windows le 19/11/2026**.
 - **CI** : [run #44501540891](https://github.com/ramon77777/schoolnet/actions/runs/44501540891),
   **11/11 jobs SUCCESS**, y compris lots A–L,
   vraie Edge Deno, Auth/PostgreSQL locaux,
   lint et build. Les tests préliminaires
   I/CORS ont été adaptés sans affaiblir
   les règles d'accès POST.
-- **Recette locale M À FAIRE** :
-  A–L **249/249 validés**, M **24/24 attendu** ;
-  objectif A–M **273/273** après confirmation,
-  Parent 5.C **10/10** séparément.
+- **Recette locale M : VALIDÉE LE 19/11/2026** :
+  `git pull --ff-only` **réussi sans conflit**
+  (`1bf8e5b..77a8bcb`), M **24/24 tests**,
+  Parent 5.C **10/10 tests séparément**,
+  lint **0 erreur** (1 warning React Hook
+  historique), build Vite **réussi**
+  (868 modules), état Git inchangé.
+  **Cumul local A–M : 273/273 tests validés**.
 
 **Bloqueurs avant production :** aucun SQL
 L/M installé en hébergement, Edge non déployée,
@@ -992,33 +996,54 @@ pas de copie fidèle des 43 migrations, sauvegarde documentaire
 durable non finalisée, cible 2026–2027 occupée.
 **Aucun GO de migration, fusion main ou Vercel**.
 
-### Prochaine recette locale — Lot 5D-M
+### Recette locale du Lot 5D-M — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-La CI a validé **11/11 jobs**, **24/24
-contrôles M hors réseau** et **25/25 vraies
-requêtes HTTP Edge** sur un Supabase local jetable.
+L'utilisateur a transmis la sortie PowerShell complète depuis
+`D:\Bakary\10 autres\schoolnet` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:m
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
-git status --short
-```
+- Branche `feature/schoolnet-lot5d-a-securisation-20261118`
+  confirmée ; `git pull --ff-only` **réussi sans conflit**
+  (`1bf8e5b..77a8bcb`).
+- `npm run qa:lot5d:m` : **24/24 tests M réussis**,
+  sans échec, annulation ni test ignoré.
+- Tests historiques Parent 5.C : **10/10 réussis**,
+  comptés séparément.
+- ESLint : **0 erreur**, un avertissement React Hook
+  `react-hooks/exhaustive-deps` préexistant,
+  à `EnrollmentRecordsPage.tsx:161`.
+- Build `tsc -b && vite build` : **réussi**,
+  Vite v7.3.1, **868 modules** ; avertissements
+  non bloquants Browserslist et taille du bundle.
+- `git status --short` avant/après **identique** :
+  `tsconfig.app.tsbuildinfo` reste modifié ;
+  `scripts/schoolnet-student-auth-sandbox-local.mjs`,
+  `scripts/test-schoolnet-student-auth-flow-mock.mjs`,
+  `scripts/test-schoolnet-student-auth-sandbox-local.mjs`
+  et `supabase/proposals/staged/` restent non suivis
+  et **préservés**.
 
-**Attendu : M 24/24**, Parent 5.C 10/10
-séparément, lint 0 erreur (1 warning React
-Hook historique), build Vite réussi.
-Préserver scripts et SQL locaux non suivis.
-Cumul A–L **249/249**, objectif
-A–M **273/273** après confirmation.
+**Cumul local 5D-A à M : 249 + 24 =
+273/273 tests validés**. Les **10 tests Parent 5.C**,
+les **21 intégrations K**, **21 L** et **25 scénarios
+HTTP M** exécutés en CI sont des validations distinctes.
 
-**Ne pas lancer `qa:lot5d:m:integration`
-sur Windows sans pile Supabase locale dédiée ;
-aucune connexion aux projets hébergés.**
+**CI confirmée :** [#44501540891](https://github.com/ramon77777/schoolnet/actions/runs/44501540891)
+et [#44502231086](https://github.com/ramon77777/schoolnet/actions/runs/44502231086)
+ont chacune réussi **11/11 jobs**.
+
+**Restrictions inchangées :** la vraie Edge Parent
+est **non déployée** et le frontend **non raccordé**.
+Le `verify_jwt=false` du test M reste **uniquement
+dans la configuration Docker temporaire** ; SQL
+`SANDBOX_ONLY` non installé sur Supabase hébergé,
+parité avec les 43 migrations non démontrée,
+quota 12/min encore à approuver, conservation
+documentaire durable non achevée et année
+2026–2027 occupée.
+
+**Toute nouvelle phase, migration, activation Edge,
+fusion de `main` ou publication Vercel
+nécessite un GO distinct.**
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -1094,8 +1119,8 @@ aucune connexion aux projets hébergés.**
    hors réseau **24/24**, GitHub Actions
    **11/11 jobs SUCCESS**. Aucun client hébergé
    ou fichier réel utilisé. Recette locale M
-   **à faire**, objectif cumul A–M
-   **273/273**. **Mode test `verify_jwt=false`
+   **24/24 validée le 19/11/2026**,
+   cumul **A–M 273/273 tests locaux validés**. **Mode test `verify_jwt=false`
    UNIQUEMENT dans la config Docker jetable,
    pas dans le vrai dépôt ou en production.**
 13. Soumettre une future migration finale et son éventuelle installation
@@ -1260,30 +1285,32 @@ aucune connexion aux projets hébergés.**
 > 2026–2027 occupée. **Aucune bascule autorisée.**
 > **Prochain lot seulement après accord distinct ;
 > aucun changement Supabase principal, main ou Vercel.**
-> **Point de reprise après CI du Lot 5D-M le 19/11/2026** :
-> [11/11 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44501540891).
-> Vraie Edge Parent appelée via HTTP Supabase local
-> jetable : **25/25 scénarios** ; **24/24 tests
-> contractuels hors réseau**, Auth GoTrue,
-> PostgREST et sessions SQL réels mais
-> données totalement fictives.
-> Deux familles isolées ; JWT révoqué → 401,
-> rôle interdit → 403, quota → 429,
-> panne RPC → 503 ; **aucune mutation annuelle**.
-> **Recette locale M : à faire** (`qa:lot5d:m`
-> **24/24**, Parent 5.C 10/10, lint, build).
-> Cumul A–L **249/249 validés** ;
-> objectif A–M **273/273** après retour.
-> **Mode `verify_jwt=false` réservé
-> à l'environnement Docker temporaire** :
-> JAMAIS à recopier dans le projet hébergé.
-> **Bloqueurs :** Edge toujours non déployée,
-> frontend non raccordé, parité 43 migrations
-> non validée, quota 12/min à approuver,
-> conservation documentaire durable absente,
+> **Lot 5D-M : recette locale VALIDÉE le 19/11/2026** :
+> `npm run qa:lot5d:m` **24/24**, total
+> **273/273 tests locaux A–M** ;
+> Parent 5.C **10/10** séparément,
+> ESLint **0 erreur** (1 warning historique),
+> build Vite **réussi** (868 modules),
+> pull `1bf8e5b..77a8bcb` sans conflit
+> et fichiers non suivis préservés.
+> CI [#44501540891](https://github.com/ramon77777/schoolnet/actions/runs/44501540891)
+> et [#44502231086](https://github.com/ramon77777/schoolnet/actions/runs/44502231086) :
+> **11/11 jobs SUCCESS chacune** ;
+> **25/25 scénarios HTTP** de la vraie Edge
+> avec Auth/Postgres locaux et familles fictives,
+> distincts des tests locaux.
+> Session révoquée : 401 ; rôle interdit : 403 ;
+> quota épuisé : 429 ; RPC indisponible : 503.
+> **Limites :** Edge toujours non déployée,
+> frontend non raccordé, `verify_jwt=false`
+> réservé au Docker de test, SQL non installé
+> en hébergement, schéma non paritaire,
+> seuil 12/min non validé métier, rétention
+> documentaire durable ouverte et
 > année cible 2026–2027 occupée.
-> **Pas de SQL principal, fusion main,
-> bascule annuelle ou déploiement Vercel.**
+> **Prochaine phase sous GO distinct ;
+> aucune migration, fusion `main`,
+> bascule ni publication Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
