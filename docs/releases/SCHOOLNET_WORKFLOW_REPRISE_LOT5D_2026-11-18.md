@@ -517,6 +517,56 @@ pas d'audit documentaire durable, ni de suppression
 ou restauration réelle. La vraie année 2026–2027
 reste occupée, donc **aucune bascule autorisée**.
 
+### 5D-L : **SESSIONS PARENT RÉVOQUÉES + QUOTA ATOMIQUE PERSISTANT — CI VALIDÉE, LOCAL À FAIRE**
+
+Le 19/11/2026, sur la PR #15 **en brouillon** :
+[rapport technique 5D-L](./SCHOOLNET_LOT5DL_SESSION_PARENT_QUOTA_PERSISTANT_2026-11-19.md).
+
+- **Fonction Edge Parent sécurisée dans la source** :
+  `supabase/functions/schoolnet-parent-current-class/index.ts`
+  appelle désormais `authorizeParentSession` après
+  `auth.getUser` pour exiger session réelle non
+  révoquée, rôle Parent vérifié en base et quota serveur
+  avant la moindre lecture familiale. Retours
+  **401/403/429/503** selon la situation.
+  **Toujours OFF et non déployée** ;
+  la page Parent n'est pas raccordée.
+- **Candidat SQL `SANDBOX_ONLY`, non migration** :
+  `scripts/lot5d/5dl_parent_session_rate_local_SANDBOX_ONLY.sql`,
+  uniquement sur la fixture Docker locale du Lot K :
+  compteur PostgreSQL durable **12 lectures / 60 s /
+  compte** (seuil de test à valider), privé RLS,
+  fonction SECURITY DEFINER en schéma non exposé
+  et wrapper public SECURITY INVOKER **service_role
+  uniquement**, jamais les rôles navigateur.
+- **Recettes hors réseau L** :
+  `scripts/test-schoolnet-lot5d-l-session-gate.mjs`,
+  **30/30 validés en CI**.
+- **Recettes réelles L en CI Supabase local** :
+  `scripts/test-schoolnet-lot5d-l-real-supabase.mjs`,
+  **21/21** : GoTrue, `auth.sessions`, signOut,
+  rôles, session croisée, privilèges SQL,
+  deux sessions d'un Parent sur le même quota,
+  **24 requêtes concurrentes → 12 autorisées,
+  12 refusées**.
+- **CI final** :
+  [run #44497337368](https://github.com/ramon77777/schoolnet/actions/runs/44497337368),
+  **10/10 jobs SUCCESS**, build, lint et compilation
+  Deno inchangés. Une attente de test incorrecte sur
+  JWT expiré a été corrigée avant cette validation.
+- **Recette locale L : À FAIRE**. A–K
+  **219/219 validés**, L **30/30 attendus** ;
+  objectif A–L **249/249** après retour,
+  Parent 5.C **10/10** séparément.
+
+**Blocages :** SQL L jamais installé au principal ;
+Edge non déployée, aucun véritable parcours
+HTTP Edge qualifié, pas de rate-limit des
+jetons invalides ni de prise en charge complète
+de la concurrence révocation/lecture ;
+schéma K simplifié, année cible 2026–2027
+déjà occupée. **Aucun GO production.**
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -849,6 +899,32 @@ documentaire avec une sauvegarde durable.
 
 **Aucune migration sur Supabase principal, aucune fusion
 `main`, aucun déploiement Vercel.**
+### Prochaine recette locale — Lot 5D-L
+
+La CI a validé **10/10 jobs**, **30/30 tests L
+hors réseau** et **21/21 scénarios Auth/Postgres réels**
+sur une pile Supabase locale jetable.
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:l
+node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu : L 30/30**, Parent 5.C 10/10 séparément,
+lint 0 erreur (un warning préexistant possible),
+build Vite réussi et fichiers locaux non suivis
+préservés. Cumul A–K **219/219** déjà validé,
+objectif A–L **249/249** après confirmation.
+**Ne pas exécuter `qa:lot5d:l:integration`
+sans une pile Supabase locale dédiée** ; GitHub
+Actions a déjà effectué cette recette.
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -907,7 +983,16 @@ documentaire avec une sauvegarde durable.
    219/219**, tests historiques Parent 5.C 10/10
    séparément ; CI **10/10 jobs SUCCESS**.
    Le sandbox hébergé et le principal sont inchangés.
-11. Soumettre une future migration finale et son éventuelle installation
+11. **5D-L** : source Edge Parent renforcée avec
+   contrôle de présence de session en base et quota
+   atomique PostgreSQL, grâce à un RPC privé
+   service_role-only **SANDBOX_ONLY**. CI **10/10
+   jobs**, L **30/30 hors réseau** + **21/21
+   intégration Supabase locale réelle**, statut
+   local L à confirmer. **Aucune migration
+   ni fonction Edge déployée.** Seuil test
+   de 12/min à revoir avant GO.
+12. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -944,6 +1029,7 @@ documentaire avec une sauvegarde durable.
 > - `docs/releases/SCHOOLNET_LOT5DI_LECTURE_PARENT_REVUE_DOCUMENTAIRE_2026-11-18.md`
 > - `docs/releases/SCHOOLNET_LOT5DJ_AUTH_SESSIONS_STORAGE_HTTP_2026-11-19.md`
 > - `docs/releases/SCHOOLNET_LOT5DK_AUTH_STORAGE_REELS_ISOLES_2026-11-19.md`
+> - `docs/releases/SCHOOLNET_LOT5DL_SESSION_PARENT_QUOTA_PERSISTANT_2026-11-19.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -1049,6 +1135,29 @@ documentaire avec une sauvegarde durable.
 > puis revoir la compatibilité avec le schéma réel.
 > **Pas de SQL hébergé, pas de fusion `main`
 > ni de déploiement Vercel.**
+> **Point de reprise après CI 5D-L le 19/11/2026** :
+> [10/10 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44497337368).
+> **30/30 tests L hors réseau** et **21/21 scénarios
+> avec Auth/`auth.sessions`/PostgreSQL réels**
+> sur une pile Docker strictement locale.
+> 24 appels concurrents → **12 autorisés,
+> 12 refusés** par un compteur durable
+> d'une minute, lié au Parent vérifié.
+> Wrapper SQL invoker accessible seulement
+> au `service_role`, fonction definer
+> dans un schéma privé. **Aucun SQL installé
+> sur les projets Supabase hébergés**.
+> **Recette locale L à faire : `qa:lot5d:l` 30/30,
+> Parent 5.C 10/10, lint et build** ;
+> A–K **219/219 validés**, objectif A–L
+> **249/249** après retour utilisateur.
+> Edge Parent reste OFF/non déployée et
+> frontend Parent reste historique ;
+> quota test à confirmer, sécurité HTTP
+> complète et schéma fidèle à qualifier.
+> **Année cible 2026–2027 occupée :
+> aucune bascule autorisée.**
+> **Pas de migration, fusion main ni Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
