@@ -1,0 +1,102 @@
+name: SCHOOLNET S4-A - recette SQL A/B isolee
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4a-tenant-ci.yml'
+      - 'tests/s4a-tenant-ci/**'
+      - 'supabase/proposals/s3c_school_class_assignments.sql'
+      - 'supabase/proposals/s4a_school_pedagogy_overview.sql'
+      - 'supabase/verification/s4a_activation_*.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schoolnet-s4a-tenant-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tenant-ab:
+    name: Activation S4-A sur Supabase jetable - A/B et rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout en lecture seule
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Installer Supabase CLI v2 epingle
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+
+      - name: Controle des outils et du perimetre
+        run: |
+          set -euo pipefail
+          supabase --version
+          psql --version
+          test -f tests/s4a-tenant-ci/supabase/config.toml
+          test -f supabase/proposals/s3c_school_class_assignments.sql
+          test -f supabase/verification/s4a_activation_preflight_readonly.sql
+          test -f supabase/verification/s4a_activation_postflight_readonly.sql
+          test -f supabase/verification/s4a_activation_rollback_manual.sql
+
+      - name: Demarrer un Supabase local minimal
+        working-directory: tests/s4a-tenant-ci
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+      - name: Appliquer uniquement les fixtures et la proposition S3-C au local
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4a-tenant-ci/fixtures/legacy-minimal.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
+
+      - name: Controle S4-A avant installation (local, lecture seule)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/verification/s4a_activation_preflight_readonly.sql | tee /tmp/s4a-preflight.txt
+          grep -Fq 'S4A_PRECHECK_PASS|' /tmp/s4a-preflight.txt
+
+      - name: Installation de la proposition S4-A - local uniquement
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4a_school_pedagogy_overview.sql
+
+      - name: Controle S4-A apres installation (local, lecture seule)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/verification/s4a_activation_postflight_readonly.sql
+
+      - name: Tester les ecoles A et B puis rollback
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4a-tenant-ci/fixtures/tenant-a-b.sql
+
+      - name: Tester le rollback cible S4-A sur le sandbox jetable
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4a_activation_rollback_manual.sql
+          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/verification/s4a_activation_preflight_readonly.sql | tee /tmp/s4a-after-rollback.txt
+          grep -Fq 'S4A_PRECHECK_PASS|' /tmp/s4a-after-rollback.txt
+
+      - name: Supprimer le sandbox local
+        if: always()
+        working-directory: tests/s4a-tenant-ci
+        run: supabase stop --no-backup || true
