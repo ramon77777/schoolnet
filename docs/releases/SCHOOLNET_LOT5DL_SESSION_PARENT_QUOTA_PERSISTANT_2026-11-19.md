@@ -4,7 +4,7 @@
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon**.  
 **CI corrigée :** [#44497337368](https://github.com/ramon77777/schoolnet/actions/runs/44497337368), **10/10 jobs SUCCESS** : 5D-L **30/30 tests hors réseau** et **21/21 tests sur les vraies API Supabase locales**, compilation Deno de la fonction Edge, ESLint et Vite réussis.  
-**Recette locale L :** **à recevoir** ; A–K **219/219 déjà validés** par l'utilisateur ; objectif A–L **249/249** après confirmation. Les **10 tests historiques Parent 5.C**, **21 tests d'intégration K** et **21 tests d'intégration L** ne sont pas inclus dans le cumul local.  
+**Recette locale L : VALIDÉE le 19/11/2026 — 30/30** ; cumul A–L **249/249 tests locaux validés**. Les **10/10 tests Parent historiques**, les **21/21 intégrations K** et les **21/21 intégrations L** en CI sont séparés.  
 **Production :** aucun SQL installé dans Supabase principal ou dans le sandbox hébergé, aucune fonction Edge déployée, aucun changement de `main` ni de Vercel.
 
 ## 1. Risque traité
@@ -250,42 +250,41 @@ restent validés.
    reste bloquant : **aucune bascule
    réelle autorisée** sans décision métier.
 
-## 5. Recette locale L — à recevoir
+## 5. Recette locale L — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-Depuis PowerShell, dans `D:\Bakary\10 autres\schoolnet` :
+Résultats PowerShell fournis :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+- Branche attendue et `git pull --ff-only` réussi :
+  `80b0146..1bf8e5b`, sans conflit.
+- `npm run qa:lot5d:l` : **30/30**, aucun échec.
+- Tests Parent 5.C : **10/10** (hors cumul).
+- `npm run lint` : **0 erreur**, un avertissement
+  historique `react-hooks/exhaustive-deps`
+  (`EnrollmentRecordsPage.tsx:161`).
+- `npm run build` : **réussi** avec Vite v7.3.1
+  et **868 modules** ; avertissements non bloquants
+  Browserslist et chunk volumineux.
+- `git status --short` identique avant et après :
+  `tsconfig.app.tsbuildinfo` modifié, trois scripts
+  `scripts/schoolnet-student-auth-sandbox-local.mjs`,
+  `scripts/test-schoolnet-student-auth-flow-mock.mjs`,
+  `scripts/test-schoolnet-student-auth-sandbox-local.mjs`
+  et dossier `supabase/proposals/staged/` non suivis
+  **préservés**.
 
-npm run qa:lot5d:l
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
+**Bilan A–L : 249/249 tests locaux validés.**
+Les tests Parent 5.C **10/10** et les 21 intégrations
+Supabase de K et les 21 de L en CI restent séparés.
+Les runs [#44497337368](https://github.com/ramon77777/schoolnet/actions/runs/44497337368)
+et [#44498015968](https://github.com/ramon77777/schoolnet/actions/runs/44498015968)
+ont chacun réussi **10/10 jobs**.
 
-git status --short
-```
-
-**Attendu : L 30/30**, tests Parent
-5.C **10/10 séparément**, ESLint
-**0 erreur** (un avertissement connu),
-build TypeScript/Vite **réussi** ;
-aucun changement imprévu de l'état
-Git local. Préserver les scripts
-non suivis et le dossier
-`supabase/proposals/staged/`.
-
-**Cumul local A–K déjà validé 219/219**,
-objectif après réception de L :
-**A–L 249/249 tests locaux**.
-Les **21 tests d'intégration L et K**
-restent une preuve CI **distincte**
-(non comptée dans le total local).
-
-**Interdits :** `supabase db push`,
-`supabase functions deploy`,
-toute installation `SANDBOX_ONLY`
-dans Supabase hébergé, `git clean`,
-`git reset --hard`, fusion `main`
-ou publication Vercel.
+**Aucun changement de production :** la fonction Edge Parent
+reste désactivée et non déployée, le SQL 5D-L
+`SANDBOX_ONLY` n'est pas installé sur un projet
+Supabase hébergé, et le frontend Parent n'est pas raccordé.
+La copie fidèle des migrations, le quota métier, la
+conservation documentaire durable et la résolution
+de l'occupation de 2026–2027 restent à traiter.
+Aucune migration, fusion `main` ou publication Vercel
+sans accord nouveau.
