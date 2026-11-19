@@ -64,3 +64,21 @@ Les anciens tests sont conserves.
 soumise a approbation explicite avant toute publication. Tant que la nouvelle
 RPC n'est pas installee, l'interface candidate S4-A affiche un message
 d'indisponibilite, sans repli vers la RPC nominative S3-C.
+
+
+## Préparation contrôlée de l'activation S4-A — Workflow V5
+
+La CI exécute désormais le même protocole de cycle de vie SQL que celui
+prévu pour l'installation autorisée : précontrôle en lecture seule, ajout
+de la seule RPC S4-A à la base locale, postcontrôle des privilèges,
+recette A/B existante, rollback ciblé, puis nouveau précontrôle.
+
+Fichiers :
+- `supabase/verification/s4a_activation_preflight_readonly.sql`
+- `supabase/verification/s4a_activation_postflight_readonly.sql`
+- `supabase/verification/s4a_activation_rollback_manual.sql`
+- `docs/releases/SCHOOLNET_S4A_PLAN_ACTIVATION_ET_ROLLBACK_2026-11-19.md`
+
+**Interdiction :** le job n'utilise aucune base Supabase hébergée et
+n'exécute jamais le rollback en production. L'installation sur la base
+principale requiert une décision explicite indépendante du succès de cette CI.

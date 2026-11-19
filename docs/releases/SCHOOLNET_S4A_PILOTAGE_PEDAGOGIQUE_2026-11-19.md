@@ -204,3 +204,16 @@ publication. A ce stade, S4-A ne doit PAS etre considere installe :
 une Preview candidate peut afficher « synthese non encore activee ».
 Le nouveau RPC ne doit jamais etre applique par `supabase db push`
 sur les migrations historiques deja enregistrees.
+
+
+## Préparation à l'activation SQL — Workflow V5
+
+Le plan d'installation, le précontrôle de production en lecture seule,
+le contrôle après activation et le rollback limité aux deux fonctions
+S4-A sont documentés dans
+`docs/releases/SCHOOLNET_S4A_PLAN_ACTIVATION_ET_ROLLBACK_2026-11-19.md`.
+
+**Précontrôle principal au 19/11/2026 : `S4A_PRECHECK_PASS`.**
+Ce résultat ne vaut pas autorisation d'installer : le précontrôle doit
+être refait le jour de la migration. Aucune modification du projet
+Supabase principal n'a été réalisée pendant cette préparation.
