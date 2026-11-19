@@ -627,6 +627,47 @@ quota métier, la sauvegarde documentaire
 durable et le blocage 2026–2027
 restent à traiter. **Pas de GO production.**
 
+### 5D-N : **VALIDATION JWT DE LA PASSERELLE SUPABASE ACTIVE SUR EDGE HTTP LOCALE — CI VALIDÉE, LOCAL À FAIRE**
+
+Lot N démarré le 19/11/2026 sur la PR #15
+**en brouillon** : [rapport technique 5D-N](./SCHOOLNET_LOT5DN_GATEWAY_JWT_VERIFY_TRUE_2026-11-19.md).
+
+- **Nouvelle pile locale Docker indépendante** du M,
+  avec **`verify_jwt=true`** dans le
+  `config.toml` **TEMPORAIRE** uniquement,
+  via `scripts/lot5d/5dn_prepare_jwt_verified_edge_fixture.mjs`.
+  La vraie Edge et ses helpers sont copiés
+  octet pour octet : **aucun changement de
+  code Edge ou de la configuration suivie**.
+- **Contrôles N hors réseau** :
+  `scripts/test-schoolnet-lot5d-n-gateway-jwt-contract.mjs`
+  **24/24 en CI**, recette Windows à recevoir.
+- **Tests HTTP réels N** :
+  `scripts/test-schoolnet-lot5d-n-gateway-jwt-real.mjs`
+  **22/22** (23/23 nœuds Node avec
+  agrégateur) : JWT légitime admis,
+  jeton altéré/malformé refusé, deux
+  familles isolées, rôles refusés,
+  session révoquée → 401, quota → 429,
+  panne SQL → 503, aucune mutation annuelle.
+- **CI final** :
+  [run #44506298347](https://github.com/ramon77777/schoolnet/actions/runs/44506298347)
+  **12/12 jobs SUCCESS** ; une simple URL
+  de contrôle de santé Auth dans N02 avait
+  été corrigée avant la CI verte.
+- **Recette locale N À FAIRE** :
+  A–M **273/273 validés**, N **24/24 attendus**,
+  objectif A–N **297/297**, Parent historique
+  5.C **10/10 séparément**.
+
+**Limites :** compatibilité des clés JWT du
+**Supabase hébergé NON PROUVÉE**, schéma 43
+migrations non reproduit, Edge Parent
+OFF/non déployée, frontend non raccordé,
+quota 12/min non approuvé, stockage durable
+et année cible 2026–2027 bloqués.
+Aucun nouveau GO production.
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -1045,6 +1086,37 @@ documentaire durable non achevée et année
 fusion de `main` ou publication Vercel
 nécessite un GO distinct.**
 
+### Prochaine recette locale — Lot 5D-N
+
+La CI a validé **12/12 jobs**,
+**24/24 tests N hors réseau** et
+**22/22 scénarios HTTP Edge réels**
+avec `verify_jwt=true` sur une pile
+Supabase locale jetable.
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:n
+node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu : N 24/24**, Parent 5.C
+10/10 séparément, lint 0 erreur
+(un warning historique possible),
+build Vite réussi, scripts locaux et
+propositions non suivies préservés.
+Cumul A–M **273/273**, objectif
+A–N **297/297** après validation.
+
+**Ne pas exécuter `qa:lot5d:n:integration`
+sans une pile Supabase locale dédiée :
+la CI l'a déjà effectuée.**
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -1123,7 +1195,16 @@ nécessite un GO distinct.**
    cumul **A–M 273/273 tests locaux validés**. **Mode test `verify_jwt=false`
    UNIQUEMENT dans la config Docker jetable,
    pas dans le vrai dépôt ou en production.**
-13. Soumettre une future migration finale et son éventuelle installation
+13. **5D-N** : seconde pile Docker Jetable avec
+   **`verify_jwt=true` au niveau passerelle**,
+   Edge copiée octet pour octet, **24/24 tests
+   contractuels et 22/22 scénarios HTTP réels**
+   réussis en CI **12/12 jobs SUCCESS**.
+   Recette locale N à confirmer ; objectif
+   A–N **297/297**. Clés JWT hébergées
+   **non qualifiées** ; aucune fonction
+   ni SQL installés en production.
+14. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -1162,6 +1243,7 @@ nécessite un GO distinct.**
 > - `docs/releases/SCHOOLNET_LOT5DK_AUTH_STORAGE_REELS_ISOLES_2026-11-19.md`
 > - `docs/releases/SCHOOLNET_LOT5DL_SESSION_PARENT_QUOTA_PERSISTANT_2026-11-19.md`
 > - `docs/releases/SCHOOLNET_LOT5DM_EDGE_HTTP_PARENT_END_TO_END_2026-11-19.md`
+> - `docs/releases/SCHOOLNET_LOT5DN_GATEWAY_JWT_VERIFY_TRUE_2026-11-19.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -1311,6 +1393,30 @@ nécessite un GO distinct.**
 > **Prochaine phase sous GO distinct ;
 > aucune migration, fusion `main`,
 > bascule ni publication Vercel.**
+> **Point de reprise après CI 5D-N, 19/11/2026** :
+> [12/12 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44506298347).
+> **24/24 contrôles N hors réseau**,
+> **22/22 scénarios HTTP Edge** réels avec
+> `verify_jwt=true` dans le Docker de CI
+> (23/23 tests Node incluant l'agrégateur).
+> JWT authentique accepté ; altéré/refusé ;
+> familles isolées, session révoquée 401,
+> rôle interdit 403, quota 429, panne RPC 503.
+> Aucun changement Edge applicative ni
+> `supabase/config.toml` suivi ; aucun projet
+> Supabase hébergé modifié.
+> **Recette locale N : à faire**, `qa:lot5d:n`
+> **24/24**, Parent 5.C 10/10,
+> lint et build. Total A–M **273/273 validés**,
+> objectif A–N **297/297**.
+> **Bloqueurs :** clés/signatures JWT hébergées
+> non vérifiées ; Edge Parent OFF/non déployée,
+> frontend non raccordé, schéma 43 migrations
+> non reproduit, quota 12/min à approuver,
+> rétention durable absente, année
+> 2026–2027 occupée et bascule interdite.
+> **Aucune migration Supabase principal,
+> fusion `main` ou déploiement Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
