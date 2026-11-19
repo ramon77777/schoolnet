@@ -28,6 +28,34 @@ jobs:
         run: npm run lint
       - name: Compiler l'application Vite/TypeScript
         run: npm run build
+      - name: Verifier Lot 5D-A (lecture seule, sans acces Supabase)
+        run: npm run qa:lot5d:a
+      - name: Verifier Lot 5D-B (preflight et SQL non installable, sans reseau)
+        run: npm run qa:lot5d:b
+      - name: Verifier Lot 5D-C (candidat consolide, securite hors reseau)
+        run: npm run qa:lot5d:c
+      - name: Verifier Lot 5D-D (concurrence et contrat backend non deploye)
+        run: npm run qa:lot5d:d
+      - name: Verifier Lot 5D-E (archives, RPC legacy et passerelle en mock)
+        run: npm run qa:lot5d:e
+      - name: Verifier Lot 5D-F (RPC completes hors reseau)
+        run: npm run qa:lot5d:f
+      - name: Verifier Lot 5D-G (catalogue reel, voies directes, passerelle mock)
+        run: npm run qa:lot5d:g
+      - name: Verifier Lot 5D-H (integrite Storage et classes historiques)
+        run: npm run qa:lot5d:h
+      - name: Verifier Lot 5D-I (Parents annuels et revue documentaire, hors reseau)
+        run: npm run qa:lot5d:i
+      - name: Verifier Lot 5D-J (sessions Parent et Storage HTTP fictifs, sans Internet)
+        run: npm run qa:lot5d:j
+      - name: Verifier Lot 5D-K (contrats d'isolement, aucun acces cloud)
+        run: npm run qa:lot5d:k
+      - name: Verifier Lot 5D-L (session revokee, quota durable, refus navigateur)
+        run: npm run qa:lot5d:l
+      - name: Verifier Lot 5D-M (garde Edge HTTP strict et donnees fictives)
+        run: npm run qa:lot5d:m
+      - name: Verifier Lot 5D-N (gateway JWT active, aucune cle hebergee)
+        run: npm run qa:lot5d:n
       - name: Verifier les garde-fous de cohorte et d'environnement
         run: node --experimental-strip-types --test scripts/test-schoolnet-student-runtime-gate.mjs scripts/test-schoolnet-student-rollout-guard.mjs
       - name: Tester UI, login, rattachement et Parent existant (hors ligne)
@@ -43,5 +71,726 @@ jobs:
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-student-no-email-admin/index.ts supabase/functions/schoolnet-student-login-release/index.ts
       - name: Verifier les fonctions famille deja presentes
         run: deno check --node-modules-dir=auto supabase/functions/schoolnet-family-invitation/index.ts
+      - name: Verifier syntaxe de la fonction Parent annuelle NON deployee
+        run: deno check --node-modules-dir=auto supabase/functions/schoolnet-parent-current-class/index.ts
       - name: Tests famille deja presents
         run: deno test supabase/functions/_shared/familyActivationEvidence_test.ts
+
+  lot5d_sql_sandbox:
+    name: Test 5D-A+B sur PostgreSQL 17 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verifier cible ephemere et client PostgreSQL
+        shell: bash
+        run: |
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql --version
+      - name: Installer fixture, candidat consolide, recette rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -v ON_ERROR_STOP=1 -f scripts/lot5d/test_consolidated_postgresql17.sql
+      - name: Verifier aucun changement d annee apres la recette
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(psql -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_years WHERE is_current AND name='2025-2026'")
+          test "$count" = "1"
+      - name: Verifier les contraintes classe et role du schema de production en fixture
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/schema_compatibility_postgresql17.sql
+      - name: Simuler deux sessions concurrentes et verifier replay idempotent
+        shell: bash
+        run: bash scripts/lot5d/run_concurrency_postgresql17.sh
+      - name: Verifier permissions reelles SQL avec SET ROLE et RLS fictive
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/authorization_postgresql17.sql
+
+  lot5d_legacy_cross:
+    name: Lot 5D-E - concurrence RPC et archives sur PostgreSQL 17 fictif
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirmer exclusivement la base fictive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test -z "$(printenv SUPABASE_DB_URL || true)"
+          test -z "$(printenv DATABASE_URL || true)"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql --version
+      - name: Installer les fixtures et les gardes candidats 5D-E
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/legacy_rpc_guarded_fixture_postgresql17.sql
+      - name: Tester une fonction legacy concurrente, archives et reprise
+        shell: bash
+        run: bash scripts/lot5d/run_legacy_cross_postgresql17.sh
+      - name: Confirmer le nombre de passages apres la recette
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_count=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")
+          source_count=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollments WHERE school_year_id='20252025-2025-4025-8025-202520252025' AND status='completed'")
+          test "$run_count" = "1"
+          test "$source_count" = "1"
+
+  # Lot 5D-F: two independent, disposable Postgres instances to validate
+  # the FULL read-only-audited legacy RPC definitions, not shortened mocks.
+  lot5d_full_rpc:
+    name: Lot 5D-F - RPC completes, releve et archives (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirmer cible PostgreSQL ephemere et clients disponibles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test -z "$(printenv DATABASE_URL || true)"
+          test -z "$(printenv SUPABASE_DB_URL || true)"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Installer seulement le schema synthétique et les propositions F sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5df_fixture_enhance_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5df_legacy_full_lock_SANDBOX_ONLY.sql
+      - name: Recette du comportement historique avant bascule avec ROLLBACK
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5df_full_regression_pre_postgresql17.sql
+      - name: Concurrence finaliseur avec RPC upsert COMPLETE
+        shell: bash
+        run: bash scripts/lot5d/5df_run_cross_postgresql17.sh upsert
+      - name: Compteurs apres tests rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "1"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollments WHERE school_year_id='20252025-2025-4025-8025-202520252025' AND status='completed'")" = "1"
+
+  lot5d_full_status:
+    name: Lot 5D-F - verrou annee AVANT statut en concurrence (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer fixture + candidat F sur la base PG17 fictive seulement
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test -z "$(printenv SUPABASE_DB_URL || true)"
+          test -z "$(printenv DATABASE_URL || true)"
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5df_fixture_enhance_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5df_legacy_full_lock_SANDBOX_ONLY.sql
+      - name: Concurrence finaliseur avec RPC statut COMPLETE
+        shell: bash
+        run: bash scripts/lot5d/5df_run_cross_postgresql17.sh status
+
+  # 5D-G: direct-write + archived-document guard on metadata-aligned synthetic
+  # PostgreSQL, never on the principal Supabase project. Do not deploy.
+  lot5d_direct_paths:
+    name: Lot 5D-G - droits RLS, ecritures directes et archives PG17 jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prouver base locale fictive et aucun secret Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test "$PGUSER" = "postgres"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Installer uniquement des fixtures PG17 et les gardes SANDBOX_ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_schema_parity_fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql
+      - name: Verifier droits Admin et anon avant cloture sous ROLLBACK
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_direct_paths_pre_postgresql17.sql
+      - name: Creer une piece et une decision fictives
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_prepare_document_postgresql17.sql
+      - name: Finaliser une annee fictive sans donnees reelles
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_finalize_document_postgresql17.sql
+      - name: Verifier archives immuables et nouvelle annee utilisable (ROLLBACK)
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_direct_paths_post_postgresql17.sql
+      - name: Controler compteurs fictifs apres la recette ROLLBACK
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")
+          docs=$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")
+          test "$count" = "1"
+          test "$docs" = "1"
+
+  # Lot 5D-H - separate fictional Postgres instance. DO NOT use real Storage.
+  # Storage schema is a simplified RLS fixture; never SQL-delete real files.
+  lot5d_storage_hardening:
+    name: Lot 5D-H - Storage RLS sans effacement et archive (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuser toute connexion Supabase externe
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test "$PGUSER" = "postgres"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Installer uniquement les fixtures et protections SQL SANDBOX_ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_schema_parity_fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dh_storage_objects_fixture_postgresql17.sql
+      - name: Prouver la suppression permise par ancienne RLS fictive sous ROLLBACK
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dh_storage_delete_before_postgresql17.sql
+      - name: Appliquer le garde Storage H UNIQUEMENT a la fixture jetable
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dh_storage_delete_SANDBOX_ONLY.sql
+      - name: Preparer et finaliser un dossier scolaire fictif (G, sans reseau)
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_prepare_document_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_finalize_document_postgresql17.sql
+      - name: Prouver refus DELETE, maintien SELECT/INSERT et conservation d'archives
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dh_storage_delete_after_postgresql17.sql
+      - name: Verifier les compteurs Storage fictifs et annees apres ROLLBACK
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "1"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM storage.objects")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")" = "1"
+
+  # Lot 5D-I: private SQL request/audit only. The document is never deleted.
+  # All SQL changes here are in a disposable PostgreSQL 17 CI instance.
+  lot5d_document_review:
+    name: Lot 5D-I - demande documentaire privee et historique (PG17 fictif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: schoolnet_lot5d_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: schoolnet_lot5d_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_lot5d_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: schoolnet_lot5d_ci
+      PGUSER: postgres
+      PGPASSWORD: schoolnet_lot5d_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verifier aucune connexion externe et PostgreSQL fictif
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$PGHOST" = "127.0.0.1"
+          test "$PGDATABASE" = "schoolnet_lot5d_ci"
+          test "$PGUSER" = "postgres"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Charger base fictive, gardes 5D et proposition I non installable
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5d_ab_consolidated_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5de_history_guards_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dg_schema_parity_fixture_postgresql17.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5dg_archive_documents_SANDBOX_ONLY.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/proposals/20261118_schoolnet_lot5di_document_review_SANDBOX_ONLY.sql
+      - name: Tester demandes idempotentes, controle Admin et blocage de bascule
+        shell: bash
+        run: psql -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5di_document_review_postgresql17.sql
+      - name: Verifier que les tests n ont conserve aucune requete
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM schoolnet_private.document_deletion_reviews")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM schoolnet_private.document_deletion_review_events")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.student_enrollment_documents")" = "0"
+          test "$(psql -X -v ON_ERROR_STOP=1 -tAc "SELECT count(*) FROM public.school_year_rollover_runs")" = "0"
+
+  # Lot 5D-J: local-only transport sandbox. No Supabase URL or credentials.
+  # Existing SQL/Edge proposals stay untouched; no deploy, no live Storage.
+  lot5d_http_isolation:
+    name: Lot 5D-J - sessions Auth et sauvegarde binaire HTTP locaux
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SCHOOLNET_LOT5DJ_MODE: loopback-fixture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prouver execution sans cible Supabase ni secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$SCHOOLNET_LOT5DJ_MODE" = "loopback-fixture"
+          for key in SUPABASE_DB_URL DATABASE_URL SUPABASE_SERVICE_ROLE_KEY SUPABASE_URL VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          node --version
+      - name: Executer les 40 scenarios Auth, Parent et fichiers seulement en HTTP loopback
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test scripts/test-schoolnet-lot5d-j-isolated-http.mjs
+
+  # Lot 5D-K: REAL GoTrue/PostgREST/Storage locally in disposable Docker.
+  # Hosted sandbox has existing experiments: NEVER alter either hosted project.
+  # No hosted API keys, tokens, migrations or linked project are used.
+  lot5d_supabase_local_real_api:
+    name: Lot 5D-K - APIs Supabase Auth/Storage reelles sur stack locale jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les deps du projet existant sans mise a jour
+        run: npm ci --no-audit --no-fund
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+      - name: Preflight CLI, Docker, cibles et interdit hosted
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in SUPABASE_ACCESS_TOKEN SUPABASE_DB_URL DATABASE_URL SUPABASE_PROJECT_ID SUPABASE_SERVICE_ROLE_KEY VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          supabase --version
+          supabase init --help > /dev/null
+          supabase start --help > /dev/null
+          supabase status --help > /dev/null
+          docker info --format '{{.ServerVersion}}'
+      - name: Demarrer une NOUVELLE stack Supabase ephemere sans migrations du repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK_DIR="$RUNNER_TEMP/schoolnet-5dk-stack"
+          mkdir -p "$WORK_DIR"
+          echo "SCHOOLNET_K_STACK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
+          cd "$WORK_DIR"
+          supabase init --yes
+          supabase start --exclude studio,imgproxy,logflare,vector,realtime,supavisor,edge-runtime,postgres-meta
+          supabase status -o env > "$RUNNER_TEMP/schoolnet-5dk-status.env"
+          test -s "$RUNNER_TEMP/schoolnet-5dk-status.env"
+      - name: Exporter les cles LOCALES masquees et les valider
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          . "$RUNNER_TEMP/schoolnet-5dk-status.env"
+          set +a
+          test "$API_URL" = "http://127.0.0.1:54321"
+          test "$DB_URL" = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          printf 'SCHOOLNET_K_LOCAL_URL=%s\n' "$API_URL" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_ANON_KEY=%s\n' "$ANON_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_SERVICE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_DB_URL=%s\n' "$DB_URL" >> "$GITHUB_ENV"
+      - name: Installer seulement les fixtures fictives dans le Postgres LOCAL
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          PGAPPNAME=schoolnet_5dk_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
+      - name: Installer UNIQUEMENT EN LOCAL le garde prive 5D-L SANDBOX_ONLY
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$SCHOOLNET_K_LOCAL_URL" = "http://127.0.0.1:54321"
+          PGAPPNAME=schoolnet_5dl_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dl_parent_session_rate_local_SANDBOX_ONLY.sql
+      - name: Verifier les 21 vrais parcours Auth, Parent RLS et Storage API
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run qa:lot5d:k:integration
+      - name: Tester Auth reelle, sessions revoquees, quotas persistant/concurrent et droits RPC 5D-L
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run qa:lot5d:l:integration
+      - name: Detruire uniquement les conteneurs et volumes de CE CI
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if test -n "$SCHOOLNET_K_STACK_DIR" && test -f "$SCHOOLNET_K_STACK_DIR/supabase/config.toml"; then
+            cd "$SCHOOLNET_K_STACK_DIR"
+            supabase stop --no-backup
+          fi
+
+  # Lot 5D-M — genuine HTTP Edge Function running in a NEW disposable
+  # local Supabase CLI stack. No hosted project, no migrations, no deployment.
+  # The registered Edge function and its feature flag are in scratch only.
+  lot5d_m_edge_http:
+    name: Lot 5D-M - Edge HTTP reel, session et quota sur Supabase local jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer uniquement les dependances verrouillees
+        run: npm ci --no-audit --no-fund
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+      - name: Prouver Docker et refuser toute cible hebergee
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in SUPABASE_ACCESS_TOKEN SUPABASE_DB_URL DATABASE_URL SUPABASE_PROJECT_ID SUPABASE_SERVICE_ROLE_KEY VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          supabase functions serve --help > /dev/null
+          supabase start --help > /dev/null
+          docker info --format '{{.ServerVersion}}'
+      - name: Preparer la vraie fonction Edge dans un dossier temporaire uniquement
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK_DIR="$RUNNER_TEMP/schoolnet-5dm-stack"
+          mkdir -p "$WORK_DIR"
+          echo "SCHOOLNET_M_STACK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
+          cd "$WORK_DIR"
+          supabase init --yes
+          node "$GITHUB_WORKSPACE/scripts/lot5d/5dm_prepare_edge_http_fixture.mjs" "$WORK_DIR"
+          test -f "$WORK_DIR/supabase/functions/schoolnet-parent-current-class/index.ts"
+          test -f "$WORK_DIR/supabase/functions/.env"
+      - name: Demarrer Auth, PostgreSQL, PostgREST, Storage et VRAIE Edge locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SCHOOLNET_M_STACK_DIR"
+          supabase start --exclude studio,imgproxy,logflare,vector,realtime,supavisor,postgres-meta
+          supabase status -o env > "$RUNNER_TEMP/schoolnet-5dm-status.env"
+          test -s "$RUNNER_TEMP/schoolnet-5dm-status.env"
+      - name: Charger seulement les cles locales masquees
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          . "$RUNNER_TEMP/schoolnet-5dm-status.env"
+          set +a
+          test "$API_URL" = "http://127.0.0.1:54321"
+          test "$DB_URL" = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          printf 'SCHOOLNET_K_LOCAL_URL=%s\n' "$API_URL" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_ANON_KEY=%s\n' "$ANON_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_SERVICE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_DB_URL=%s\n' "$DB_URL" >> "$GITHUB_ENV"
+      - name: Installer SQL SANDBOX_ONLY K puis L dans la BASE JETABLE SEULEMENT
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          test "$SCHOOLNET_K_LOCAL_URL" = "http://127.0.0.1:54321"
+          PGAPPNAME=schoolnet_5dk_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
+          PGAPPNAME=schoolnet_5dl_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dl_parent_session_rate_local_SANDBOX_ONLY.sql
+      - name: Tester 25 requetes HTTP par la fonction Edge reelle non deployee
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run qa:lot5d:m:integration
+      - name: Supprimer UNIQUEMENT les conteneurs et volumes de CE test
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if test -n "$(printenv SCHOOLNET_M_STACK_DIR || true)" && test -f "$SCHOOLNET_M_STACK_DIR/supabase/config.toml"; then
+            cd "$SCHOOLNET_M_STACK_DIR"
+            supabase stop --no-backup
+          fi
+
+  # 5D-N: JWT gate TRUE, isolated stack; never copied to production.
+  lot5d_n_gateway_jwt:
+    name: Lot 5D-N - Gateway JWT active et vraie Edge HTTP sur Supabase local jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer uniquement les dependances verrouillees
+        run: npm ci --no-audit --no-fund
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 3.0.0
+      - name: Prouver Docker et refuser toute cible hebergee
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in SUPABASE_ACCESS_TOKEN SUPABASE_DB_URL DATABASE_URL SUPABASE_PROJECT_ID SUPABASE_SERVICE_ROLE_KEY VITE_SUPABASE_URL; do
+            test -z "$(printenv "$key" || true)"
+          done
+          supabase functions serve --help > /dev/null
+          supabase start --help > /dev/null
+          docker info --format '{{.ServerVersion}}'
+      - name: Preparer la vraie fonction Edge dans un dossier temporaire uniquement
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK_DIR="$RUNNER_TEMP/schoolnet-5dn-stack"
+          mkdir -p "$WORK_DIR"
+          echo "SCHOOLNET_N_STACK_DIR=$WORK_DIR" >> "$GITHUB_ENV"
+          cd "$WORK_DIR"
+          supabase init --yes
+          node "$GITHUB_WORKSPACE/scripts/lot5d/5dn_prepare_jwt_verified_edge_fixture.mjs" "$WORK_DIR"
+          test -f "$WORK_DIR/supabase/functions/schoolnet-parent-current-class/index.ts"
+          test -f "$WORK_DIR/supabase/functions/.env"
+      - name: Demarrer Auth, PostgreSQL, PostgREST, Storage et VRAIE Edge locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$SCHOOLNET_N_STACK_DIR"
+          supabase start --exclude studio,imgproxy,logflare,vector,realtime,supavisor,postgres-meta
+          supabase status -o env > "$RUNNER_TEMP/schoolnet-5dn-status.env"
+          test -s "$RUNNER_TEMP/schoolnet-5dn-status.env"
+      - name: Charger seulement les cles locales masquees
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          . "$RUNNER_TEMP/schoolnet-5dn-status.env"
+          set +a
+          test "$API_URL" = "http://127.0.0.1:54321"
+          test "$DB_URL" = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+          test -n "$ANON_KEY"
+          test -n "$SERVICE_ROLE_KEY"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "::add-mask::$DB_URL"
+          printf 'SCHOOLNET_K_LOCAL_URL=%s\n' "$API_URL" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_ANON_KEY=%s\n' "$ANON_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_SERVICE_KEY=%s\n' "$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          printf 'SCHOOLNET_K_LOCAL_DB_URL=%s\n' "$DB_URL" >> "$GITHUB_ENV"
+      - name: Installer SQL SANDBOX_ONLY K puis L dans la BASE JETABLE SEULEMENT
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+          test "$SCHOOLNET_K_LOCAL_URL" = "http://127.0.0.1:54321"
+          PGAPPNAME=schoolnet_5dk_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
+          PGAPPNAME=schoolnet_5dl_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dl_parent_session_rate_local_SANDBOX_ONLY.sql
+      - name: Tester 22 parcours HTTP avec verify_jwt TRUE sur Edge locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run qa:lot5d:n:integration
+      - name: Supprimer UNIQUEMENT les conteneurs et volumes de CE test
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if test -n "$(printenv SCHOOLNET_N_STACK_DIR || true)" && test -f "$SCHOOLNET_N_STACK_DIR/supabase/config.toml"; then
+            cd "$SCHOOLNET_N_STACK_DIR"
+            supabase stop --no-backup
+          fi

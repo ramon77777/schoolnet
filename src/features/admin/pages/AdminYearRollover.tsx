@@ -18,6 +18,8 @@ import {
   type RolloverDecisionType,
   type RolloverRun,
 } from "@/features/enrollments/lib/schoolYearRolloverApi";
+import { areSchoolYearRolloverWritesBlocked } from "@/features/enrollments/lib/schoolYearRolloverWritePolicy";
+import { inspectSchoolYearRolloverSnapshot } from "@/features/enrollments/lib/schoolYearRolloverPreflight";
 
 const INITIAL_CATALOG: EnrollmentCatalog = { years: [], classes: [], students: [] };
 
@@ -61,6 +63,7 @@ function getDecisionClassLabel(
 export default function AdminYearRollover() {
   const { user, loading: authLoading } = useAuth();
   const isDemo = Boolean(user?.isDemo);
+  const readOnlyRuntime = areSchoolYearRolloverWritesBlocked();
   const [catalog, setCatalog] = useState<EnrollmentCatalog>(INITIAL_CATALOG);
   const [enrollments, setEnrollments] = useState<AdminEnrollment[]>([]);
   const [targetYearId, setTargetYearId] = useState("");
@@ -92,6 +95,7 @@ export default function AdminYearRollover() {
   const targetYear = futureYears.find((year) => year.id === targetYearId) ?? null;
   const targetClasses = useMemo(
     () => catalog.classes.filter((item) => targetYear &&
+      item.school_id === null && item.learning_context !== "school" &&
       resolveTargetClass(targetYear.id, targetYear.name,
         item.school_year_id, item.school_year)),
     [catalog.classes, targetYear],
@@ -192,19 +196,47 @@ export default function AdminYearRollover() {
   const targetAnomalies = existingTarget.filter((row) =>
     row.status === "active" || row.status === "completed");
   const hasPending = planned !== activeSource.length;
+  // S2-A/S3-C affectations par etablissement : jamais reutiliser la RPC
+  // historique de passage d'annee pour ces classes ou leurs inscriptions.
+  const officialClasses = catalog.classes.filter((item) =>
+    item.school_id !== null || item.learning_context === "school");
+  const nonLegacySource = activeSource.filter((row) => {
+    const sourceClass = catalog.classes.find((item) => item.id === row.class_id);
+    return !sourceClass || sourceClass.school_id !== null ||
+      sourceClass.learning_context === "school";
+  });
+  // B : diagnostic visible uniquement. L'autorisation finale restera exclusivement SQL.
+  const preflight = inspectSchoolYearRolloverSnapshot({
+    years: catalog.years,
+    classes: catalog.classes,
+    enrollments,
+    sourceYearId: currentYear?.id ?? null,
+    targetYearId: targetYear?.id ?? null,
+  });
+  const additionalPreflightIssues = preflight.issues.filter((issue) =>
+    ["CURRENT_YEAR_NOT_UNIQUE", "SOURCE_DUPLICATE_STUDENT",
+     "SOURCE_CLASS_WRONG_YEAR"].includes(issue.code),
+  );
   const warnings = [
+    ...additionalPreflightIssues.map((issue) => issue.message),
     ...(activeSource.length === 0 ? ["Aucune inscription active pour l'année courante."] : []),
     ...(targetClasses.length === 0 ? ["L'année cible ne possède pas de classe."] : []),
     ...(targetAnomalies.length > 0
       ? [String(targetAnomalies.length) +
          " dossier(s) déjà actifs ou terminés dans l'année cible : régularisation obligatoire avant la bascule."]
       : []),
+    ...(nonLegacySource.length > 0
+      ? [String(nonLegacySource.length) +
+         " dossier(s) d'origine non legacy : ne pas traiter avec la RPC globale 5.D."] : []),
+    ...(officialClasses.length > 0
+      ? ["Des classes officielles d'etablissement existent : la bascule globale attend " +
+         "un workflow compatible S3-C, sans toucher aux affectations locales."] : []),
     ...(hasPending ? ["Toutes les décisions doivent être enregistrées avant la clôture."] : []),
     ...(!targetYear ? ["Sélectionnez une année cible valide."] : []),
   ];
   const busy = loadingBase || loadingPlan || Boolean(savingStudentId) || finalizing;
-  const canFinalize = !busy && !isDemo && !migrationPending && !run &&
-    Boolean(currentYear && targetYear) && warnings.length === 0 &&
+  const canFinalize = !busy && !isDemo && !readOnlyRuntime && !migrationPending && !run &&
+    Boolean(currentYear && targetYear) && preflight.issues.length === 0 && warnings.length === 0 &&
     confirmName.trim() === targetYear?.name;
 
   function editDraft(studentId: string, change: Partial<DecisionDraft>) {
@@ -219,7 +251,7 @@ export default function AdminYearRollover() {
   }
 
   async function submitDecision(studentId: string) {
-    if (!currentYear || !targetYear || isDemo || migrationPending || busy || run) return;
+    if (!currentYear || !targetYear || isDemo || readOnlyRuntime || migrationPending || busy || run) return;
     const draft = drafts[studentId] ?? rowDraft();
     if ((draft.decision === "re_enroll" || draft.decision === "repeat") &&
         !targetClasses.some((item) => item.id === draft.targetClassId)) {
@@ -306,6 +338,16 @@ export default function AdminYearRollover() {
       {isDemo && <p role="alert" className="sn-card border border-amber-200 bg-amber-50 p-4 text-amber-800">
         Le mode démonstration ne permet pas de préparer les réinscriptions réelles.
       </p>}
+      {readOnlyRuntime && !isDemo && (
+        <section role="status" className="sn-card border border-blue-200 bg-blue-50 p-5 text-sm text-blue-900">
+          <h2 className="font-bold">Lot 5D-A — preparation en lecture seule</h2>
+          <p className="mt-1">Aucune decision ni bascule annuelle n'est autorisee
+            depuis localhost ou une Preview. Le domaine officiel est egalement bloque
+            tant que l'activation explicite et les controles serveur ne sont pas valides.</p>
+          <p className="mt-2">Les classes et affectations propres aux etablissements
+            (S2-A a S3-C) ne doivent pas etre traitees par le passage d'annee legacy.</p>
+        </section>
+      )}
       {migrationPending && !isDemo && (
         <section role="status" className="sn-card border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
           <h2 className="font-bold">Activation Supabase en attente</h2>
@@ -361,7 +403,20 @@ export default function AdminYearRollover() {
 
       {targetYear && <section className="sn-card p-5 md:p-6">
         <h2 className="text-lg font-bold text-slate-950">2. Contrôles préalables</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <div role="status" className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-semibold">Lot 5D-B — diagnostic préparatoire local, sans écriture</p>
+          <p className="mt-1">
+            Dossiers actifs source : {preflight.sourceActive} · Dossiers cible existants :
+            {" "}{preflight.targetExisting} · Dossiers actifs/terminés dans la cible :
+            {" "}{preflight.targetActiveOrCompleted}.
+          </p>
+          <p className="mt-1">
+            Les contrôles complets des droits, des affectations d'établissement S3-C,
+            des conflits et de la transaction restent à réaliser côté serveur.
+            Ces indicateurs n'autorisent aucune bascule.
+          </p>
+        </div>
+        <p className="mt-3 text-sm text-slate-600">
           Les dossiers historiques restent inchangés pendant la préparation.
           La validation finale refait ces contrôles côté Supabase.
         </p>
@@ -399,7 +454,7 @@ export default function AdminYearRollover() {
               const saved = decisionsByStudent.get(row.student_id);
               const plannedClass = targetClasses.find((item) => item.id === draft.targetClassId);
               const targetRecord = existingTarget.find((item) => item.student_id === row.student_id);
-              const studentBusy = busy || isDemo || migrationPending || Boolean(run);
+              const studentBusy = busy || isDemo || readOnlyRuntime || migrationPending || Boolean(run);
               return (
                 <article key={row.enrollment_id} className="space-y-4 p-5 md:p-6">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -465,7 +520,7 @@ export default function AdminYearRollover() {
                       {draft.decision === "leave" && "Aucun nouveau dossier ne sera créé."}
                       {plannedClass && draft.decision === "re_enroll" && "Classe choisie : " + plannedClass.name}
                     </span>
-                    <button type="button" className="sn-btn-primary" disabled={studentBusy}
+                    <button type="button" className="sn-btn-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-0" disabled={studentBusy}
                       onClick={() => void submitDecision(row.student_id)}>
                       {savingStudentId === row.student_id ? "Enregistrement…" : "Enregistrer la décision"}
                     </button>
@@ -497,18 +552,20 @@ export default function AdminYearRollover() {
             Saisissez exactement « {targetYear?.name || "année cible"} » pour confirmer
           </span>
           <input className="sn-input w-full" value={confirmName} autoComplete="off"
-            disabled={busy || isDemo || migrationPending || Boolean(run) || !targetYear}
+            disabled={busy || isDemo || readOnlyRuntime || migrationPending || Boolean(run) || !targetYear}
             onChange={(event) => setConfirmName(event.target.value)}
             placeholder={targetYear?.name || "Nom de l'année scolaire"} />
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" className="sn-btn-primary" disabled={!canFinalize}>
+          <button type="submit" className="sn-btn-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:saturate-0" disabled={!canFinalize}>
             {finalizing ? "Clôture en cours…" : "Valider et activer l'année suivante"}
           </button>
           <p className="text-xs text-slate-500">
-            {migrationPending
-              ? "Activation SQL 5.D nécessaire avant cette opération."
-              : "Contrôles serveur et historique obligatoires."}
+            {readOnlyRuntime
+              ? "Lot 5D-A : ecritures desactivees, aucune migration n'est autorisee."
+              : migrationPending
+                ? "Activation SQL 5.D nécessaire avant cette opération."
+                : "Contrôles serveur et historique obligatoires."}
           </p>
         </div>
       </form>

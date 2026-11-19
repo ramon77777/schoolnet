@@ -46,7 +46,7 @@ export default function TeacherClasses() {
         <div>
           <div className="text-xl font-semibold">Mes classes</div>
           <div className="text-sm text-gray-500">
-            Gérez vos élèves et suivez les effectifs.
+            Aperçu illustratif : classes et élèves fictifs, non reliés à l'année scolaire active.
           </div>
         </div>
         <button className="sn-btn-primary sn-press">+ Nouvelle classe</button>

@@ -179,9 +179,13 @@ export default function ParentChildren(){
      </div>
      <div className="mt-5 rounded-xl bg-gray-50 p-4">
       <p className="text-xs text-gray-500">
-       {child.classState==='assigned'?'Dernière classe enregistrée':'Affectation scolaire'}
+       {child.classState==='assigned'?'Dernière classe connue (année non confirmée)':'Affectation scolaire'}
       </p>
       <p className="mt-1 text-sm font-medium text-slate-800">{child.classLabel}</p>
+      {child.classState==='assigned'&&
+       <p className="mt-2 text-xs leading-5 text-slate-500">
+        Cette classe est historique : elle ne confirme pas une inscription active pour l'année scolaire en cours.
+       </p>}
       {child.classState==='unassigned'&&
        <p className="mt-2 text-xs leading-5 text-slate-500">
         Le rattachement familial est indépendant de l'affectation dans une classe.

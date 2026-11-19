@@ -1,0 +1,106 @@
+-- SCHOOLNET | Lot 5D-B | NON INSTALLABLE | TRANSACTION DRAFT.
+-- DOCUMENT DE CONCEPTION uniquement, lecture seule, aucun SQL executable.
+-- Chaque instruction ci-dessous est COMMENTEE pour empecher son installation.
+-- Cette proposition NE REMPLACE PAS encore la migration historique 5D.
+-- A relire, puis a implementer en UNE migration consolidee apres autorisation.
+--
+-- 0. PERIMETRE ET MODELE D'AUTORISATION (NON NEGOCIABLE)
+--    - Auth + Super Admin reel, role serveur confirme (pas user_metadata).
+--    - Route de finalisation derriere un serveur admin approuve : pas de RPC
+--      privilegiee publiquement EXECUTABLE par tous les authenticated.
+--    - Ne jamais accepter le school_id, le statut ou les permissions du navigateur.
+--    - Une origine HTTP seule, un flag VITE_ ou un GUC editable par un client
+--      ne prouvent AUCUNE autorisation SQL.
+--    - Distinguer legacy_global et le tenant scolaire de chaque etablissement.
+--      La premiere bascule 5D doit conserver les affectations officielles S3-C
+--      sans les creer, supprimer ou reassigner, et refuser le global si un
+--      traitement officiel doit etre coordonne. Les deux parcours sont distincts.
+--
+-- 1. PRE-FLIGHT SERVEUR IMMUTABLE, APRES ACQUISITION DES VERROUS
+--    - Prerequis reels : school_years, student_enrollments, classes,
+--      class_students, schoolnet_school_* et triggers d'historique presents.
+--    - Une seule annee is_current=true, source courante, cible future exacte.
+--    - Nombre et identite des dossiers actifs dans l'annee source.
+--    - Incoherence deja observee : 2025-2026 courante, mais 1 dossier actif
+--      dans 2026-2027. Cette anomalie doit faire echouer l'operation.
+--    - TOUS les dossiers actifs/completed cibles (meme autres apprenants)
+--      entrainent ABORT; les brouillons sont permis uniquement si l'ID,
+--      la classe et la decision explicite correspondent, sinon ABORT.
+--    - Aucun dossier ni classe legacy lie a un school_id / learning_context
+--      'school'; aucune classe officielle absente du perimetre S3-C.
+--    - Verifier les affectations S3-C de toutes les ecoles au sein des deux
+--      annees, les statuts, les id et leur role : si non couvert, ABORT.
+--    - Les decisions ('re_enroll', 'repeat', 'leave') doivent toutes exister
+--      et pointer vers LE BON dossier source et vers une classe legacy
+--      de l'annee cible; pour 'repeat', level_id doit etre identique.
+--    - Verifier le nombre de conflits, les affectations, les RLS et l'audit.
+--
+-- 2. FRONTIERE TRANSACTIONNELLE ET ORDRE DE VERROUILLAGE (SQL A CREER)
+--    - Une SEULE fonction server-only, appelee une seule fois par le backend.
+--    - POST /admin/rollover : JWT Admin verifie, pas d'ecriture navigateur,
+--      idempotency_key non controlee par un simple localStorage.
+--    - BEGIN (implicitement transaction PostgreSQL de la RPC).
+--    - SET LOCAL lock_timeout = '3s';
+--    - Verrouiller public.school_years en SHARE ROW EXCLUSIVE,
+--      puis public.student_enrollments, puis la table des decisions,
+--      puis le journal de runs, puis les affectations S3-C pertinentes.
+--      L'ordre definitif sera verifie contre toutes les fonctions existantes
+--      pour eviter des deadlocks avec inscriptions et affectations.
+--    - SELECT FOR UPDATE sur l'annee source et l'annee cible, dossiers source,
+--      dossiers cible et decisions. Revérifier toutes les preconditions
+--      dans cette transaction apres acquisition des verrous.
+--    - Aucun reseau, email ou storage dans cette transaction SQL.
+--
+-- 3. BLOCAGE DIRECT D'ANNEE : UNE SEULE REGLE SERVEUR
+--    - REVOIR la proposition 5D-A (guard_lot5da_direct_year_switch).
+--      Ne pas installer 5D-A et 5D-B comme deux migrations independantes.
+--    - Refuser toute modification directe de school_years.is_current
+--      hors du finaliseur serveur explicitement autorise.
+--    - Un simple custom GUC 'schoolnet.rollover_authorized'='yes' n'est
+--      pas une preuve forte : un role SQL autorise peut le positionner.
+--    - Definir une preuve d'autorisation INTERNE a la transaction,
+--      conservee en schema prive non expose, liee a txid/session et
+--      a l'operation serveur et NON inscriptible par anon/authenticated.
+--    - Proteger fonctions SECURITY DEFINER par search_path fixe, verification
+--      auth.uid(), role serveur, objet school/tenant, REVOKE EXECUTE PUBLIC.
+--      Aucun service_role ni secret n'apparait dans le frontend.
+--
+-- 4. APPLIQUER LA DECISION (TOUT OU RIEN)
+--    - Si (source active != decisions definitives) ABORT.
+--    - Interdire les doublons de runs (UNIQUE source, UNIQUE target).
+--    - Verifier les brouillons cible avec verrou et equivalence exacte,
+--      sans ecraser dossier actif/termine existant.
+--    - Fermer UNIQUEMENT les dossiers legacy source eligibles.
+--    - Mettre a jour la paire school_years courante avec la preuve privee
+--      et supprimer la preuve avant le COMMIT (uniquement en transaction).
+--    - Reutiliser admin_upsert_student_enrollment pour les classes legacy
+--      compatibles seulement apres revue de son effet class_students.
+--      Les affectations S3-C, les liens familiaux et les bulletins scolaires
+--      NE DOIVENT PAS etre touches (aucune propagation automatique).
+--    - Pour depart, ne modifier profiles.class_name qu'apres controle
+--      du lien avec d'autres contextes scolaires et de l'historique.
+--    - Ecrire un run immutable + evenements de decision, acteur et horodatage.
+--
+-- 5. VERIFIER AVANT COMMIT ET IDempotence
+--    - Source inactif / termine, cible courante, total des dossiers et decisions
+--      exact, audit complete, zero conflit, classes/tenants isoles.
+--    - Une deuxieme demande avec MEME source+target+cle de confirmation
+--      renvoie le resultat en lecture seule sans creer de doublon.
+--    - Une tentative de relance avec une AUTRE destination ou decision
+--      incompatible est rejetee, pas un upsert silencieux.
+--    - Toute exception annule COMPLETEMENT la transaction.
+--
+-- 6. PLAN D'ESSAIS A EXECUTER PLUS TARD SUR ENVIRONNEMENT ISOLE
+--    - ROLLBACK : cible avec dossier active/completed (blocage).
+--    - ROLLBACK : brouillon classe differente (blocage).
+--    - ROLLBACK : classe officielle ou affectation S3-C (blocage).
+--    - ROLLBACK : decision manquante / niveau redoublement incoherent.
+--    - ROLLBACK : utilisateur non admin, permissions API, replay/concurrence.
+--    - ROLLBACK : une exception apres cloture doit restaurer toutes les lignes.
+--    - ROLLBACK : appeler deux fois avec meme token ; aucune duplication.
+--    - Verification des archives, documents, notes, bulletins, parent_links,
+--      schoolnet_school_student_class_assignments AVANT/APRES.
+--    - Post-verification en production seulement APRES autorisation distincte.
+--
+-- CE FICHIER EST DELIBEREMENT NON EXECUTABLE.
+-- NE PAS COPIER DANS supabase/migrations, NE PAS LANCER supabase db push.
