@@ -569,6 +569,60 @@ de la concurrence révocation/lecture ;
 schéma K simplifié, année cible 2026–2027
 déjà occupée. **Aucun GO production.**
 
+### 5D-M : **VRAIE FONCTION EDGE PARENT TESTÉE VIA HTTP SUR SUPABASE LOCAL — CI VALIDÉE, LOCAL À FAIRE**
+
+Le 19/11/2026 sur la PR #15 **en brouillon** :
+[rapport technique 5D-M](./SCHOOLNET_LOT5DM_EDGE_HTTP_PARENT_END_TO_END_2026-11-19.md).
+
+- **Vraie fonction Edge, source inchangée sur l'hébergement :**
+  `supabase/functions/schoolnet-parent-current-class/index.ts`
+  garde son origine/projet de production exacts
+  et son flag **OFF en hébergement**. Un mode
+  de test additionnel exige un projet local
+  (`http://kong:8000` / `127.0.0.1:54321`),
+  une origine locale exacte et un flag serveur
+  temporaire ; aucune URL Supabase hébergée
+  ne satisfait cette combinaison.
+- **Isolation stricte** : script
+  `scripts/lot5d/5dm_prepare_edge_http_fixture.mjs`
+  recopie **octet pour octet** la fonction et
+  ses helpers dans un dossier GitHub Actions
+  temporaire. Le `verify_jwt=false` n'existe
+  **que dans la config locale jetable** pour
+  tester les rejets Auth internes, jamais
+  dans le `supabase/config.toml` du dépôt.
+- **Recette HTTP end-to-end** :
+  `scripts/test-schoolnet-lot5d-m-edge-http-real.mjs`,
+  **25/25 scénarios réussis** : deux vraies
+  sessions Parents fictives, isolation entre
+  familles, historique non exposé comme courant,
+  refus de JWT invalide et de rôle interdit,
+  session révoquée **401**, quota **429**,
+  panne du RPC **503**, aucune écriture
+  des inscriptions historiques.
+- **Recette locale hors réseau** :
+  `scripts/test-schoolnet-lot5d-m-edge-http-contract.mjs`,
+  **24/24 en CI** ; **à confirmer sur Windows**.
+- **CI** : [run #44501540891](https://github.com/ramon77777/schoolnet/actions/runs/44501540891),
+  **11/11 jobs SUCCESS**, y compris lots A–L,
+  vraie Edge Deno, Auth/PostgreSQL locaux,
+  lint et build. Les tests préliminaires
+  I/CORS ont été adaptés sans affaiblir
+  les règles d'accès POST.
+- **Recette locale M À FAIRE** :
+  A–L **249/249 validés**, M **24/24 attendu** ;
+  objectif A–M **273/273** après confirmation,
+  Parent 5.C **10/10** séparément.
+
+**Bloqueurs avant production :** aucun SQL
+L/M installé en hébergement, Edge non déployée,
+code frontend Parent non raccordé ;
+la vérification gateway JWT finale,
+la parité du schéma 43 migrations, le
+quota métier, la sauvegarde documentaire
+durable et le blocage 2026–2027
+restent à traiter. **Pas de GO production.**
+
 ### Situation métier à résoudre
 
 | Année | Année courante | Dossiers actifs | Impact |
@@ -938,6 +992,34 @@ pas de copie fidèle des 43 migrations, sauvegarde documentaire
 durable non finalisée, cible 2026–2027 occupée.
 **Aucun GO de migration, fusion main ou Vercel**.
 
+### Prochaine recette locale — Lot 5D-M
+
+La CI a validé **11/11 jobs**, **24/24
+contrôles M hors réseau** et **25/25 vraies
+requêtes HTTP Edge** sur un Supabase local jetable.
+
+```powershell
+git status --short
+git branch --show-current
+git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+npm run qa:lot5d:m
+node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+npm run lint
+npm run build
+git status --short
+```
+
+**Attendu : M 24/24**, Parent 5.C 10/10
+séparément, lint 0 erreur (1 warning React
+Hook historique), build Vite réussi.
+Préserver scripts et SQL locaux non suivis.
+Cumul A–L **249/249**, objectif
+A–M **273/273** après confirmation.
+
+**Ne pas lancer `qa:lot5d:m:integration`
+sur Windows sans pile Supabase locale dédiée ;
+aucune connexion aux projets hébergés.**
+
 ## 6. Ce qui suivra, sur validations distinctes
 
 **5D-A+B / CANDIDAT PREPARE, RECETTE SQL ISOLEE ET REVUE METIER A TERMINER** :
@@ -1006,7 +1088,17 @@ durable non finalisée, cible 2026–2027 occupée.
    cumul A–L **249/249**. **Aucune migration
    ni fonction Edge déployée.** Seuil test
    de 12/min à revoir avant GO.
-12. Soumettre une future migration finale et son éventuelle installation
+12. **5D-M** : vraie fonction Edge Deno servie
+   via Supabase CLI local jetable sur le routeur HTTP
+   réel : **25/25 scénarios**, tests contractuels
+   hors réseau **24/24**, GitHub Actions
+   **11/11 jobs SUCCESS**. Aucun client hébergé
+   ou fichier réel utilisé. Recette locale M
+   **à faire**, objectif cumul A–M
+   **273/273**. **Mode test `verify_jwt=false`
+   UNIQUEMENT dans la config Docker jetable,
+   pas dans le vrai dépôt ou en production.**
+13. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
 
@@ -1044,6 +1136,7 @@ durable non finalisée, cible 2026–2027 occupée.
 > - `docs/releases/SCHOOLNET_LOT5DJ_AUTH_SESSIONS_STORAGE_HTTP_2026-11-19.md`
 > - `docs/releases/SCHOOLNET_LOT5DK_AUTH_STORAGE_REELS_ISOLES_2026-11-19.md`
 > - `docs/releases/SCHOOLNET_LOT5DL_SESSION_PARENT_QUOTA_PERSISTANT_2026-11-19.md`
+> - `docs/releases/SCHOOLNET_LOT5DM_EDGE_HTTP_PARENT_END_TO_END_2026-11-19.md`
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
@@ -1167,6 +1260,30 @@ durable non finalisée, cible 2026–2027 occupée.
 > 2026–2027 occupée. **Aucune bascule autorisée.**
 > **Prochain lot seulement après accord distinct ;
 > aucun changement Supabase principal, main ou Vercel.**
+> **Point de reprise après CI du Lot 5D-M le 19/11/2026** :
+> [11/11 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44501540891).
+> Vraie Edge Parent appelée via HTTP Supabase local
+> jetable : **25/25 scénarios** ; **24/24 tests
+> contractuels hors réseau**, Auth GoTrue,
+> PostgREST et sessions SQL réels mais
+> données totalement fictives.
+> Deux familles isolées ; JWT révoqué → 401,
+> rôle interdit → 403, quota → 429,
+> panne RPC → 503 ; **aucune mutation annuelle**.
+> **Recette locale M : à faire** (`qa:lot5d:m`
+> **24/24**, Parent 5.C 10/10, lint, build).
+> Cumul A–L **249/249 validés** ;
+> objectif A–M **273/273** après retour.
+> **Mode `verify_jwt=false` réservé
+> à l'environnement Docker temporaire** :
+> JAMAIS à recopier dans le projet hébergé.
+> **Bloqueurs :** Edge toujours non déployée,
+> frontend non raccordé, parité 43 migrations
+> non validée, quota 12/min à approuver,
+> conservation documentaire durable absente,
+> année cible 2026–2027 occupée.
+> **Pas de SQL principal, fusion main,
+> bascule annuelle ou déploiement Vercel.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**
