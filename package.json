@@ -30,6 +30,8 @@
     "qa:lot5d:l:integration": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-l-real-supabase.mjs",
     "qa:lot5d:m": "node --test scripts/test-schoolnet-lot5d-m-edge-http-contract.mjs",
     "qa:lot5d:m:integration": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-m-edge-http-real.mjs",
+    "qa:lot5d:n": "node --test scripts/test-schoolnet-lot5d-n-gateway-jwt-contract.mjs",
+    "qa:lot5d:n:integration": "node --experimental-strip-types --test scripts/test-schoolnet-lot5d-n-gateway-jwt-real.mjs",
     "qa:e2e:readiness": "node --experimental-strip-types --test scripts/test-schoolnet-e2e-readiness.mjs",
     "qa:sandbox:prepare": "node --test scripts/test-schoolnet-sandbox-preparation.mjs",
     "sandbox:check": "node scripts/check-schoolnet-sandbox-env.mjs"

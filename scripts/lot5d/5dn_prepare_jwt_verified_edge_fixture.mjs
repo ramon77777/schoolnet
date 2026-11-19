@@ -42,6 +42,9 @@ await writeFile(config,original+
  'entrypoint = "./functions/schoolnet-parent-current-class/index.ts"\n');
 const after=await readFile(config,"utf8");
 assert.match(after,/\[functions\.schoolnet-parent-current-class\][\s\S]*?verify_jwt = true/);
+const section=after.split("[functions.schoolnet-parent-current-class]")[1];
+assert.ok(section);
+assert.doesNotMatch(section,/verify_jwt = false/);
 await mkdir(join(dest,"supabase/functions"),{recursive:true});
 await writeFile(join(dest,"supabase/functions/.env"),
  "SCHOOLNET_LOT5DI_PARENT_READ_ENABLED=true\n"+
