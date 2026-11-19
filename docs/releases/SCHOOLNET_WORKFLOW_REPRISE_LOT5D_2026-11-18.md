@@ -416,7 +416,7 @@ Aucune migration 5D, aucun rôle nouveau, aucun déploiement** ;
 aucune fusion main ni mise en production. Toutes les protections
 non déployées restent à l'étude sous nouveau GO.**
 
-### 5D-J : **RECETTES AUTH/SESSIONS PARENT ET STORAGE HTTP ISOLÉ — CI VALIDÉE, LOCAL À FAIRE**
+### 5D-J : **RECETTES AUTH/SESSIONS PARENT ET STORAGE HTTP ISOLÉ — CI ET LOCAL VALIDÉS**
 
 Le 19/11/2026 sur la PR #15 **en brouillon** :
 [rapport technique 5D-J](./SCHOOLNET_LOT5DJ_AUTH_SESSIONS_STORAGE_HTTP_2026-11-19.md).
@@ -445,9 +445,14 @@ Le 19/11/2026 sur la PR #15 **en brouillon** :
 - **CI** : [run #44488437331](https://github.com/ramon77777/schoolnet/actions/runs/44488437331),
   **9/9 jobs SUCCESS**, y compris job J autonome,
   lot précédent A–I, lint, build et compilation Deno.
-- **Recette locale J : À FAIRE**. A–I **159/159 validés**,
-  J **40/40 attendus**, soit **199/199 A–J** après
-  confirmation. Parent historique **10/10** à relancer séparément.
+- **Recette locale J : VALIDÉE LE 19/11/2026**.
+  `git pull --ff-only` **réussi** (`cc466e6..5f394be`) ;
+  `npm run qa:lot5d:j` **40/40 tests réussis** ;
+  Parent historique 5.C **10/10**, comptés séparément ;
+  `npm run lint` **0 erreur** (1 warning React Hook connu) ;
+  `npm run build` **réussi** (Vite v7.3.1, **868 modules**).
+  Le statut Git final est identique au statut initial.
+  **Cumul des recettes locales A–J : 199/199 validés**.
 
 **Verrous maintenus :** `schoolnet-parent-current-class`
 **OFF/non déployée**, aucune politique Storage J ni migration
@@ -695,28 +700,45 @@ l'API Storage, la sauvegarde/réconciliation documentaire et la
 lecture Parent réellement autorisée. Pas de SQL principal,
 de migration, de fusion `main` ni de déploiement Vercel.
 
-### Prochaine recette locale — Lot 5D-J
+### Recette locale du Lot 5D-J — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-Les **9/9 jobs CI** du 5D-J ont réussi, avec
-**40/40 tests J** sur HTTP isolé. Dans PowerShell :
+Résultat PowerShell intégral transmis depuis
+`D:\Bakary\10 autres\schoolnet`, sur la branche
+`feature/schoolnet-lot5d-a-securisation-20261118` :
 
-```powershell
-git status --short
-git branch --show-current
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
-npm run qa:lot5d:j
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
-git status --short
-```
+- `git status --short` / `git branch --show-current` :
+  branche attendue et état local vérifiés avant et après.
+- `git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118` :
+  **fast-forward réussi** `cc466e6..5f394be`, sans conflit.
+- `npm run qa:lot5d:j` : **40/40 tests J réussis**,
+  incluant les scénarios d'Auth/session et les vrais
+  échanges HTTP sur une fixture `127.0.0.1` seulement.
+- `node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs` :
+  **10/10 tests Parent 5.C réussis séparément**.
+- `npm run lint` : **0 erreur**, un avertissement historique
+  `react-hooks/exhaustive-deps` dans
+  `src/features/enrollments/pages/EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **TypeScript et Vite réussis**,
+  Vite v7.3.1, **868 modules** ; remarques non bloquantes
+  Browserslist et bundle principal volumineux.
+- `git status --short` final identique à celui du début :
+  `tsconfig.app.tsbuildinfo` modifié, trois scripts locaux
+  `schoolnet-student-auth-sandbox-local.mjs`,
+  `test-schoolnet-student-auth-flow-mock.mjs` et
+  `test-schoolnet-student-auth-sandbox-local.mjs`,
+  ainsi que `supabase/proposals/staged/` non suivis **préservés**.
 
-**Attendu :** **40/40 tests J**, Parent **10/10** à part,
-lint **0 erreur** (warning React Hook historique possible),
-build Vite réussi et fichiers locaux non suivis inchangés.
-Cumul A–I **159/159 déjà validé** ; après J,
-cumul **199/199 à confirmer**. Aucun SQL principal ni
-déploiement n'est autorisé.
+**Bilan cumulatif local 5D-A à J :**
+9 + 17 + 12 + 15 + 20 + 12 + 20 + 24 + 30 + 40
+= **199/199 tests validés**. Les **10 tests Parent 5.C**
+sont vérifiés à part, tout comme les assertions SQL des CI.
+
+La validation confirme les contrats simulés du J ; elle
+**ne constitue pas une recette de sécurité de Supabase Auth
+ou Storage sur un environnement connecté et fidèle**.
+La fonction Parent I reste OFF/non déployée, et la copie
+de rétention et l'audit Storage véritables restent non implémentés.
+L'année cible 2026–2027 est toujours occupée et la bascule interdite.
 
 ## 6. Ce qui suivra, sur validations distinctes
 
@@ -761,9 +783,10 @@ déploiement n'est autorisé.
 9. **5D-J :** contrat HTTP local de vérification des sessions
    Parent, refus des rôles non autorisés et des pannes rate-limit,
    copie/lecture/empreinte SHA-256 de pièces fictives et diagnostics
-   de reprise sans suppression. CI **9/9 jobs**, J **40/40** ;
-   recette locale J à confirmer. **Aucune vraie session Supabase
-   ni aucun fichier réel n'ont été utilisés.**
+   de reprise sans suppression. CI **9/9 jobs**, J **40/40
+   validés en local le 19/11/2026**, cumul A–J **199/199** ;
+   tests Parent 5.C **10/10** séparément. **Aucune vraie
+   session Supabase ni aucun fichier réel n'ont été utilisés.**
 10. Soumettre une future migration finale et son éventuelle installation
    dans le principal **uniquement sous nouveaux GO distincts**,
    après sauvegarde et préflight. Aucune écriture réelle actuellement.
@@ -803,9 +826,11 @@ déploiement n'est autorisé.
 >
 > Branche `feature/schoolnet-lot5d-a-securisation-20261118`,
 > PR #15 **brouillon**, `main` et Vercel existant inchangés.
-> **Recettes locales A9/9, B17/17, C12/12, D15/15, E20/20,
-> F12/12, G20/20 et H24/24 validées : 129/129 tests locaux A à H.**
-> Les 10/10 tests Parent du Lot 5.C sont validés séparément.
+> **Recettes locales A9/9, B17/17, C12/12, D15/15,
+> E20/20, F12/12, G20/20, H24/24, I30/30 et J40/40
+> VALIDÉES le 19/11/2026 : 199/199 tests locaux A à J.**
+> Les 10/10 tests historiques Parent 5.C sont validés
+> et comptabilisés séparément.
 > CI GitHub Actions [run #44329876560](https://github.com/ramon77777/schoolnet/actions/runs/44329876560) :
 > **3 jobs SUCCESS**, incluant tests 5D-E 20/20, SQL PG17
 > concurrent, 11 assertions de garde historique et archivage fictif.
@@ -860,20 +885,22 @@ déploiement n'est autorisé.
 > sessions/rate-limit, conservation vérifiable et réconciliation,
 > raccordement Parent sous autorisation.
 > **Pas de SQL principal, pas de fusion main, pas de Vercel production.**
-> **Point de reprise après CI du Lot 5D-J (19/11/2026)** :
-> [9/9 jobs SUCCESS](https://github.com/ramon77777/schoolnet/actions/runs/44488437331),
-> `qa:lot5d:j` **40/40 en CI**, tests Auth/Storage en HTTP
-> **strictement local**. Contrat de session révoquée et contrôle
-> SHA-256 de sauvegarde simulés, sans suppression de fichiers.
-> **Recette locale J à faire :** `qa:lot5d:j` **40/40**,
-> Parent 5.C **10/10 séparés**, lint et build.
-> Cumul A–I **159/159 validé**, objectif A–J **199/199**.
-> **Blocages :** Edge Parent I OFF/non déployée, absence
-> de vérification réelle `auth.sessions`/rate-limit,
-> pas de Storage API réelle ni de sauvegarde durable,
-> année cible 2026–2027 déjà occupée.
-> **Aucune migration, aucun changement Supabase principal,
-> aucune fusion main ni mise en production Vercel.**
+> **Lot 5D-J validé localement le 19 novembre 2026** :
+> `qa:lot5d:j` **40/40**, cumul A–J **199/199 tests
+> locaux validés**, Parent 5.C **10/10 séparément**,
+> lint **0 erreur**, build Vite **réussi** (868 modules),
+> fast-forward `cc466e6..5f394be` sans conflit.
+> CI [#44488962570](https://github.com/ramon77777/schoolnet/actions/runs/44488962570)
+> **9/9 jobs SUCCESS** sur le commit documentaire J.
+> Auth/session et Storage HTTP sont des **simulations limitées
+> à 127.0.0.1**. L'Edge annuelle Parent I reste OFF/non déployée ;
+> aucune vérification réelle `auth.sessions`, aucun
+> rate-limit persistant ou backup Storage réel n'est installé.
+> La cible 2026–2027 reste occupée : **bascule interdite**.
+> **Prochaine phase avec GO distinct :** banc Auth/Storage
+> isolé plus fidèle (vraies sessions fictives, RLS, bucket privé,
+> conservation/reprise prouvées), puis validations produit et sécurité.
+> **Aucune migration, aucune fusion main ni aucun déploiement.**
 > **Ne pas toucher aux dossiers réels, SQL Editor principal,
 > `supabase db push`, flag d'écriture, `main` ou Vercel
 > sans autorisation spécifique.**

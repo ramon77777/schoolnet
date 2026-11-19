@@ -4,7 +4,7 @@
 **Branche :** `feature/schoolnet-lot5d-a-securisation-20261118`  
 **PR :** [#15](https://github.com/ramon77777/schoolnet/pull/15), **brouillon**  
 **Résultat CI :** [GitHub Actions #44488437331](https://github.com/ramon77777/schoolnet/actions/runs/44488437331), **9/9 jobs SUCCESS** ; `qa:lot5d:j` **40/40 réussis** dans le job isolé, également lancé dans le job général de qualité.  
-**Recette locale :** **J non encore validé par l'utilisateur** ; A à I **159/159 déjà validés**. Objectif A à J après validation locale : **199/199**, les **10/10 tests Parent 5.C** étant décomptés séparément.  
+**Recette locale :** **J VALIDÉ LE 19/11/2026 — 40/40**. Cumul A à J **199/199 tests locaux validés** ; Parent 5.C **10/10 séparément**.  
 **Protection :** aucun SQL d'écriture sur Supabase principal, aucun `supabase db push`, aucun déploiement Edge, aucun changement de `main` ni du site Vercel production.
 
 ## 1. Ce que vérifie le Lot J
@@ -197,35 +197,44 @@ pas la sécurité d'une vraie intégration Supabase Auth ou Storage.
    Browserslist et taille du bundle restent non bloquants
    mais doivent être traités dans un lot séparé.
 
-## 6. Recette locale 5D-J — à recevoir
+## 6. Recette locale 5D-J — **VALIDÉE LE 19 NOVEMBRE 2026**
 
-Depuis `D:\Bakary\10 autres\schoolnet` dans PowerShell :
+L'utilisateur a transmis les résultats PowerShell depuis
+`D:\Bakary\10 autres\schoolnet` :
 
-```powershell
-git status --short
-git branch --show-current
+- Branche `feature/schoolnet-lot5d-a-securisation-20261118`.
+- `git pull --ff-only` : **fast-forward réussi**
+  `cc466e6..5f394be`, sans conflit.
+- `npm run qa:lot5d:j` : **40/40 tests réussis**,
+  aucun échec ni test ignoré.
+- Tests Parent historiques Lot 5.C : **10/10 réussis**,
+  calculés séparément.
+- `npm run lint` : **0 erreur** et un warning connu
+  `react-hooks/exhaustive-deps` à
+  `EnrollmentRecordsPage.tsx:161`.
+- `npm run build` : **réussi**, Vite v7.3.1,
+  **868 modules**. Avertissements Browserslist et taille
+  du bundle non bloquants.
+- `git status --short` final **inchangé** :
+  `tsconfig.app.tsbuildinfo`, trois scripts
+  non suivis `scripts/schoolnet-student-auth-*.mjs`
+  et `supabase/proposals/staged/` ont été préservés.
 
-git pull --ff-only origin feature/schoolnet-lot5d-a-securisation-20261118
+**Cumul local Lots 5D-A à J : 199/199 tests validés.**
+Les 10 tests Parent 5.C ainsi que les essais PostgreSQL 17
+de CI restent distincts.
 
-npm run qa:lot5d:j
-node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
-npm run lint
-npm run build
+**Important :** les 40 tests J utilisent des identités,
+sessions, objets et services HTTP **simulés localement** ;
+ils ne prouvent pas l'efficacité d'une sécurité réelle
+Supabase Auth/Storage. Aucun endpoint Edge du J n'existe,
+l'Edge Parent I reste **OFF et non déployée**, et aucun SQL
+5D n'est installé dans le projet principal.
+L'année 2026–2027 demeure **bloquée** par son dossier
+actif préexistant.
 
-git status --short
-```
-
-**Attendu :** J **40/40**, Parent 5.C **10/10 séparément**,
-ESLint **0 erreur** (1 warning React Hook historique possible),
-build Vite réussi, fichiers locaux préexistants et
-`supabase/proposals/staged/` préservés.
-
-**Bilan local déjà obtenu : 159/159 (A–I).**
-Après validation J, **199/199 (A–J)**, sans inclure
-les 10 tests historiques Parent ni les assertions SQL CI.
-
-**Interdits :** aucune connexion ou migration Supabase principale,
-aucun `supabase db push`, `supabase functions deploy`,
-aucun `git reset --hard`, `git clean`, aucune fusion
-`main`, aucun déploiement Vercel, aucun changement
-du flag de passage d'année.
+La suite exige des accords distincts pour un environnement
+Auth/Storage isolé, une sauvegarde/restauration vérifiée,
+la lecture Parent réelle, toute migration canonique,
+une fusion `main` et une publication Vercel.
+**Aucune action de production autorisée.**
