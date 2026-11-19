@@ -582,7 +582,7 @@ jobs:
         run: |
           set -euo pipefail
           command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
-          psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
+          PGAPPNAME=schoolnet_5dk_local_ci psql "$SCHOOLNET_K_LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f scripts/lot5d/5dk_local_supabase_real_api_fixture.sql
       - name: Verifier les 21 vrais parcours Auth, Parent RLS et Storage API
         shell: bash
         run: |

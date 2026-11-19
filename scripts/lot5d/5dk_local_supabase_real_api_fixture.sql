@@ -7,9 +7,16 @@ DO $k_guard$
 DECLARE local_addr inet;
 BEGIN
   local_addr := inet_server_addr();
+  -- Postgres inside Docker sees its bridge IP (normally 172.x), NOT
+  -- the host's 127.0.0.1. The CI separately validates the external DB URL.
+  -- Require a deliberate, test-only libpq application_name as second guard.
   IF current_database() <> 'postgres'
+     OR current_setting('application_name',true) <> 'schoolnet_5dk_local_ci'
      OR local_addr IS NULL
-     OR local_addr NOT IN ('127.0.0.1'::inet, '::1'::inet)
+     OR NOT (local_addr <<= '127.0.0.0/8'::inet
+          OR local_addr <<= '172.16.0.0/12'::inet
+          OR local_addr <<= '10.0.0.0/8'::inet
+          OR local_addr <<= '192.168.0.0/16'::inet)
      OR current_setting('server_version_num')::integer < 150000
      OR EXISTS (SELECT 1 FROM pg_catalog.pg_class c
                 JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
