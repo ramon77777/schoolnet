@@ -72,10 +72,11 @@ test("L 11 - user_metadata role is not used for authorization",async()=>{
  const r=await run(token({user_metadata:{role:"admin"}}));
  assert.deepEqual(r,{allowed:true,status:200,actorId:actor});
 });
-test("L 12 - expired JWT cannot reach the SQL gate",async()=>{
+test("L 12 - expired JWT fails after Auth and BEFORE the SQL gate",async()=>{
  counter.length=0;
  const r=await run(token({exp:Math.floor(NOW/1000)-1}));
- assert.equal(r.status,401);assert.deepEqual(counter,[]);
+ assert.equal(r.status,401);
+ assert.deepEqual(counter,["getUser"],"No private DB authorization may run");
 });
 test("L 13 - expiry at exact current second is rejected",async()=>{
  const r=await run(token({exp:Math.floor(NOW/1000)}));
