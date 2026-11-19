@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getActiveSchoolAdmins, getAdminSchools, type SchoolRecord } from "@/features/schools/lib/schoolManagementApi";
 import {
-  getLocalSchoolAssignmentsCatalog,
-  type SchoolAssignmentsCatalog,
-} from "@/features/schools/lib/schoolAssignmentsApi";
-import { buildSchoolPedagogyOverview, filterSchoolsForLocalAdmin } from "@/features/schools/lib/schoolPedagogyOverview";
+  getLocalSchoolPedagogyOverview,
+  isSchoolPedagogyOverviewActivationPending,
+} from "@/features/schools/lib/schoolPedagogyApi";
+import { filterSchoolsForLocalAdmin, type SchoolPedagogyOverview } from "@/features/schools/lib/schoolPedagogyOverview";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
@@ -30,10 +30,10 @@ export default function LocalSchoolPedagogy() {
   const [schoolsForUser, setSchoolsForUser] = useState("");
   const [schoolId, setSchoolId] = useState("");
   const [schoolsError, setSchoolsError] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<SchoolAssignmentsCatalog | null>(null);
-  const [catalogForKey, setCatalogForKey] = useState("");
+  const [summary, setSummary] = useState<SchoolPedagogyOverview | null>(null);
+  const [summaryForKey, setSummaryForKey] = useState("");
   const [loadState, setLoadState] = useState<LoadState>("idle");
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
 
   const canRead = Boolean(
@@ -76,32 +76,34 @@ export default function LocalSchoolPedagogy() {
   useEffect(() => {
     if (!canRead || !user?.id || !selectedSchool || !requestKey) return;
     let cancelled = false;
-    void getLocalSchoolAssignmentsCatalog(schoolId)
+    void getLocalSchoolPedagogyOverview(schoolId)
       .then((result) => {
         if (cancelled) return;
-        if (result.school_id !== schoolId) throw new Error("Catalogue hors établissement.");
-        setCatalog(result);
-        setCatalogForKey(requestKey);
+        if (result.schoolId !== schoolId) throw new Error("Synthèse hors établissement.");
+        setSummary(result);
+        setSummaryForKey(requestKey);
         setLoadState("ready");
-        setCatalogError(null);
+        setSummaryError(null);
       })
-      .catch(() => {
+      .catch((cause: unknown) => {
         if (cancelled) return;
-        setCatalog(null);
-        setCatalogForKey(requestKey);
+        setSummary(null);
+        setSummaryForKey(requestKey);
         setLoadState("error");
-        setCatalogError("Catalogue pédagogique indisponible ou accès non autorisé.");
+        setSummaryError(isSchoolPedagogyOverviewActivationPending(cause)
+          ? "La synthèse sécurisée S4-A n'est pas encore activée sur ce serveur. Aucun repli vers des données nominatives n'est autorisé."
+          : "Synthèse pédagogique indisponible ou accès non autorisé.");
       });
     return () => { cancelled = true; };
   }, [canRead, user?.id, selectedSchool, schoolId, requestKey]);
 
-  const isCatalogLoading = Boolean(selectedSchool && catalogForKey !== requestKey);
-  const isCatalogError = Boolean(selectedSchool && catalogForKey === requestKey && loadState === "error");
+  const isSummaryLoading = Boolean(selectedSchool && summaryForKey !== requestKey);
+  const isSummaryError = Boolean(selectedSchool && summaryForKey === requestKey && loadState === "error");
   const overview = useMemo(() => {
-    if (!selectedSchool || catalogForKey !== requestKey ||
-        loadState !== "ready" || !catalog || !(catalog.school_id === schoolId)) return null;
-    return buildSchoolPedagogyOverview(catalog, schoolId);
-  }, [selectedSchool, catalogForKey, requestKey, loadState, catalog, schoolId]);
+    if (!selectedSchool || summaryForKey !== requestKey ||
+        loadState !== "ready" || !summary || summary.schoolId !== schoolId) return null;
+    return summary;
+  }, [selectedSchool, summaryForKey, requestKey, loadState, summary, schoolId]);
 
   const isDemo = Boolean(user?.isDemo);
   return (
@@ -180,19 +182,19 @@ export default function LocalSchoolPedagogy() {
             </h2>
             <button type="button" className="sn-btn-ghost"
               onClick={() => setRevision((value) => value + 1)}
-              disabled={isCatalogLoading}>
+              disabled={isSummaryLoading}>
               ↻ Actualiser
             </button>
           </div>
 
-          {isCatalogLoading && (
+          {isSummaryLoading && (
             <div role="status" className="sn-card p-5 text-sm text-slate-600">
-              Chargement du catalogue pédagogique autorisé…
+              Chargement des indicateurs pédagogiques sécurisés…
             </div>
           )}
-          {isCatalogError && (
+          {isSummaryError && (
             <div role="alert" className="sn-card border border-red-200 bg-red-50 p-5 text-sm text-red-800">
-              {catalogError}
+              {summaryError}
             </div>
           )}
           {overview && (

@@ -122,3 +122,66 @@ export function filterSchoolsForLocalAdmin(
     school.status === "active" && administeredSchoolIds.has(school.id),
   );
 }
+
+
+// Format contractuel de la RPC S4-A. Aucun champ nominatif, aucune identite
+// d'eleve/enseignant ni journal d'evenements n'est accepte depuis le reseau.
+const summaryFields = [
+  "schoolId", "classes", "classCount", "affiliatedStudentCount",
+  "affiliatedTeacherCount", "assignedStudentCount", "assignedTeacherCount",
+  "teachingAssignmentCount",
+];
+const classFields = [
+  "id", "name", "schoolYear", "levelName", "studentsAssigned",
+  "teachersAssigned", "subjects",
+];
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function exactFields(value: Record<string, unknown>, fields: string[]): boolean {
+  return Object.keys(value).length === fields.length &&
+    fields.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+function naturalCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+function nonEmptyText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function isSchoolPedagogyOverview(
+  value: unknown,
+  expectedSchoolId: string,
+): value is SchoolPedagogyOverview {
+  if (!isObject(value) || !expectedSchoolId ||
+      !exactFields(value, summaryFields) || value.schoolId !== expectedSchoolId ||
+      !Array.isArray(value.classes)) return false;
+
+  const counts = [
+    value.classCount, value.affiliatedStudentCount, value.affiliatedTeacherCount,
+    value.assignedStudentCount, value.assignedTeacherCount,
+    value.teachingAssignmentCount,
+  ];
+  if (!counts.every(naturalCount) ||
+      value.classCount !== value.classes.length ||
+      (value.assignedStudentCount as number) > (value.affiliatedStudentCount as number) ||
+      (value.assignedTeacherCount as number) > (value.affiliatedTeacherCount as number) ||
+      (value.teachingAssignmentCount as number) < (value.assignedTeacherCount as number)) {
+    return false;
+  }
+
+  const ids = new Set<string>();
+  for (const item of value.classes) {
+    if (!isObject(item) || !exactFields(item, classFields) ||
+        !nonEmptyText(item.id) || !nonEmptyText(item.name) ||
+        !nonEmptyText(item.schoolYear) || !nonEmptyText(item.levelName) ||
+        !naturalCount(item.studentsAssigned) || !naturalCount(item.teachersAssigned) ||
+        !Array.isArray(item.subjects) || !item.subjects.every(nonEmptyText) ||
+        item.studentsAssigned > (value.assignedStudentCount as number) ||
+        item.teachersAssigned > (value.assignedTeacherCount as number) ||
+        ids.has(item.id)) return false;
+    ids.add(item.id);
+  }
+  return true;
+}

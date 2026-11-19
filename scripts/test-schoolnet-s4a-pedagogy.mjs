@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {buildSchoolPedagogyOverview,filterSchoolsForLocalAdmin} from "../src/features/schools/lib/schoolPedagogyOverview.ts";
+import {buildSchoolPedagogyOverview,filterSchoolsForLocalAdmin,isSchoolPedagogyOverview} from "../src/features/schools/lib/schoolPedagogyOverview.ts";
 
 const fixture=()=>({
   school_id:"ecole-a",events:[],classes:[],students:[],teachers:[],
@@ -92,7 +92,7 @@ test("S4-A 13 - agrégat ne renvoie aucun nom d'élève ou enseignant",()=>{
 });
 test("S4-A 14 - seul catalogue RPC scolaire S3-C: aucun accès direct legacy",()=>{
  const s=read("../src/features/schools/pages/LocalSchoolPedagogy.tsx");
- assert.match(s,/getLocalSchoolAssignmentsCatalog\(schoolId\)/);
+ assert.match(s,/getLocalSchoolPedagogyOverview\(schoolId\)/);
  assert.doesNotMatch(s,/\.from\(["'](?:courses|classes|student_enrollments|course_enrollments)["']\)/);
 });
 test("S4-A 15 - rôle local seulement et données effacées si établissement change",()=>{
@@ -100,8 +100,8 @@ test("S4-A 15 - rôle local seulement et données effacées si établissement ch
  const router=read("../src/routes/router.tsx");
  assert.match(router,/RoleGate allowed=\{\["school_admin"\]\}/);
  assert.match(router,/path: "school\/pedagogy"/);
- assert.match(s,/setCatalog\(null\)/);
- assert.match(s,/catalog\.school_id === schoolId/);
+ assert.match(s,/setSummary\(null\)/);
+ assert.match(s,/summary\.schoolId !== schoolId/);
  assert.match(s,/cancelled/);
 });
 test("S4-A 16 - modules historiques restent verrouillés en navigation locale",()=>{
@@ -149,4 +149,72 @@ test("S4-A 22 - echec ferme sans identite et verification du raccordement UI",()
   const source=read("../src/features/schools/pages/LocalSchoolPedagogy.tsx");
   assert.ok(source.includes("Promise.all([getAdminSchools(), getActiveSchoolAdmins()])"));
   assert.ok(source.includes("filterSchoolsForLocalAdmin(rows, memberships, user.id)"));
+});
+
+
+test("S4-A 23 - la nouvelle synthese valide la structure minimale du modele historique",()=>{
+ const c=fixture(); c.classes.push(classRow("classe-1"));
+ c.students.push({id:"e1",full_name:"Nom prive",status:"active"});
+ c.teachers.push({id:"t1",full_name:"Nom prive",status:"active"});
+ c.student_assignments.push(student("e1"));
+ c.teacher_assignments.push(teacher("t1"));
+ const overview=buildSchoolPedagogyOverview(c,"ecole-a");
+ assert.equal(isSchoolPedagogyOverview(overview,"ecole-a"),true);
+ assert.equal(isSchoolPedagogyOverview(buildSchoolPedagogyOverview(fixture(),"ecole-a"),"ecole-a"),true);
+});
+
+test("S4-A 24 - la validation refuse les noms, evenements et identites supplementaires",()=>{
+ const good=buildSchoolPedagogyOverview(fixture(),"ecole-a");
+ assert.equal(isSchoolPedagogyOverview({...good,students:[{full_name:"Privé"}]},"ecole-a"),false);
+ assert.equal(isSchoolPedagogyOverview({...good,events:[]},"ecole-a"),false);
+ assert.equal(isSchoolPedagogyOverview({...good,student_id:"secret"},"ecole-a"),false);
+ const c=fixture();c.classes.push(classRow("classe-1"));
+ const withClass=buildSchoolPedagogyOverview(c,"ecole-a");
+ assert.equal(isSchoolPedagogyOverview({...withClass,classes:[{...withClass.classes[0],teacher_id:"secret"}]},"ecole-a"),false);
+});
+
+test("S4-A 25 - tenant, KPI incoherents, doublons et nombres suspects refuses",()=>{
+ const good=buildSchoolPedagogyOverview(fixture(),"ecole-a");
+ assert.equal(isSchoolPedagogyOverview(good,"ecole-b"),false);
+ assert.equal(isSchoolPedagogyOverview({...good,classCount:1},"ecole-a"),false);
+ assert.equal(isSchoolPedagogyOverview({...good,assignedStudentCount:4},"ecole-a"),false);
+ assert.equal(isSchoolPedagogyOverview({...good,assignedTeacherCount:-1},"ecole-a"),false);
+ const c=fixture();c.classes.push(classRow("classe-1"));
+ const withClass=buildSchoolPedagogyOverview(c,"ecole-a");
+ assert.equal(isSchoolPedagogyOverview({...withClass,classes:[withClass.classes[0],withClass.classes[0]],classCount:2},"ecole-a"),false);
+});
+
+test("S4-A 26 - aucune lecture nominative S3-C ni fallback en cas de RPC absente",()=>{
+ const page=read("../src/features/schools/pages/LocalSchoolPedagogy.tsx");
+ const api=read("../src/features/schools/lib/schoolPedagogyApi.ts");
+ assert.match(page,/getLocalSchoolPedagogyOverview\(schoolId\)/);
+ assert.doesNotMatch(page,/getLocalSchoolAssignmentsCatalog|buildSchoolPedagogyOverview/);
+ assert.match(page,/setSummary\(null\)/);
+ assert.match(page,/Aucun repli vers des données nominatives/);
+ assert.match(api,/supabase.rpc\("schoolnet_school_pedagogy_overview"/);
+ assert.match(api,/isSchoolPedagogyOverview\(data, schoolId\)/);
+ assert.doesNotMatch(api,/schoolnet_school_assignment_catalog|getLocalSchoolAssignmentsCatalog/);
+});
+
+test("S4-A 27 - proposition SQL minimise les reponses et reutilise le garde serveur",()=>{
+ const sql=read("../supabase/proposals/s4a_school_pedagogy_overview.sql");
+ assert.match(sql,/schoolnet_private\.assert_s3c_access\(p_school_id, false\)/);
+ assert.match(sql,/schoolnet_private\.local_school_pedagogy_overview/);
+ assert.match(sql,/SECURITY DEFINER/);
+ assert.match(sql,/SECURITY INVOKER/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION public\.schoolnet_school_pedagogy_overview\(uuid\)/);
+ assert.match(sql,/GRANT EXECUTE ON FUNCTION public\.schoolnet_school_pedagogy_overview\(uuid\)/);
+ assert.match(sql,/effective_students/);
+ assert.match(sql,/effective_teachers/);
+ assert.doesNotMatch(sql,/full_name|student_name|teacher_name|actor_name/);
+});
+
+test("S4-A 28 - le scenario SQL A B teste la nouvelle RPC sans ecriture hebergee",()=>{
+ const wf=read("../.github/workflows/schoolnet-s4a-tenant-ci.yml");
+ const fixtureSql=read("../tests/s4a-tenant-ci/fixtures/tenant-a-b.sql");
+ assert.match(wf,/s4a_school_pedagogy_overview\.sql/);
+ assert.match(fixtureSql,/schoolnet_school_pedagogy_overview/);
+ assert.match(fixtureSql,/S4A_TENANT_A_B_ISOLATION_PASS/);
+ assert.match(fixtureSql,/ROLLBACK;/);
+ assert.doesNotMatch(wf,/supabase db push|supabase link|secrets\./);
 });

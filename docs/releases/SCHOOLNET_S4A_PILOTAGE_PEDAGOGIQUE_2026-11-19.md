@@ -174,3 +174,33 @@ de publication, indépendamment des tests fonctionnels.
 
 **Aucun déploiement et aucune modification des
 projets Supabase hébergés à ce stade.**
+
+
+## Mise a jour V5 — 19 novembre 2026 : minimisation de S4-A
+
+La recette S4-A a valide 22 tests locaux et une CI A/B sur Supabase jetable.
+Le correctif de confidentialite est soumis a de nouveaux controles en PR #17.
+
+**Nouveau contrat serveur, PREPARE mais non installe sur la production :**
+- `supabase/proposals/s4a_school_pedagogy_overview.sql` : RPC
+  `public.schoolnet_school_pedagogy_overview(p_school_id)`, lecture seule,
+  facade SECURITY INVOKER et agregation SECURITY DEFINER privee,
+  protegee par `schoolnet_private.assert_s3c_access`.
+- La reponse ne contient que `schoolId`, les 6 indicateurs chiffrés
+  et les classes officielles avec effectifs et matieres.
+  Aucun nom ou UUID personnel, aucune ligne de journal S3-C n'est transmis.
+- `src/features/schools/lib/schoolPedagogyApi.ts` : appel strict a la nouvelle
+  RPC ; le format JSON est valide avant affichage.
+- `LocalSchoolPedagogy.tsx` : consomme la synthese sans appeler
+  `schoolnet_school_assignment_catalog`. Une RPC manquante ou refusee
+  bloque l'affichage ; il n'existe aucun fallback de donnees nominatives.
+- Les RPC et interfaces S3-C restent INCHANGEES. Les cours libres restent
+  strictement distincts des classes officielles.
+
+**Ordre de livraison obligatoire :** recette SQL / tests / revue, validation
+explicite de l'installation du RPC S4-A sur Supabase principal, activation
+securisee, validation du navigateur, puis accord distinct de fusion et de
+publication. A ce stade, S4-A ne doit PAS etre considere installe :
+une Preview candidate peut afficher « synthese non encore activee ».
+Le nouveau RPC ne doit jamais etre applique par `supabase db push`
+sur les migrations historiques deja enregistrees.

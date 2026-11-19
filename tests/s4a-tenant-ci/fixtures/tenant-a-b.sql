@@ -47,7 +47,7 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 DO $qa_a$
-DECLARE cat jsonb; blocked boolean:=false; direct_blocked boolean:=false;
+DECLARE cat jsonb; summary jsonb; denied_summary boolean:=false; blocked boolean:=false; direct_blocked boolean:=false;
  preview_blocked boolean:=false;
 BEGIN
  cat:=public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000001');
@@ -64,6 +64,10 @@ BEGIN
    PERFORM public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000002');
  EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
  IF NOT blocked THEN RAISE EXCEPTION 'S4A : admin A accede a B'; END IF;
+ BEGIN
+   PERFORM public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000002');
+ EXCEPTION WHEN SQLSTATE '42501' THEN denied_summary:=true; END;
+ IF NOT denied_summary THEN RAISE EXCEPTION 'S4A : synthese A accede a B'; END IF;
 
  BEGIN
    PERFORM count(*) FROM public.schoolnet_school_student_class_assignments;
@@ -78,13 +82,35 @@ BEGIN
     '10000000-0000-4000-8000-000000000005');
  EXCEPTION WHEN SQLSTATE '42501' THEN preview_blocked:=true; END;
  IF NOT preview_blocked THEN RAISE EXCEPTION 'S4A : ecriture autorisee depuis Preview'; END IF;
+
+ -- Le JSON transmis au navigateur doit correspondre aux chiffres du
+ -- catalogue S3-C tout en ne contenant AUCUN nom/person_id/evenement.
+ summary:=public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000001');
+ IF summary->>'schoolId'<>'20000000-0000-4000-8000-000000000001'
+   OR (summary->>'classCount')::int<>1
+   OR (summary->>'affiliatedStudentCount')::int<>1
+   OR (summary->>'affiliatedTeacherCount')::int<>1
+   OR (summary->>'assignedStudentCount')::int<>1
+   OR (summary->>'assignedTeacherCount')::int<>1
+   OR (summary->>'teachingAssignmentCount')::int<>1
+   OR jsonb_array_length(summary->'classes')<>1
+   OR summary->'classes'->0->>'id'<>'50000000-0000-4000-8000-000000000001'
+   OR (summary->'classes'->0->>'studentsAssigned')::int<>1
+   OR (summary->'classes'->0->>'teachersAssigned')::int<>1
+   OR summary->'classes'->0->'subjects'<>'["Mathematiques"]'::jsonb
+   OR (SELECT count(*) FROM jsonb_object_keys(summary))<>8
+   OR (SELECT count(*) FROM jsonb_object_keys(summary->'classes'->0))<>7
+   OR summary ? 'events' OR summary ? 'students' OR summary ? 'teachers'
+   OR summary::text LIKE '%Eleve A%' OR summary::text LIKE '%Enseignant A%'
+   OR summary::text LIKE '%10000000-0000-4000-8000-%'
+ THEN RAISE EXCEPTION 'S4A : synthese A incorrecte ou informations nominatives exposees'; END IF;
  RAISE NOTICE 'PASS S4A A : catalogue A, B refuse, table privee, Preview refusee';
 END;
 $qa_a$;
 
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
 DO $qa_b$
-DECLARE cat jsonb;blocked boolean:=false;
+DECLARE cat jsonb; summary jsonb; blocked boolean:=false; denied_summary boolean:=false;
 BEGIN
  cat:=public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000002');
  IF cat->>'school_id'<>'20000000-0000-4000-8000-000000000002'
@@ -97,6 +123,19 @@ BEGIN
    PERFORM public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000001');
  EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
  IF NOT blocked THEN RAISE EXCEPTION 'S4A : admin B accede a A'; END IF;
+ BEGIN
+   PERFORM public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN SQLSTATE '42501' THEN denied_summary:=true; END;
+ IF NOT denied_summary THEN RAISE EXCEPTION 'S4A : synthese B accede a A'; END IF;
+ summary:=public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000002');
+ IF summary->>'schoolId'<>'20000000-0000-4000-8000-000000000002'
+   OR (summary->>'classCount')::int<>1
+   OR (summary->>'assignedStudentCount')::int<>1
+   OR (summary->>'teachingAssignmentCount')::int<>1
+   OR summary->'classes'->0->>'id'<>'50000000-0000-4000-8000-000000000002'
+   OR summary::text LIKE '%Eleve B%' OR summary::text LIKE '%Enseignant B%'
+   OR summary::text LIKE '%10000000-0000-4000-8000-%'
+ THEN RAISE EXCEPTION 'S4A : synthese B incorrecte ou fuite identite'; END IF;
  RAISE NOTICE 'PASS S4A B : catalogue B, A refuse';
 END;
 $qa_b$;
@@ -109,6 +148,11 @@ BEGIN
   PERFORM public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000001');
  EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
  IF NOT blocked THEN RAISE EXCEPTION 'S4A : role eleve autorise a administrer'; END IF;
+ blocked:=false;
+ BEGIN
+   PERFORM public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'S4A : role eleve lit la synthese'; END IF;
  RAISE NOTICE 'PASS S4A : role incorrect refuse';
 END;
 $qa_role$;
@@ -126,6 +170,11 @@ BEGIN
   PERFORM public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000002');
  EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
  IF NOT blocked THEN RAISE EXCEPTION 'S4A : admin revoque encore actif'; END IF;
+ blocked:=false;
+ BEGIN
+   PERFORM public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000002');
+ EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'S4A : admin revoque lit la synthese'; END IF;
  RAISE NOTICE 'PASS S4A : admin revoque refuse';
 END;
 $qa_revoked$;
@@ -142,6 +191,11 @@ BEGIN
   PERFORM public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000001');
  EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
  IF NOT blocked THEN RAISE EXCEPTION 'S4A : ecole suspendue accessible'; END IF;
+ blocked:=false;
+ BEGIN
+   PERFORM public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'S4A : ecole suspendue lit la synthese'; END IF;
  RAISE NOTICE 'PASS S4A : ecole suspendue refusee';
 END;
 $qa_suspended$;
@@ -155,6 +209,11 @@ BEGIN
   PERFORM public.schoolnet_school_assignment_catalog('20000000-0000-4000-8000-000000000001');
  EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
  IF NOT blocked THEN RAISE EXCEPTION 'S4A : anonyme autorise'; END IF;
+ blocked:=false;
+ BEGIN
+   PERFORM public.schoolnet_school_pedagogy_overview('20000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN SQLSTATE '42501' THEN blocked:=true; END;
+ IF NOT blocked THEN RAISE EXCEPTION 'S4A : anonyme lit la synthese'; END IF;
  RAISE NOTICE 'PASS S4A : appel anonyme refuse';
 END;
 $qa_anon$;

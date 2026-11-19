@@ -43,3 +43,24 @@ Preview Vercel, conformément à l'intégration Git du projet existant.
 Il n'y a aucune fusion `main` et aucun déploiement en production.
 
 Workflow : `.github/workflows/schoolnet-s4a-tenant-ci.yml`.
+
+
+## Evolution V5 - minimisation des donnees (S4-A)
+
+La nouvelle proposition `supabase/proposals/s4a_school_pedagogy_overview.sql`
+ajoute `public.schoolnet_school_pedagogy_overview(uuid)` sans modifier les RPC
+existantes de S3-C. Son helper prive rappelle `assert_s3c_access`.
+
+La reponse contient **seulement** les compteurs globaux, les effectifs par
+classe, les libelles non nominatifs des classes, des annees et des matieres.
+Ni noms ni identifiants d'eleves/enseignants, ni historique d'evenements.
+
+Cette recette SQL A/B exerce desormais les **deux** RPC en Supabase local
+jetable : equivalence des effectifs attendus, absence de PII, refus A/B,
+refus aux roles inadaptes, aux administrateurs revoques et aux anonymes.
+Les anciens tests sont conserves.
+
+**Aucune installation sur le projet principal** : la proposition S4-A sera
+soumise a approbation explicite avant toute publication. Tant que la nouvelle
+RPC n'est pas installee, l'interface candidate S4-A affiche un message
+d'indisponibilite, sans repli vers la RPC nominative S3-C.
