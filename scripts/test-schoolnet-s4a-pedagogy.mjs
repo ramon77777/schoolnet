@@ -147,6 +147,6 @@ test("S4-A 22 - echec ferme sans identite et verification du raccordement UI",()
   assert.deepEqual(filterSchoolsForLocalAdmin([schoolFor("A")],[membershipFor("A","u")],""),[]);
   assert.deepEqual(filterSchoolsForLocalAdmin([schoolFor("A")],[],"u"),[]);
   const source=read("../src/features/schools/pages/LocalSchoolPedagogy.tsx");
-  assert.match(source,/Promise\\.all\\(\\[getAdminSchools\\(\\), getActiveSchoolAdmins\\(\\)\\]\\)/);
-  assert.match(source,/filterSchoolsForLocalAdmin\\(rows, memberships, user\\.id\\)/);
+  assert.ok(source.includes("Promise.all([getAdminSchools(), getActiveSchoolAdmins()])"));
+  assert.ok(source.includes("filterSchoolsForLocalAdmin(rows, memberships, user.id)"));
 });
