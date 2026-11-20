@@ -6,6 +6,10 @@ on:
       - '.github/workflows/schoolnet-s4b3n-notification-ci.yml'
       - 'tests/s4b3n-tenant-ci/**'
       - 'supabase/proposals/s4b3n_school_assessment_notifications.sql'
+      - 'supabase/migrations/20261120130939_schoolnet_s4b3n_official_assessment_notifications.sql'
+      - 'supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql'
+      - 'supabase/verification/s4b3n_legacy_assessment_notify_permission_rollback_manual.sql'
+      - 'docs/releases/SCHOOLNET_S4B3N_NOTIFICATIONS_EVALUATIONS_2026-11-20.md'
       - 'supabase/verification/s4b3n_school_assessment_notifications_rollback_manual.sql'
       - 'src/features/notifications/pages/NotificationsPage.tsx'
       - 'scripts/test-schoolnet-s4b3n-notifications.mjs'
@@ -79,6 +83,13 @@ jobs:
           psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3n-tenant-ci/fixtures/notification-core.sql
           psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3a_school_assessment_links.sql
           psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3n_school_assessment_notifications.sql
+      - name: Tester le durcissement du trigger V1 sur base locale
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql | tee /tmp/s4b3n-acl-revoke.txt
+          grep -Fq 'S4B3N_PERMISSIONS_HARDENING_PASS' /tmp/s4b3n-acl-revoke.txt
       - name: Tester transitions, affectations A/B, dedoublonnage et V1
         env:
           PGPASSWORD: postgres
@@ -86,6 +97,13 @@ jobs:
           set -euo pipefail
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3n-tenant-ci/fixtures/notifications-a-b.sql | tee /tmp/s4b3n-tests.txt
           grep -Fq 'S4B3N_TENANT_A_B_PASS' /tmp/s4b3n-tests.txt
+      - name: Tester le rollback des seuls droits V1 sur base locale
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3n_legacy_assessment_notify_permission_rollback_manual.sql | tee /tmp/s4b3n-acl-rollback.txt
+          grep -Fq 'S4B3N_PERMISSIONS_ROLLBACK_PASS' /tmp/s4b3n-acl-rollback.txt
       - name: Verifier le rollback sans toucher a S4-B.3-A ni aux migrations V1
         env:
           PGPASSWORD: postgres
