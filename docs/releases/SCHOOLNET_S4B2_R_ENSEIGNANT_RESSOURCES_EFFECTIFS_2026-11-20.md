@@ -2,7 +2,7 @@
 
 **Date : 20 novembre 2026**  
 **Base :** `main` `73bcbc394af44764b70cf2d18aef50e0cca1ddbf`  
-**Statut :** PR de developpement ; **aucune migration appliquee sur Supabase principal**, aucune fusion sur `main`, aucune publication Vercel.
+**Statut :** migration SQL installee sur Supabase principal le 20 novembre 2026 (`20261120104039`), fonctions et permissions verifiees. Publication et fusion de la PR n° 21 autorisees, en cours de livraison.
 
 ## Constat verifie en lecture seule
 
@@ -36,8 +36,10 @@ propres restrictions. Les URLs et fichiers ne sont pas modifies.
 
 ## Correctif effectifs (fonction de lecture complementaire)
 
-Proposition SQL **non installee** :
+Proposition SQL de reference :
 `supabase/proposals/s4b2r_teacher_course_class_summary.sql`.
+Migration suivie et deja appliquee sur Supabase principal :
+`supabase/migrations/20261120104039_schoolnet_s4b2r_teacher_course_class_summary_20261120.sql`.
 
 Deux fonctions uniquement :
 1. `schoolnet_private.teacher_course_class_summary(p_course_id)` :
@@ -97,7 +99,4 @@ Aucune inscription, notation, progression ou ressource nouvelle.
   `course_enrollments`, leurs progressions et les RPC S4-B.1/S4-B.2
   continuent de fonctionner.
 
-**Aucune activation SQL ni fusion/production avant les autorisations
-specifiques**. La Preview frontend ne peut pas fournir le nouvel
-effectif tant que la proposition RPC n'est pas installee dans un
-environnement autorise, sans impacter les modules V1 existants.
+**Activation SQL autorisee et realisee** le 20 novembre 2026 (migration version `20261120104039`). Controle effectue : fonction publique `SECURITY INVOKER`, helper prive `SECURITY DEFINER`, `search_path=pg_catalog`, EXECUTE reserve a `authenticated`, aucun droit `anon`. Lecture autorisee du cours Mathematiques 6e A : `officialStudentCount=1`, sans donnee nominative. Donnees existantes verifiees : 2 ressources et 0 inscription V1 pour ce cours. La fusion GitHub et la publication Vercel sont autorisees dans la presente livraison.
