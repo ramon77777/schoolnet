@@ -36,3 +36,14 @@ avec ses propres vérifications d'isolation.
 La branche de développement crée automatiquement une Preview Vercel
 de lecture seule tant que la migration n'est pas autorisée et activée
 sur Supabase principal.
+
+
+## Correction de la fixture de rollback — 20 novembre 2026
+
+L'installation réelle S4-B.1 dépend des fondations **S3-C et S4-A**.
+La recette de rollback manuel vérifie donc la présence des deux fonctions
+historiques, pour ne jamais les supprimer. La CI prépare désormais S3-C,
+puis la proposition originale S4-A, puis le pont S4-B.1 sur la même base
+éphémère. Cette correction concerne **uniquement la fixture CI** :
+la migration S4-B.1 en production était déjà installée et post-vérifiée,
+aucune modification SQL supplémentaire du projet hébergé n'est requise.
