@@ -23,7 +23,8 @@
     "qa:e2e:readiness": "node --experimental-strip-types --test scripts/test-schoolnet-e2e-readiness.mjs",
     "qa:sandbox:prepare": "node --test scripts/test-schoolnet-sandbox-preparation.mjs",
     "sandbox:check": "node scripts/check-schoolnet-sandbox-env.mjs",
-    "qa:s4b3n": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3n-notifications.mjs"
+    "qa:s4b3n": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3n-notifications.mjs",
+    "qa:s4b3b0": "node --test scripts/test-schoolnet-s4b3b0-security.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
