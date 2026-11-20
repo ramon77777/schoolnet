@@ -2,8 +2,9 @@
 
 **Date :** 20 novembre 2026  
 **Socle livre :** S4-B.1 / PR n° 18 / `main` `41f1b420`  
-**Statut S4-B.2 :** branche de developpement, **proposition SQL non installee**,
-PR en brouillon, pas de fusion ni de publication de production.
+**Statut S4-B.2 :** migration SQL **installee sur Supabase principal**
+le 20 novembre 2026, version `20261120085927` ; **PR n° 19 toujours en brouillon**, 
+ni fusion de `main` ni publication Vercel.
 
 ## Objectif et perimetre
 
@@ -74,11 +75,20 @@ construit une base Supabase **jetable** et teste les ecoles A et B,
 les roles, les revocations, les niveaux de visibilite des
 ressources, l'integrite du parcours V1 et le rollback.
 
-Apres tests reussis : revue de la proposition SQL, controle du
-projet principal **en lecture seule**, puis accord distinct pour
-l'installation SQL. La fusion et la publication Vercel necessitent
-une seconde autorisation specifique. Les tests avec des eleves
-reels seront effectues sans creer d'inscriptions fictives en V1.
+Installation SQL autorisee et effectuee : migration
+`20261120085927_schoolnet_s4b2_student_school_courses.sql`.
+Validation postinstallation : cinq RPC, trois fonctions privees
+`SECURITY DEFINER`, deux facades publiques `SECURITY INVOKER`,
+cinq chemins `search_path=pg_catalog`, cinq privileges controles ;
+`anon` ne dispose d'aucun `EXECUTE`.
+Le scenario sans affectation eleve active retourne une liste vide
+et refuse la lecture directe d'un cours ; le controle anonyme est refuse.
+Le cache de schema PostgREST a ete notifie.
+Les valeurs V1 observees avant/apres restent 5 cours et 2 inscriptions,
+avec un cours officiel rattache et zero affectation eleve active.
+La fusion GitHub et la publication Vercel exigent **une autorisation
+specifique ulterieure**. Le test navigateur eleve et les inscriptions
+reelles seront effectues a l'etape de recette sans importer V1.
 
 ## Points volontairement exclus
 
