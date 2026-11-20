@@ -254,3 +254,337 @@ CREATE TRIGGER trg_s4b3b0_protect_homework_submissions
 
 -- Les correctifs des RPC historiques sont ajoutés ci-dessous à partir
 -- des signatures constatées en production, et restent tous NON appliqués.
+CREATE OR REPLACE FUNCTION public.mark_homework_submission_as_graded(p_submission_id uuid, p_score numeric, p_feedback text, p_detailed_feedback text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  update public.homework_submissions hs
+  set
+    status = 'graded',
+    score = p_score,
+    feedback = p_feedback,
+    detailed_feedback = p_detailed_feedback,
+    graded_at = now(),
+    graded_by = auth.uid(),
+    updated_at = now()
+  where hs.id = p_submission_id
+    and exists (
+      select 1
+      from public.assessments a
+      where a.id = hs.homework_id
+        and a.created_by = auth.uid()
+        and a.type = 'assignment'
+        AND NOT schoolnet_private.s4b3b0_is_official_assessment(a.id)
+    );
+
+  if not found then
+    raise exception 'Rendu introuvable ou non autorisé.';
+  end if;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.mark_homework_submission_as_graded(p_submission_id uuid, p_score numeric, p_feedback text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  update public.homework_submissions hs
+  set
+    status = 'graded',
+    score = p_score,
+    feedback = p_feedback,
+    graded_at = now(),
+    graded_by = auth.uid(),
+    updated_at = now()
+  where hs.id = p_submission_id
+    and exists (
+      select 1
+      from public.assessments a
+      where a.id = hs.homework_id
+        and a.created_by = auth.uid()
+        and a.type = 'assignment'
+        AND NOT schoolnet_private.s4b3b0_is_official_assessment(a.id)
+    );
+
+  if not found then
+    raise exception 'Rendu introuvable ou non autorisé.';
+  end if;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.mark_submission_as_graded_v2(p_submission_id uuid, p_feedback text DEFAULT NULL::text, p_freeform_score numeric DEFAULT NULL::numeric, p_freeform_feedback text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_question_total numeric(10,2) := 0;
+  v_file_score numeric(10,2) := 0;
+  v_file_max numeric(10,2) := 0;
+  v_assessment_max numeric(10,2) := 0;
+  v_exam_content_mode text;
+  v_total numeric(10,2) := 0;
+  v_has_file_part boolean := false;
+begin
+  /*
+   * Vérifie que la soumission existe
+   * et que l'évaluation appartient bien à l'enseignant connecté.
+   */
+  select
+    coalesce(a.max_score, 0),
+    coalesce(a.exam_file_max_score, 0),
+    a.exam_content_mode
+  into
+    v_assessment_max,
+    v_file_max,
+    v_exam_content_mode
+  from public.assessment_submissions s
+  join public.assessments a
+    on a.id = s.assessment_id
+  where s.id = p_submission_id
+    and a.created_by = auth.uid()
+    AND NOT schoolnet_private.s4b3b0_is_official_assessment(a.id);
+
+  if not found then
+    raise exception
+      'Soumission introuvable ou non autorisée.';
+  end if;
+
+  v_has_file_part :=
+    v_exam_content_mode in (
+      'file_and_questions',
+      'file_only'
+    );
+
+  /*
+   * Total des questions SchoolNet.
+   */
+  select
+    coalesce(sum(points_awarded), 0)
+  into v_question_total
+  from public.submission_question_grades
+  where submission_id = p_submission_id;
+
+  /*
+   * Partie sujet fichier.
+   */
+  if v_has_file_part then
+    v_file_score := coalesce(p_freeform_score, 0);
+
+    if v_file_score < 0 then
+      raise exception
+        'La note du sujet fichier ne peut pas être négative.';
+    end if;
+
+    if v_file_score > v_file_max then
+      raise exception
+        'La note du sujet fichier (%) dépasse le maximum autorisé (%).',
+        v_file_score,
+        v_file_max;
+    end if;
+  else
+    v_file_score := 0;
+  end if;
+
+  /*
+   * Score global.
+   */
+  v_total := round(
+    v_question_total + v_file_score,
+    2
+  );
+
+  if v_assessment_max > 0
+     and v_total > v_assessment_max then
+    raise exception
+      'Le score calculé (%) dépasse la note maximale de l''évaluation (%).',
+      v_total,
+      v_assessment_max;
+  end if;
+
+  /*
+   * Enregistrement atomique de la correction.
+   */
+  update public.assessment_submissions
+  set
+    status = 'graded',
+    score = v_total,
+    feedback = p_feedback,
+    freeform_score =
+      case
+        when v_has_file_part then v_file_score
+        else null
+      end,
+    freeform_feedback =
+      case
+        when v_has_file_part
+          then nullif(trim(p_freeform_feedback), '')
+        else null
+      end,
+    graded_at = now(),
+    graded_by = auth.uid()
+  where id = p_submission_id;
+
+  if not found then
+    raise exception 'Soumission introuvable.';
+  end if;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.mark_submission_as_graded(p_submission_id uuid, p_feedback text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_question_total numeric(10,2);
+  v_freeform_score numeric(10,2);
+  v_total numeric(10,2);
+BEGIN
+  IF auth.uid() IS NULL OR NOT EXISTS (
+    SELECT 1
+      FROM public.assessment_submissions s
+      JOIN public.assessments a ON a.id=s.assessment_id
+    WHERE s.id=p_submission_id
+      AND a.created_by=auth.uid()
+      AND NOT schoolnet_private.s4b3b0_is_official_assessment(a.id)
+  ) THEN
+    RAISE EXCEPTION 'S4B3B0_GRADING_NOT_AUTHORIZED' USING ERRCODE='42501';
+  END IF;
+  -- 1. Total des questions créées dans SchoolNet
+  select coalesce(sum(points_awarded), 0)
+  into v_question_total
+  from public.submission_question_grades
+  where submission_id = p_submission_id;
+
+  -- 2. Note attribuée aux réponses du sujet fichier
+  select coalesce(freeform_score, 0)
+  into v_freeform_score
+  from public.assessment_submissions
+  where id = p_submission_id;
+
+  if not found then
+    raise exception 'Soumission introuvable.';
+  end if;
+
+  -- 3. Note finale
+  v_total :=
+    coalesce(v_question_total, 0)
+    +
+    coalesce(v_freeform_score, 0);
+
+  -- 4. Enregistrement de la correction
+  update public.assessment_submissions
+  set
+    status = 'graded',
+    score = v_total,
+    feedback = p_feedback,
+    graded_at = now(),
+    graded_by = auth.uid()
+  where id = p_submission_id;
+
+  if not found then
+    raise exception 'Soumission introuvable.';
+  end if;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.publish_assessment_submission(p_submission_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL OR NOT EXISTS (
+    SELECT 1
+      FROM public.assessment_submissions s
+      JOIN public.assessments a ON a.id=s.assessment_id
+    WHERE s.id=p_submission_id
+      AND a.created_by=auth.uid()
+      AND NOT schoolnet_private.s4b3b0_is_official_assessment(a.id)
+  ) THEN
+    RAISE EXCEPTION 'S4B3B0_GRADING_NOT_AUTHORIZED' USING ERRCODE='42501';
+  END IF;
+  update public.assessment_submissions
+  set
+    status = 'published',
+    published_at = now()
+  where id = p_submission_id
+    and status = 'graded';
+
+  if not found then
+    raise exception 'Soumission introuvable ou non corrigée.';
+  end if;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.publish_homework_submission(p_submission_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  update public.homework_submissions hs
+  set
+    status = 'published',
+    published_at = now(),
+    updated_at = now()
+  where hs.id = p_submission_id
+    and hs.status = 'graded'
+    and exists (
+      select 1
+      from public.assessments a
+      where a.id = hs.homework_id
+        and a.created_by = auth.uid()
+        and a.type = 'assignment'
+        AND NOT schoolnet_private.s4b3b0_is_official_assessment(a.id)
+    );
+
+  if not found then
+    raise exception 'Rendu introuvable ou non corrigé.';
+  end if;
+end;
+$function$;
+
+-- Les RPC historiques restent utilisables par les mêmes acteurs V1,
+-- mais vérifient maintenant ownership et statut d'opt-in officiel.
+REVOKE EXECUTE ON FUNCTION public.publish_assessment_submission(uuid) FROM PUBLIC,anon;
+REVOKE EXECUTE ON FUNCTION public.mark_submission_as_graded(uuid,text) FROM PUBLIC,anon;
+REVOKE EXECUTE ON FUNCTION public.mark_submission_as_graded_v2(uuid,text,numeric,text) FROM PUBLIC,anon;
+REVOKE EXECUTE ON FUNCTION public.mark_homework_submission_as_graded(uuid,numeric,text) FROM PUBLIC,anon;
+REVOKE EXECUTE ON FUNCTION public.mark_homework_submission_as_graded(uuid,numeric,text,text) FROM PUBLIC,anon;
+REVOKE EXECUTE ON FUNCTION public.publish_homework_submission(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.publish_assessment_submission(uuid) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.mark_submission_as_graded(uuid,text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.mark_submission_as_graded_v2(uuid,text,numeric,text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.mark_homework_submission_as_graded(uuid,numeric,text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.mark_homework_submission_as_graded(uuid,numeric,text,text) TO authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.publish_homework_submission(uuid) TO authenticated,service_role;
+
+-- Recalcul de note strictement réservé au trigger technique.
+REVOKE EXECUTE ON FUNCTION public.recalculate_submission_score(uuid)
+ FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.recalculate_submission_score(uuid) TO service_role;
+
+DO $postflight$
+BEGIN
+ IF has_function_privilege('anon','public.publish_assessment_submission(uuid)','EXECUTE')
+ OR has_function_privilege('anon','public.mark_submission_as_graded(uuid,text)','EXECUTE')
+ OR has_function_privilege('authenticated','public.recalculate_submission_score(uuid)','EXECUTE')
+ OR to_regprocedure('schoolnet_private.s4b3b0_is_official_question(uuid)') IS NULL
+ OR (SELECT count(*) FROM pg_catalog.pg_policies
+      WHERE schemaname='public' AND policyname LIKE 's4b3b0_%')<>8
+ OR (SELECT count(*) FROM pg_catalog.pg_trigger
+      WHERE tgname LIKE 'trg_s4b3b0_%' AND tgenabled='O')<>2
+ THEN RAISE EXCEPTION 'S4B3B0_POSTFLIGHT_FAILED'; END IF;
+END $postflight$;
+SELECT 'S4B3B0_SECURITY_FOUNDATION_PASS' AS result;
