@@ -217,7 +217,7 @@ CREATE OR REPLACE FUNCTION public.mark_homework_submission_as_graded(p_submissio
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'pg_catalog'
 AS $function$
 begin
   update public.homework_submissions hs
@@ -249,7 +249,7 @@ CREATE OR REPLACE FUNCTION public.mark_homework_submission_as_graded(p_submissio
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'pg_catalog'
 AS $function$
 begin
   update public.homework_submissions hs
@@ -280,7 +280,7 @@ CREATE OR REPLACE FUNCTION public.mark_submission_as_graded_v2(p_submission_id u
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'pg_catalog'
 AS $function$
 declare
   v_question_total numeric(10,2) := 0;
@@ -400,7 +400,7 @@ CREATE OR REPLACE FUNCTION public.mark_submission_as_graded(p_submission_id uuid
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'pg_catalog'
 AS $function$
 declare
   v_question_total numeric(10,2);
@@ -459,7 +459,7 @@ CREATE OR REPLACE FUNCTION public.publish_assessment_submission(p_submission_id 
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'pg_catalog'
 AS $function$
 BEGIN
   IF auth.uid() IS NULL OR NOT EXISTS (
@@ -489,7 +489,7 @@ CREATE OR REPLACE FUNCTION public.publish_homework_submission(p_submission_id uu
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'pg_catalog'
 AS $function$
 begin
   update public.homework_submissions hs
