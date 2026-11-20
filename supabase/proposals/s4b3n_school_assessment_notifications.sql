@@ -304,8 +304,7 @@ begin
 
   return new;
 end;
-$function$
-
+$function$;
 
 CREATE TRIGGER trg_s4b3n_official_assessment_link_notifications
 AFTER INSERT OR UPDATE OF status
