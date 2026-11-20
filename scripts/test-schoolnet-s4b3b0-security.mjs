@@ -49,6 +49,12 @@ test("Même un enseignant propriétaire ne peut modifier une copie officielle vi
  assert.match(scenario,/B0_PASS_OWNER_TEACHER_RESTRICTED_TO_OFFICIAL_RPC/);
 });
 
+test("Les six RPC historiques remplacees fixent leur search_path",()=>{
+ assert.doesNotMatch(sql,/SET search_path TO 'public'/);
+ assert.equal([...sql.matchAll(/SET search_path TO 'pg_catalog'/g)].length,6);
+ assert.match(rollback,/SET search_path TO 'public'/);
+});
+
 test("La correction V1 n'est pas accessible a l'eleve ni au mauvais professeur",()=>{
  assert.match(sql,/S4B3B0_GRADING_NOT_AUTHORIZED/);
  assert.match(sql,/a\.created_by=auth\.uid\(\)/);
