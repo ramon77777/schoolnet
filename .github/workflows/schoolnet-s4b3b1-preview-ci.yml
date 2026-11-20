@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/schoolnet-s4b3b1-preview-ci.yml'
       - 'supabase/proposals/s4b3b1_student_official_assessment_preview.sql'
+      - 'supabase/migrations/20261120145127_schoolnet_s4b3b1_student_official_assessment_preview.sql'
       - 'supabase/verification/s4b3b1_student_official_assessment_preview_rollback_manual.sql'
       - 'tests/s4b3b1-tenant-ci/**'
       - 'src/features/student/pages/StudentSchoolAssessmentPreview.tsx'
