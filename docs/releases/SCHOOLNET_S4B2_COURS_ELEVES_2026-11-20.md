@@ -24,7 +24,8 @@ eleves et ne pas recalculer les progressions, devoirs ou notes.
   actif de l'ecole, affecte activement a la classe et l'annee,
   une ecole active, le cours/lien actifs, une affectation
   professeur-matiere active, un enseignant encore affilie,
-  une matiere active et la cohérence du createur V1 du cours.
+  une matiere active, la coherence du createur V1 du cours, de sa classe,
+  de son niveau, de ses matieres V1 et du role actuel de l'enseignant.
 - `public.schoolnet_student_school_courses()` : catalogue
   JSON minimal (titres, etablissements, classes, niveaux de matiere,
   annee, descriptions) ; **aucun nom ni ID d'eleve ou d'enseignant**.
@@ -67,7 +68,7 @@ etre traitee separement et explicitement autorisee.
 
 ## Isolation, tests et validation
 
-`npm run qa:s4b2` : 22 tests de contrat et non-regression frontend.
+`npm run qa:s4b2` : 23 tests de contrat et non-regression frontend.
 Le workflow `.github/workflows/schoolnet-s4b2-tenant-ci.yml`
 construit une base Supabase **jetable** et teste les ecoles A et B,
 les roles, les revocations, les niveaux de visibilite des

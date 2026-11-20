@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   quality:
-    name: S4-B.2 - 22 tests, lint et build
+    name: S4-B.2 - 23 tests, lint et build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

@@ -137,3 +137,13 @@ test("S4-B.2 22 - ressources V1 publiques documentees",()=>{
  assert.match(doc,/public/);
  assert.match(doc,/ne protège pas|ne garantit pas/);
 });
+
+test("S4-B.2 23 - un cours modifie apres liaison ne fuit jamais la classe",()=>{
+ const sql=read("supabase/proposals/s4b2_student_school_courses.sql");
+ assert.match(sql,/co\.created_by=l\.teacher_id/);
+ assert.match(sql,/co\.class_id IS NULL OR co\.class_id=l\.class_id/);
+ assert.match(sql,/co\.level_id IS NULL OR co\.level_id=c\.level_id/);
+ assert.match(sql,/teacher_profile\.role::text='teacher'/);
+ assert.match(sql,/public\.course_subjects cs/);
+ assert.match(sql,/cs\.subject_id<>l\.subject_id/);
+});

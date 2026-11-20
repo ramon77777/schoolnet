@@ -263,6 +263,68 @@ RESET ROLE;
 UPDATE public.academic_subjects SET is_active=true
 WHERE id='40000000-0000-4000-8000-000000000001';
 
+-- Protection contre les modifications de cours V1 apres leur rattachement :
+-- changer le niveau, la classe, la matiere ou le role enseignant bloque
+-- l'acces scolaire sans importer la moindre inscription V1.
+INSERT INTO public.levels(id,name) VALUES (2,'5e');
+UPDATE public.courses SET level_id=2
+WHERE id='70000000-0000-4000-8000-000000000001';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
+DO $changed_level$
+BEGIN
+ IF jsonb_array_length(public.schoolnet_student_school_courses()->'courses')<>0
+ THEN RAISE EXCEPTION 'S4B2_FAIL: niveau V1 modifie reste visible'; END IF;
+ RAISE NOTICE 'S4B2_PASS_CHANGED_LEVEL';
+END;$changed_level$;
+RESET ROLE;
+UPDATE public.courses SET level_id=1
+WHERE id='70000000-0000-4000-8000-000000000001';
+
+UPDATE public.courses SET class_id='50000000-0000-4000-8000-000000000002'
+WHERE id='70000000-0000-4000-8000-000000000001';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
+DO $changed_class$
+BEGIN
+ IF jsonb_array_length(public.schoolnet_student_school_courses()->'courses')<>0
+ THEN RAISE EXCEPTION 'S4B2_FAIL: classe V1 modifiee reste visible'; END IF;
+ RAISE NOTICE 'S4B2_PASS_CHANGED_CLASS';
+END;$changed_class$;
+RESET ROLE;
+UPDATE public.courses SET class_id=NULL
+WHERE id='70000000-0000-4000-8000-000000000001';
+
+INSERT INTO public.academic_subjects(id,name,code,is_active,sort_order)
+VALUES ('40000000-0000-4000-8000-000000000002','Francais','FRA',true,2);
+INSERT INTO public.course_subjects(course_id,subject_id) VALUES
+ ('70000000-0000-4000-8000-000000000001','40000000-0000-4000-8000-000000000002');
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
+DO $changed_subject$
+BEGIN
+ IF jsonb_array_length(public.schoolnet_student_school_courses()->'courses')<>0
+ THEN RAISE EXCEPTION 'S4B2_FAIL: matiere V1 incompatible'; END IF;
+ RAISE NOTICE 'S4B2_PASS_CHANGED_SUBJECT';
+END;$changed_subject$;
+RESET ROLE;
+DELETE FROM public.course_subjects
+WHERE course_id='70000000-0000-4000-8000-000000000001';
+
+UPDATE public.profiles SET role='student'
+WHERE id='10000000-0000-4000-8000-000000000003';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
+DO $changed_teacher_role$
+BEGIN
+ IF jsonb_array_length(public.schoolnet_student_school_courses()->'courses')<>0
+ THEN RAISE EXCEPTION 'S4B2_FAIL: enseignant requalifie reste visible'; END IF;
+ RAISE NOTICE 'S4B2_PASS_CHANGED_TEACHER_ROLE';
+END;$changed_teacher_role$;
+RESET ROLE;
+UPDATE public.profiles SET role='teacher'
+WHERE id='10000000-0000-4000-8000-000000000003';
+
 -- Acces anonyme interdit, aucun abonnement V1 auto.
 SET LOCAL ROLE anon;
 DO $anon$

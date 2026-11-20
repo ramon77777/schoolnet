@@ -18,6 +18,7 @@ BEGIN
      OR to_regclass('public.schoolnet_school_teacher_subject_assignments') IS NULL
      OR to_regclass('public.course_sections') IS NULL
      OR to_regclass('public.resources') IS NULL
+     OR to_regclass('public.course_subjects') IS NULL
      OR to_regprocedure('public.get_my_role()') IS NULL
   THEN
     RAISE EXCEPTION 'S4-B.2: prerequis S3-C/S4-B.1 manquants ou RPC deja presentes.';
@@ -47,6 +48,11 @@ AS $student_access$
        ON c.id=l.class_id AND c.school_id=l.school_id
        AND c.school_year_id=l.school_year_id
        AND c.learning_context='school'
+       AND (co.class_id IS NULL OR co.class_id=l.class_id)
+       AND (co.level_id IS NULL OR co.level_id=c.level_id)
+     JOIN public.profiles teacher_profile
+       ON teacher_profile.id=l.teacher_id
+       AND teacher_profile.role::text='teacher'
      JOIN public.schoolnet_school_teacher_subject_assignments a
        ON a.id=l.teacher_assignment_id
        AND a.school_id=l.school_id AND a.class_id=l.class_id
@@ -69,6 +75,10 @@ AS $student_access$
        AND student_a.school_year_id=l.school_year_id
        AND student_a.student_id=auth.uid() AND student_a.status='active'
      WHERE l.course_id=p_course_id AND l.status='active'
+       AND NOT EXISTS (
+         SELECT 1 FROM public.course_subjects cs
+         WHERE cs.course_id=l.course_id AND cs.subject_id<>l.subject_id
+       )
    ),false);
 $student_access$;
 
