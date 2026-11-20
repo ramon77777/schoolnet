@@ -66,6 +66,9 @@ l'utilisateur doit être propriétaire de l'évaluation, et l'évaluation
 **ne doit pas être officiellement rattachée** ; B.4 introduira les
 opérations officielles dédiées. Le recalcul manuel du score est retiré
 de l'API `authenticated` et reste disponible pour les triggers internes.
+Le `search_path` des six RPC renforcées est fixé à `pg_catalog`
+(plutôt qu'à `public`), conformément aux bonnes pratiques des
+fonctions `SECURITY DEFINER`.
 
 **Point important :** ce sous-bloc prépare la sécurité en attendant
 S4-B.3-B.1/B.2 ; **aucun bouton « Commencer », aucun accès aux questions
