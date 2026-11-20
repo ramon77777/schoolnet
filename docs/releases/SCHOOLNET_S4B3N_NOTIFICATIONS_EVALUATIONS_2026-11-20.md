@@ -2,7 +2,7 @@
 
 **Date :** 20 novembre 2026  
 **Base :** `main` au commit `9dc1b1afb4f804b0ee96746436087ba824bdd9c4`  
-**État au 20 novembre 2026 :** migration S4-B.3-N **installée et vérifiée sur Supabase principal** ; branche GitHub de la PR n°23 **en brouillon, non fusionnée** ; aucune publication frontend Vercel autorisée. Le durcissement complémentaire des droits historiques est **uniquement proposé**, sans activation en production.
+**État au 20 novembre 2026 :** migration S4-B.3-N **installée et vérifiée sur Supabase principal** (`20261120130939`) et durcissement des droits de la fonction historique **également installé et vérifié** (`20261120132205`). La PR n°23 reste **en brouillon, non fusionnée** ; **aucune publication frontend Vercel autorisée ou effectuée**.
 
 ## Constat vérifié
 
@@ -78,11 +78,17 @@ traçabilité et évite les suppressions automatiques de données.
   Les mentions initiales « proposition non installée » dans ce SQL restent
   inchangées pour assurer une traçabilité octet pour octet ; **elles
   correspondent à son état avant l'activation**.
-- **Durcissement complémentaire non installé** : 
+- **Durcissement complémentaire déjà installé sur Supabase principal** (ne pas réexécuter) :
+  migration `20261120132205_schoolnet_s4b3n_legacy_assessment_notify_permission_hardening`.
+- Fichier de migration GitHub **strictement identique** au SQL appliqué :
+  `supabase/migrations/20261120132205_schoolnet_s4b3n_legacy_assessment_notify_permission_hardening.sql`.
+- Source historique conservée **sans modification** :
   `supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql`.
-  Il retire seulement `EXECUTE` direct à `PUBLIC`, `anon` et
-  `authenticated` sur `public.notify_assessment_published()`, en conservant
-  `service_role`, le propriétaire et l'exécution des triggers.
+  Ses mentions « non appliquée » sont conservées comme état initial du fichier ;
+  la migration est bel et bien enregistrée sur Supabase principal.
+  Le SQL retire `EXECUTE` direct à `PUBLIC`, `anon` et `authenticated`
+  sur `public.notify_assessment_published()` tout en conservant
+  `service_role`, le propriétaire et les triggers V1/V2.
 - **Rollback complémentaire autonome** (restaure uniquement les GRANT
   préexistants `anon` et `authenticated` ; aucune donnée supprimée) :
   `supabase/verification/s4b3n_legacy_assessment_notify_permission_rollback_manual.sql`.
@@ -110,8 +116,8 @@ connexion à la base principale, puis vérifier :
 8. Durcissement des permissions V1 sur **Supabase local uniquement**, avec
    maintien de l'envoi d'une notification depuis une évaluation publiée par
    le rôle `authenticated`, puis restauration ciblée des GRANT.
-9. Vérification automatique d'identité exacte entre le SQL appliqué et
-   sa copie de traçabilité Git.
+9. Vérification automatique d'identité exacte des **deux** SQL appliqués
+   (`20261120130939` et `20261120132205`) avec leurs copies versionnées Git.
 
 **Aucun rattrapage rétroactif** du quiz déjà publié en production n'est
 prévu par le SQL. Une opération de rattrapage serait à valider séparément.
@@ -120,17 +126,25 @@ prévu par le SQL. Une opération de rattrapage serait à valider séparément.
 
 **GO 1 — Développement/CI :** autorisé ; CI sur branche isolée.  
 **GO 2 — Migration SQL S4-B.3-N Supabase principal :** accordé et exécuté avec succès le 20 novembre 2026 (migration `20261120130939`).  
-**GO 2 bis — Durcissement des permissions de la fonction V1 historique :** **non autorisé en production** ; préparation GitHub et tests CI uniquement.  
+**GO 2 bis — Durcissement des permissions de la fonction V1 historique :** autorisé, installé et vérifié sur Supabase principal le 20 novembre 2026 (`20261120132205`), sans changement de données.  
 **GO 3 — Fusion GitHub et publication automatique Vercel :** non autorisé.  
 **GO 4 — Recette réelle élève/enseignant :** après autorisation et activation du frontend.
 
 Contrôle post-installation du 20 novembre 2026 : 15 évaluations, 77 notifications,
 2 inscriptions V1, 2 progressions V1 et 1 lien officiel actif, sans variation.
 Aucun rattrapage rétroactif du quiz déjà publié. Les deux nouvelles fonctions
-privées ainsi que le trigger de liaison sont actifs ; les ACL directes de la
-fonction V1 sont encore celles d'origine. Le durcissement devra être décidé
-et enregistré comme **nouvelle migration distincte**, jamais ajouté
-rétroactivement à la migration déjà appliquée.
+privées ainsi que le trigger de liaison sont actifs. Les ACL directes de
+`public.notify_assessment_published()` ont été durcies : `anon` et
+`authenticated` ne peuvent plus l'exécuter directement ; `service_role`
+et les deux déclencheurs restent opérationnels.
+
+**Contrôles post-durcissement de production** : 15 évaluations, 77 notifications,
+2 inscriptions V1, 2 progressions V1 et 1 lien officiel actif, sans variation.
+Les avertissements Supabase associés à l'exécution directe de la fonction
+historique ont disparu. Les notifications V1/V2 et les rollbacks ont été
+vérifiés sur une base Supabase locale jetable via CI. Le nouveau fichier
+versionné correspond au SQL déjà installé, **ne doit pas être réexécuté**,
+et reste distinct de la migration S4-B.3-N initiale.
 
 S4-B.3-N complète le calendrier des évaluations officielles (S4-B.3-A).
 Les remises et corrections S4-B.3-B ainsi que les notes S4-B.3-C
