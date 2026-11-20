@@ -3,7 +3,7 @@
 **Date :** 19 novembre 2026  
 **Module :** Gestion des établissements → S4-B.1  
 **Branche :** `feature/schoolnet-s4b1-school-course-bridge-20261119`, issue de `main` `d00c1eee`  
-**Statut :** développement en branche, **SQL non installé sur Supabase principal**, PR en brouillon après publication de la branche.
+**Statut mis à jour au 20 novembre 2026 :** **migration SQL S4-B.1 installée sur Supabase principal**, PR n° 18 toujours en brouillon et application Vercel de production inchangée.
 
 ## Objectif
 
@@ -96,10 +96,10 @@ rattachement idempotent, mauvais auteur/classe/matière, anciennes
 inscriptions V1, retrait, révocation S3-C, table privée, non-régression
 des données V1 et `ROLLBACK`.
 
-**Aucune migration n'est prévue sur Supabase principal sans une autorisation
-distincte après les tests et la revue.** Ne pas fusionner ni publier en
-production sans GO explicite. La branche ne doit pas remplacer le
-dossier local Windows historique de l'utilisateur.
+**Autorisation SQL reçue et exécutée le 20/11/2026.** Aucune fusion de
+la PR n° 18 ou publication du frontend en production sans GO distinct.
+La branche ne doit pas remplacer le dossier local Windows historique
+de l'utilisateur.
 
 ## Reprise S4-B
 
@@ -108,3 +108,36 @@ officiellement affectés à une classe d'accéder aux ressources et cours
 correspondants, avec un système de permissions par établissement,
 sans rouvrir les tables V1 à l'ensemble des utilisateurs.
 Le parcours des cours libres restera indépendant.
+
+
+## Activation SQL effective — 20 novembre 2026
+
+- Projet Supabase principal : `schoolnet_2.0` (`anttmbhaphkhmkoqsofd`).
+- Migration enregistrée : **`20261120075338_schoolnet_s4b1_school_course_bridge`**.
+- Contenu strictement identique à la proposition vérifiée :
+  `supabase/migrations/20261120075338_schoolnet_s4b1_school_course_bridge.sql`.
+- Contrôle en lecture seule `S4B1_PROD_PREFLIGHT_PASS` avant installation.
+- Exécution `apply_migration` : succès, 1 table privée + 8 fonctions.
+- Contrôle `S4B1_PROD_POSTCHECK_PASS` : RLS de la table active,
+  aucun privilège direct `authenticated` ou `anon`, 4 façades
+  `SECURITY INVOKER` et 4 helpers privés `SECURITY DEFINER`,
+  `anon` interdit et `authenticated` autorisé sous garde applicatif.
+- Vérification SQL par rôles simulés en transaction avec `ROLLBACK`
+  : administrateur local autorisé uniquement dans son école,
+  enseignant limité à son contexte, accès anonyme refusé.
+  **Ce n'est pas un test de connexion navigateur avec un vrai JWT.**
+- Non-régression comptable production vérifiée : 4 cours V1,
+  2 inscriptions V1, 2 enseignants de cours V1 et
+  2 progressions V1 ; 0 cours officiellement rattaché,
+  0 classe officielle et 0 affectation professeur-matière.
+- L'avis de sécurité `rls_enabled_no_policy` sur la table **privée**
+  est intentionnel : aucune lecture directe client n'est autorisée.
+- Le rollback **manuel et ciblé** est préparé dans
+  `supabase/verification/s4b1_school_course_bridge_rollback_manual.sql`,
+  sans exécution sur Supabase principal ; il bloque si au moins un
+  lien de cours a déjà été créé. La CI l'exerce sur base jetable.
+- L'installation SQL n'a modifié ni `courses`, ni
+  `course_enrollments`, ni `student_progress` ni les fonctions S3-C/S4-A.
+- La fusion et la publication Vercel requièrent une approbation distincte
+  après contrôle des écrans candidat. En attendant, la Preview reste
+  en lecture seule pour les opérations d'association et de retrait.
