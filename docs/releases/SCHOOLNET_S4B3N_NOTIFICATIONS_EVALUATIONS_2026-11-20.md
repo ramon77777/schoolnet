@@ -2,7 +2,7 @@
 
 **Date :** 20 novembre 2026  
 **Base :** `main` au commit `9dc1b1afb4f804b0ee96746436087ba824bdd9c4`  
-**État :** développement en branche isolée et PR brouillon. **Aucune migration Supabase principal, fusion ni publication de production autorisée.**
+**État au 20 novembre 2026 :** migration S4-B.3-N **installée et vérifiée sur Supabase principal** ; branche GitHub de la PR n°23 **en brouillon, non fusionnée** ; aucune publication frontend Vercel autorisée. Le durcissement complémentaire des droits historiques est **uniquement proposé**, sans activation en production.
 
 ## Constat vérifié
 
@@ -12,10 +12,12 @@ L'élève de sa classe voyait l'évaluation dans son cours officiel, mais aucune
 notification n'avait été enregistrée. Supabase principal indiquait **1 élève
 officiel actif, 0 inscription V1 et 0 notification** pour ce quiz.
 
-Le trigger `trg_notify_assessment_published` appelle actuellement
-`public.notify_assessment_published()`, qui recherche les destinataires dans
-`course_enrollments` et `class_students`. Il ignore les affectations
-`schoolnet_school_student_class_assignments` de SCHOOLNET V2.
+Avant S4-B.3-N, le trigger `trg_notify_assessment_published` appelait
+`public.notify_assessment_published()`, qui recherchait uniquement les
+inscriptions V1 (`course_enrollments`, `class_students`). La migration
+`20261120130939` a introduit le routage par les affectations officielles
+`schoolnet_school_student_class_assignments`, en conservant le comportement
+V1 pour les cours libres.
 
 ## Choix d'implémentation
 
@@ -67,8 +69,23 @@ traçabilité et évite les suppressions automatiques de données.
 
 ## Fichiers livrés
 
-- Proposition SQL **non installée** :
+- **Migration S4-B.3-N déjà appliquée sur Supabase principal** (ne pas réexécuter) :
+  `20261120130939_schoolnet_s4b3n_official_assessment_notifications`.
+- Copie Git **strictement identique** au SQL appliqué :
+  `supabase/migrations/20261120130939_schoolnet_s4b3n_official_assessment_notifications.sql`.
+- Source originale, conservée également :
   `supabase/proposals/s4b3n_school_assessment_notifications.sql`.
+  Les mentions initiales « proposition non installée » dans ce SQL restent
+  inchangées pour assurer une traçabilité octet pour octet ; **elles
+  correspondent à son état avant l'activation**.
+- **Durcissement complémentaire non installé** : 
+  `supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql`.
+  Il retire seulement `EXECUTE` direct à `PUBLIC`, `anon` et
+  `authenticated` sur `public.notify_assessment_published()`, en conservant
+  `service_role`, le propriétaire et l'exécution des triggers.
+- **Rollback complémentaire autonome** (restaure uniquement les GRANT
+  préexistants `anon` et `authenticated` ; aucune donnée supprimée) :
+  `supabase/verification/s4b3n_legacy_assessment_notify_permission_rollback_manual.sql`.
 - Rollback manuel conservant les notifications existantes et restaurateur
   de la fonction V1 d'origine :
   `supabase/verification/s4b3n_school_assessment_notifications_rollback_manual.sql`.
@@ -90,16 +107,30 @@ connexion à la base principale, puis vérifier :
 5. Index anti-doublons, RLS des notifications, destination de la cloche.
 6. Non-régression V1, S4-B.3-A et S4-B.2, lint et compilation.
 7. Rollback SQL conservant l'historique et les fonctions S4-B.3-A.
+8. Durcissement des permissions V1 sur **Supabase local uniquement**, avec
+   maintien de l'envoi d'une notification depuis une évaluation publiée par
+   le rôle `authenticated`, puis restauration ciblée des GRANT.
+9. Vérification automatique d'identité exacte entre le SQL appliqué et
+   sa copie de traçabilité Git.
 
 **Aucun rattrapage rétroactif** du quiz déjà publié en production n'est
 prévu par le SQL. Une opération de rattrapage serait à valider séparément.
 
 ## Portes d'autorisation
 
-**GO 1 — Développement/CI :** présentement autorisé.  
-**GO 2 — Migration SQL Supabase principal :** non autorisé.  
+**GO 1 — Développement/CI :** autorisé ; CI sur branche isolée.  
+**GO 2 — Migration SQL S4-B.3-N Supabase principal :** accordé et exécuté avec succès le 20 novembre 2026 (migration `20261120130939`).  
+**GO 2 bis — Durcissement des permissions de la fonction V1 historique :** **non autorisé en production** ; préparation GitHub et tests CI uniquement.  
 **GO 3 — Fusion GitHub et publication automatique Vercel :** non autorisé.  
-**GO 4 — Recette réelle élève/enseignant :** après activation distincte.
+**GO 4 — Recette réelle élève/enseignant :** après autorisation et activation du frontend.
+
+Contrôle post-installation du 20 novembre 2026 : 15 évaluations, 77 notifications,
+2 inscriptions V1, 2 progressions V1 et 1 lien officiel actif, sans variation.
+Aucun rattrapage rétroactif du quiz déjà publié. Les deux nouvelles fonctions
+privées ainsi que le trigger de liaison sont actifs ; les ACL directes de la
+fonction V1 sont encore celles d'origine. Le durcissement devra être décidé
+et enregistré comme **nouvelle migration distincte**, jamais ajouté
+rétroactivement à la migration déjà appliquée.
 
 S4-B.3-N complète le calendrier des évaluations officielles (S4-B.3-A).
 Les remises et corrections S4-B.3-B ainsi que les notes S4-B.3-C
