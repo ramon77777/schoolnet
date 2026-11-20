@@ -220,13 +220,14 @@ export default function DashboardLayout() {
             </NavLink>
 
             <NavLink
-              className={navItem}
+              className={({ isActive }) =>
+                navItem({
+                  isActive: isActive || pathname.startsWith("/app/student/school-courses/"),
+                })
+              }
               to="/app/student/courses"
             >
               📘 Mes cours
-            </NavLink>
-            <NavLink className={navItem} to="/app/student/school-courses">
-              🏫 Cours de mon établissement
             </NavLink>
 
             <NavLink

@@ -29,3 +29,11 @@ publique. Un changement de modele de stockage ferait l'objet d'une
 migration separee avec compatibilite V1 garantie.
 
 Aucun `supabase link`, `db push`, secret GitHub ni SQL heberge.
+
+
+## Ports isoles pour les CI paralleles
+
+Le banc S4-B.2 utilise `127.0.0.1:54332` (shadow `54333`),
+plutot que le port Supabase par defaut `54322`, afin d'eviter une
+collision avec le banc S4-B.1 lorsque plusieurs workflows GitHub
+s'executent simultanement. Aucun port heberge n'est modifie.
