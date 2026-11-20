@@ -47,6 +47,10 @@ test("Les 6 RPC de correction originales sont conservées dans le rollback",()=>
   "mark_homework_submission_as_graded","publish_homework_submission"])
   assert.ok(rollback.includes("CREATE OR REPLACE FUNCTION public."+fun),fun);
  assert.match(rollback,/S4B3B0_SECURITY_ROLLBACK_PASS/);
+ const legacyPublicGrants=[...rollback.matchAll(/GRANT EXECUTE ON FUNCTION [^\\n]+ TO PUBLIC;/g)];
+ assert.equal(legacyPublicGrants.length,6);
+ assert.doesNotMatch(rollback,/GRANT EXECUTE ON FUNCTION mark_submission_as_graded_v2\\([^)]*\\) TO PUBLIC/);
+
 });
 test("Les grades et publications etudiant sont immuables meme sur V1",()=>{
  assert.match(sql,/S4B3B0_STUDENT_IMMUTABLE_GRADING/);
@@ -83,4 +87,5 @@ test("Les anciennes RPC sont effectivement testées en local",()=>{
  assert.match(core,/CREATE OR REPLACE FUNCTION public\.mark_submission_as_graded_v2/);
  assert.match(scenario,/B0_PASS_TEACHER_V1_COMPATIBLE_AND_OFFICIAL_LOCKED/);
  assert.match(scenario,/B0_PASS_TENANT_B_ISOLATED/);
+ assert.match(scenario,/B0_PASS_REVOKED_LINK_STILL_PROTECTED/);
 });
