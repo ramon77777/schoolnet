@@ -1,0 +1,91 @@
+name: SCHOOLNET S4-B.2 - acces eleves aux cours officiels
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4b2-tenant-ci.yml'
+      - 'tests/s4b2-tenant-ci/**'
+      - 'supabase/proposals/s4b2_student_school_courses.sql'
+      - 'supabase/verification/s4b2_student_school_courses_rollback_manual.sql'
+      - 'src/features/student/**'
+      - 'src/routes/router.tsx'
+      - 'src/layouts/DashboardLayout.tsx'
+      - 'scripts/test-schoolnet-s4b2-course-access.mjs'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4b2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: S4-B.2 - 22 tests, lint et build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer dependances verrouillees
+        run: npm ci --no-audit --no-fund
+      - name: Tests locaux S4-B.2
+        run: npm run qa:s4b2
+      - name: ESLint
+        run: npm run lint
+      - name: Compilation TypeScript et Vite
+        run: npm run build
+
+  tenant-isolation:
+    name: S4-B.2 - lecture eleves A/B sur Supabase local jetable
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Demarrer Supabase local sans projet heberge
+        working-directory: tests/s4b2-tenant-ci
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Installer schema de test V1 + S3-C + S4-A + S4-B.1 + S4-B.2
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/legacy-minimal.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4a_school_pedagogy_overview.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/course-core.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b1_school_course_bridge.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b2-tenant-ci/fixtures/course-content.sql
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2_student_school_courses.sql
+      - name: Tester lectures eleves A/B, revocations, V1 et ROLLBACK
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b2-tenant-ci/fixtures/student-courses-a-b.sql | tee /tmp/s4b2-result.txt
+          grep -Fq 'S4B2_TENANT_A_B_PASS' /tmp/s4b2-result.txt
+      - name: Tester retrait cible S4-B.2, sans supprimer S4-B.1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b2_student_school_courses_rollback_manual.sql
+          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN to_regprocedure('public.schoolnet_student_school_courses()') IS NULL AND to_regprocedure('public.schoolnet_student_school_course_detail(uuid)') IS NULL AND to_regprocedure('public.schoolnet_school_course_catalog(uuid)') IS NOT NULL AND to_regclass('schoolnet_private.school_course_links') IS NOT NULL AND (SELECT count(*) FROM public.courses)=0 THEN 'S4B2_ROLLBACK_CI_PASS' ELSE 'S4B2_ROLLBACK_CI_FAIL' END" | tee /tmp/s4b2-rollback.txt
+          grep -Fq 'S4B2_ROLLBACK_CI_PASS' /tmp/s4b2-rollback.txt
+      - name: Nettoyer completement le sandbox
+        if: always()
+        working-directory: tests/s4b2-tenant-ci
+        run: supabase stop --no-backup || true
