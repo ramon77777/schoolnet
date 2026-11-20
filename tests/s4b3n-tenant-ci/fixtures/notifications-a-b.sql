@@ -326,5 +326,40 @@ BEGIN
  THEN RAISE EXCEPTION 'S4B3N_FAIL_V1_CHANGED'; END IF;
  RAISE NOTICE 'S4B3N_PASS_V1_UNCHANGED';
 END;$unchanged$;
+-- Permissions V1 durcies sur une base locale uniquement :
+-- le trigger continue de fonctionner alors qu'EXECUTE direct est retire.
+DO $s4b3n_hardening$
+BEGIN
+ IF has_function_privilege('anon','public.notify_assessment_published()','EXECUTE')
+    OR has_function_privilege('authenticated','public.notify_assessment_published()','EXECUTE')
+    OR NOT has_function_privilege('service_role','public.notify_assessment_published()','EXECUTE')
+    OR (SELECT count(*) FROM pg_catalog.pg_trigger t
+        WHERE t.tgname='trg_notify_assessment_published' AND t.tgenabled='O')<>1
+ THEN RAISE EXCEPTION 'S4B3N_FAIL_LEGACY_ACL_HARDENING'; END IF;
+ RAISE NOTICE 'S4B3N_PASS_LEGACY_ACL_HARDENING';
+END;$s4b3n_hardening$;
+
+-- Non-regression d'une publication V1 effectuee reellement par le role
+-- authenticated APRES retrait de son droit EXECUTE sur la fonction trigger.
+INSERT INTO public.assessments(id,course_id,type,status,title,created_by) VALUES
+ ('a0000000-0000-4000-8000-000000000009','70000000-0000-4000-8000-000000000003',
+  'quiz','draft','Quiz libre V1 apres durcissement','10000000-0000-4000-8000-000000000003');
+GRANT SELECT,UPDATE(status) ON TABLE public.assessments TO authenticated;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+UPDATE public.assessments SET status='published'
+WHERE id='a0000000-0000-4000-8000-000000000009'::uuid;
+RESET ROLE;
+DO $legacy_trigger_still_fires$
+BEGIN
+ IF (SELECT count(*) FROM public.notifications
+     WHERE user_id='10000000-0000-4000-8000-000000000005'::uuid
+       AND related_id='a0000000-0000-4000-8000-000000000009'::uuid
+       AND event_key='assessment_published'
+       AND action_url='/app/student/assessments/a0000000-0000-4000-8000-000000000009')<>1
+ THEN RAISE EXCEPTION 'S4B3N_FAIL_LEGACY_TRIGGER_AFTER_REVOKE'; END IF;
+ RAISE NOTICE 'S4B3N_PASS_LEGACY_TRIGGER_AFTER_REVOKE';
+END;$legacy_trigger_still_fires$;
+
 SELECT 'S4B3N_TENANT_A_B_PASS' AS result;
 ROLLBACK;
