@@ -72,9 +72,10 @@ test("S4B2-R 12 - aucun identifiant, nom ou note d'eleve dans le contrat",()=>{
  }
 });
 test("S4B2-R 13 - compteurs invalides refuses",()=>{
- for(const value of [-1,1.2,NaN,Infinity,"1",null,undefined]){
+ for(const value of [-1,1.2,NaN,Infinity,"1",null]){
   assert.equal(isTeacherCourseClassSummary(summary(true,value),"school-a-course"),false);
  }
+ assert.equal(isTeacherCourseClassSummary({...summary(),officialStudentCount:undefined},"school-a-course"),false);
 });
 test("S4B2-R 14 - un cours non officiel doit toujours compter zero",()=>{
  assert.equal(isTeacherCourseClassSummary(summary(false,2),"school-a-course"),false);
