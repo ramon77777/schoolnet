@@ -103,14 +103,19 @@ test("S4-B.2 18 - fonctions privees definer, publiques invoker et anon interdit"
  assert.match(sql,/FROM PUBLIC,anon,authenticated/);
  assert.match(sql,/TO authenticated/);
 });
-test("S4-B.2 19 - interfaces eleves distinctes de V1",()=>{
+test("S4-B.2 19 - parcours officiels et libres reunis sans fusion des donnees",()=>{
  const routes=read("src/routes/router.tsx");
  const courses=read("src/features/student/pages/StudentCourses.tsx");
  const menu=read("src/layouts/DashboardLayout.tsx");
+ const detail=read("src/features/student/pages/StudentSchoolCourseDetail.tsx");
  assert.match(routes,/path: "student\/school-courses"/);
  assert.match(routes,/path: "student\/school-courses\/:courseId"/);
- assert.match(courses,/to="\/app\/student\/school-courses"/);
- assert.match(menu,/to="\/app\/student\/school-courses"/);
+ assert.match(routes,/Navigate to="\/app\/student\/courses\?tab=official" replace/);
+ assert.match(courses,/<StudentSchoolCourses onCatalogLoaded=\{onOfficialLoaded\}/);
+ assert.match(courses,/course_enrollments/);
+ assert.match(menu,/to="\/app\/student\/courses"/);
+ assert.doesNotMatch(menu,/to="\/app\/student\/school-courses"/);
+ assert.match(detail,/to="\/app\/student\/courses\?tab=official"/);
 });
 test("S4-B.2 20 - pas de fallback en cours libre ni de mutation client",()=>{
  const api=read("src/features/student/lib/studentSchoolCoursesApi.ts");

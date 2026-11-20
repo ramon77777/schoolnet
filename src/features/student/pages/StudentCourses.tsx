@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import StudentSchoolCourses from "./StudentSchoolCourses";
+import {
+  selectStudentCourseTab,
+  type StudentCourseTab,
+} from "@/features/student/lib/studentCourseTabs";
 
 type DbCourse = {
   id: string;
@@ -72,6 +77,26 @@ function clampProgress(value: number | null | undefined): number {
 export default function StudentCourses() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const userId = user?.id ?? "";
+  const [officialSummary, setOfficialSummary] = useState<{
+    userId: string;
+    count: number;
+  } | null>(null);
+  const onOfficialLoaded = useCallback((ownerId: string, count: number) => {
+    setOfficialSummary({ userId: ownerId, count });
+  }, []);
+  const officialCount = user?.isDemo
+    ? 0
+    : officialSummary?.userId === userId
+      ? officialSummary.count
+      : null;
+  const activeTab = selectStudentCourseTab(searchParams.get("tab"), officialCount);
+  const chooseTab = (tab: StudentCourseTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const [courses, setCourses] = useState<DbCourse[]>([]);
   const [progressByCourse, setProgressByCourse] = useState<Record<string, number>>({});
@@ -171,25 +196,65 @@ export default function StudentCourses() {
   const isInitialLoading = authLoading || loading;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="text-xl font-semibold">Mes cours</div>
-        <div className="text-sm text-gray-500">
-          Retrouvez ici les cours auxquels vous êtes inscrit et votre progression.
-        </div>
-      </div>
-      <div className="sn-card border border-indigo-100 bg-indigo-50 p-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="font-semibold text-slate-900">Cours de mon établissement</div>
-          <p className="mt-1 text-sm text-slate-600">
-            Accédez aux cours de votre classe officielle, indépendamment des inscriptions aux cours libres.
-          </p>
-        </div>
-        <Link to="/app/student/school-courses" className="sn-btn-primary">
-          Voir mes cours officiels
-        </Link>
+    <div className="space-y-5 pb-8">
+      <header className="sn-card bg-gradient-to-r from-white via-blue-50 to-indigo-100 p-5 md:p-7">
+        <p className="text-xs font-extrabold uppercase tracking-widest text-indigo-700">
+          SCHOOLNET · Espace apprenant
+        </p>
+        <h1 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-950">
+          Mes cours
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600 max-w-3xl">
+          Tous vos apprentissages au même endroit : cours de votre établissement
+          et cours complémentaires SCHOOLNET, sans mélanger les inscriptions.
+        </p>
+      </header>
+
+      <div role="tablist" aria-label="Catégories de cours" className="sn-card flex flex-wrap gap-2 p-2">
+        <button
+          type="button"
+          id="student-official-tab"
+          role="tab"
+          aria-selected={activeTab === "official"}
+          aria-controls="student-official-panel"
+          onClick={() => chooseTab("official")}
+          className={`rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${activeTab === "official" ? "bg-blue-600 text-white shadow-sm" : "bg-slate-50 text-slate-700 hover:bg-slate-100"}`}
+        >
+          🏫 Cours de mon établissement
+          {officialCount !== null && <span className="ml-2 opacity-80">({officialCount})</span>}
+        </button>
+        <button
+          type="button"
+          id="student-complementary-tab"
+          role="tab"
+          aria-selected={activeTab === "complementary"}
+          aria-controls="student-complementary-panel"
+          onClick={() => chooseTab("complementary")}
+          className={`rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${activeTab === "complementary" ? "bg-blue-600 text-white shadow-sm" : "bg-slate-50 text-slate-700 hover:bg-slate-100"}`}
+        >
+          📘 Cours complémentaires
+        </button>
       </div>
 
+      <div
+        role="tabpanel"
+        id="student-official-panel"
+        aria-labelledby="student-official-tab"
+        hidden={activeTab !== "official"}
+      >
+        <StudentSchoolCourses onCatalogLoaded={onOfficialLoaded} />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="student-complementary-panel"
+        aria-labelledby="student-complementary-tab"
+        hidden={activeTab !== "complementary"}
+        className="space-y-4"
+      >
+        <p className="text-sm text-slate-600">
+          Cours libres auxquels vous êtes inscrit, avec leur progression personnelle.
+        </p>
       {user?.isDemo && (
         <div className="sn-card p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200">
           Mode démo actif : les cours réels Supabase ne sont pas chargés.
@@ -239,6 +304,7 @@ export default function StudentCourses() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

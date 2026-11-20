@@ -11,6 +11,7 @@ on:
       - 'src/routes/router.tsx'
       - 'src/layouts/DashboardLayout.tsx'
       - 'scripts/test-schoolnet-s4b2-course-access.mjs'
+      - 'scripts/test-schoolnet-s4b2-courses-unified.mjs'
       - 'package.json'
   workflow_dispatch:
 
@@ -22,7 +23,7 @@ concurrency:
 
 jobs:
   quality:
-    name: S4-B.2 - 23 tests, lint et build
+    name: S4-B.2 - 23 contrats + 16 UX, lint et build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -37,6 +38,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Tests locaux S4-B.2
         run: npm run qa:s4b2
+      - name: Tests de navigation unifiee S4-B.2
+        run: npm run qa:s4b2-ui
       - name: ESLint
         run: npm run lint
       - name: Compilation TypeScript et Vite

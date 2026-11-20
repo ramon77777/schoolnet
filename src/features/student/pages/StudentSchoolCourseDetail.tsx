@@ -80,8 +80,8 @@ export default function StudentSchoolCourseDetail(){
               <p className="mt-2 text-sm text-slate-600 max-w-3xl">{current.description}</p>
             )}
           </div>
-          <Link to="/app/student/school-courses" className="sn-btn-ghost">
-            ← Mes cours officiels
+          <Link to="/app/student/courses?tab=official" className="sn-btn-ghost">
+            ← Mes cours
           </Link>
         </div>
       </section>
