@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useState} from "react";
+import {Link} from "react-router-dom";
 import {getStudentSchoolCourseAssessments,isSchoolAssessmentActivationPending}
  from "@/features/schools/lib/schoolAssessmentBridgeApi";
 import type {StudentOfficialAssessmentCatalog}
@@ -37,7 +38,7 @@ export default function StudentSchoolCourseAssessments({
    <div className="flex flex-wrap justify-between items-start gap-3">
     <div>
      <p className="text-xs uppercase font-bold tracking-widest text-indigo-700">
-      SCHOOLNET V2 · S4-B.3-A
+      SCHOOLNET V2 · S4-B.3-B.1
      </p>
      <h2 className="mt-1 text-lg font-bold text-gray-900">
       Évaluations de ma classe {active?`(${active.assessments.length})`:""}
@@ -69,10 +70,17 @@ export default function StudentSchoolCourseAssessments({
        <p className="text-xs text-slate-500">
         Échéance : {a.dueAt?new Date(a.dueAt).toLocaleString("fr-FR"):"Non fixée"}
        </p>
-       <p className="text-xs text-amber-800">
-        Consultation du calendrier seulement : remise, correction et résultats
-        officiels seront activés dans la prochaine étape de S4-B.3.
+       <p className="text-xs text-slate-600">
+        Les consignes et questions sont consultables en lecture seule.
+        La saisie des réponses et les remises ne sont pas encore activées.
        </p>
+       <Link
+        to={"/app/student/school-courses/"+courseId+"/assessments/"+a.assessmentId}
+        className="sn-btn-primary inline-flex items-center justify-center"
+        aria-label={"Voir l'évaluation "+a.title}
+       >
+        Voir l'évaluation
+       </Link>
       </article>
      ))}
     </div>
