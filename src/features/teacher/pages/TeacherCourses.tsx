@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import TeacherSchoolCourseLinker from "@/features/teacher/components/TeacherSchoolCourseLinker";
 
 type CourseStatus = "active" | "archived";
 
@@ -507,6 +508,9 @@ export default function TeacherCourses() {
           )}
         </div>
       </div>
+      {user && !user.isDemo && (
+        <TeacherSchoolCourseLinker userId={user.id} courses={courses} />
+      )}
     </div>
   );
 }

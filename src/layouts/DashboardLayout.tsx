@@ -541,6 +541,7 @@ export default function DashboardLayout() {
             <NavLink className={navItem} to="/app/school/students">🎓 Élèves</NavLink>
             <NavLink className={navItem} to="/app/school/assignments">📚 Affectations</NavLink>
             <NavLink className={navItem} to="/app/school/pedagogy">📊 Pilotage pédagogique</NavLink>
+            <NavLink className={navItem} to="/app/school/courses">📘 Cours officiels</NavLink>
           </>
         )}
 
