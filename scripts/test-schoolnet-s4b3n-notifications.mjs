@@ -50,7 +50,7 @@ test("Les deux sens de publication et de rattachement sont pris en charge", () =
 });
 test("Le retrait est notifie uniquement aux destinataires deja informes", () => {
   assert.match(sql, /assessment_withdrawn/);
-  assert.match(sql, /existing\.event_key='assessment_published'/);
+  assert.match(sql, /n\.event_key='assessment_published'/);
   assert.match(sql, /OLD\.status IS DISTINCT FROM NEW\.status/);
 });
 test("Le doublon est evite a la source", () => {
