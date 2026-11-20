@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useMemo,useState} from "react";
 import {Link,useParams} from "react-router-dom";
 import {useAuth} from "@/lib/auth/AuthProvider";
+import StudentSchoolCourseAssessments from "@/features/student/components/StudentSchoolCourseAssessments";
 import {
   getStudentSchoolCourseDetail,isStudentSchoolCoursesPending,
 } from "@/features/student/lib/studentSchoolCoursesApi";
@@ -135,6 +136,9 @@ export default function StudentSchoolCourseDetail(){
             </div>
           )}
         </section>
+      )}
+      {!loading&&!error&&current&&(
+        <StudentSchoolCourseAssessments courseId={current.courseId} userId={userId}/>
       )}
       <p className="text-xs leading-5 text-slate-500">
         Les ressources existantes peuvent pointer vers des liens publics ou externes.

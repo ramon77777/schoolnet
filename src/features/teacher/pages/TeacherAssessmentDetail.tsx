@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import TeacherSchoolAssessmentLinker from "@/features/teacher/components/TeacherSchoolAssessmentLinker";
 
 type AssessmentType = "quiz" | "assignment" | "exam";
 type AssessmentStatus = "draft" | "published" | "closed";
@@ -563,6 +564,12 @@ export default function TeacherAssessmentDetail() {
 
       {!isLoading && !error && assessment && (
         <>
+          {user?.role==="teacher"&&!user.isDemo&&(
+            <TeacherSchoolAssessmentLinker
+              assessmentId={assessment.id}
+              userId={user.id}
+            />
+          )}
           <div className="sn-card p-5 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
