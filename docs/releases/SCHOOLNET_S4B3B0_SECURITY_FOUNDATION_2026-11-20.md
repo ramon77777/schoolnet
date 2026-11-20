@@ -3,7 +3,7 @@
 **Date de préparation :** 20 novembre 2026  
 **Branche isolée :** `feature/schoolnet-s4b3b0-assessment-security-20261120`  
 **Base de départ :** `main` au commit `c2176076415add709607f782a719fb36318e7a28`  
-**État :** projet SQL et QA, **sans autorisation d'activation**.
+**État réel au 20 novembre 2026 :** SQL S4-B.3-B.0 **installé et vérifié sur Supabase principal** (migration `20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation`). **PR n°24 toujours en brouillon, non fusionnée** ; le site officiel Vercel est inchangé. Aucun accès élève aux évaluations officielles n'a été activé.
 
 ## 1. Audit de l'existant (lectures seules, données agrégées)
 
@@ -77,8 +77,15 @@ officielles et aucune remise officielle ne sont activés par B.0**.
 ## 3. Isolation et tests
 
 Fichiers :
-- SQL préparatoire **non installé** :
-  `supabase/proposals/s4b3b0_official_assessment_security_foundation.sql`
+- **Migration SQL déjà installée sur Supabase principal** (ne pas exécuter de nouveau) :
+  `20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation`.
+- **Copie GitHub strictement identique au SQL réellement exécuté :**
+  `supabase/migrations/20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation.sql`.
+- Source originale conservée **sans modification** :
+  `supabase/proposals/s4b3b0_official_assessment_security_foundation.sql`.
+  Le commentaire initial « NE PAS EXÉCUTER » est conservé uniquement pour
+  préserver l'identité exacte de l'archive ; il correspond à l'état du
+  fichier avant la migration déjà appliquée.
 - Rollback manuel conservant les signatures et corps d'origine :
   `supabase/verification/s4b3b0_official_assessment_security_rollback_manual.sql`
 - Modèle de base de données synthétique :
@@ -109,16 +116,44 @@ nouvelle décision, notamment parce qu'elle restaure les droits historiques.
 4. Les mécanismes de progression et les notifications aux parents
    doivent être explicitement écartés des rendus officiels tant que
    les fonctions B.4 / résultats S4-B.3-C ne sont pas autorisés.
-5. Les comptes et rôles doivent encore subir des tests de recette réelle
-   à l'activation SQL après validation de la CI.
+5. Le fonctionnement des comptes et rôles doit encore être vérifié en
+   **recette utilisateur après publication de l'interface**, avec les
+   autorisations nécessaires. L'activation SQL B.0 a été vérifiée sans
+   provoquer de modification de données.
 
 ## 5. Portes de validation
 
 - **GO développement/CI branche isolée :** autorisé.
-- **GO migration SQL Supabase principal :** NON autorisé.
+- **GO migration SQL Supabase principal :** autorisé, installé et vérifié le 20 novembre 2026 (`20261120142210`). **Ne pas réexécuter la migration.**
 - **GO fusion `main` / déploiement Vercel :** NON autorisé.
 - **GO exécution réelle par un élève :** NON autorisé (hors périmètre B.0).
 
-Aucun `supabase/migrations/*.sql` n'est créé à ce stade : un éventuel
-fichier d'installation versionné doit correspondre exactement au SQL
-ultérieurement autorisé et installé.
+Le fichier `supabase/migrations/20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation.sql`
+a été ajouté **après l'exécution autorisée** et est identique caractère
+pour caractère au SQL d'origine. Il sert à la **traçabilité uniquement** ;
+aucun nouveau `apply_migration` n'est nécessaire.
+
+### Contrôle post-installation Supabase principal
+
+| Compteur ou protection | Résultat après installation |
+|---|---:|
+| Évaluations | 15 |
+| Soumissions en ligne | 9 |
+| Devoirs déposés | 4 |
+| Réponses enregistrées | 16 |
+| Corrections par question | 11 |
+| Notifications | 78 |
+| Inscriptions V1 / progressions V1 | 2 / 2 |
+| Rattachements officiels | 1 |
+| Politiques RLS restrictives B.0 | 8 |
+| Triggers B.0 actifs | 2 |
+| Fonctions privées B.0 | 4 |
+
+Les contrôles post-installation SQL et les tests CI isolés sont conformes.
+Aucune donnée existante n'a été modifiée ; aucun envoi de copie officielle
+n'est débloqué par B.0. L'autorisation de publication Vercel reste **distincte**.
+
+Supabase signale encore plusieurs anciennes fonctions `SECURITY DEFINER`
+accessibles à `authenticated` : cette exposition est conservée pour
+le fonctionnement V1, mais leurs vérifications d'autorisation ont été
+renforcées. Une correction globale des alertes historiques dépasse B.0.
