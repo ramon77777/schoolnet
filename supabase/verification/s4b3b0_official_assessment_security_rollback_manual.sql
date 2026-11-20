@@ -307,18 +307,24 @@ $function$;
 -- La fonction de recalcul était exécutable par ces trois rôles avant B.0.
 REVOKE EXECUTE ON FUNCTION mark_homework_submission_as_graded(uuid,numeric,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION mark_homework_submission_as_graded(uuid,numeric,text,text) TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION mark_homework_submission_as_graded(uuid,numeric,text,text) TO PUBLIC;
 REVOKE EXECUTE ON FUNCTION mark_homework_submission_as_graded(uuid,numeric,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION mark_homework_submission_as_graded(uuid,numeric,text) TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION mark_homework_submission_as_graded(uuid,numeric,text) TO PUBLIC;
 REVOKE EXECUTE ON FUNCTION mark_submission_as_graded_v2(uuid,text,numeric,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION mark_submission_as_graded_v2(uuid,text,numeric,text) TO anon,authenticated,service_role;
 REVOKE EXECUTE ON FUNCTION mark_submission_as_graded(uuid,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION mark_submission_as_graded(uuid,text) TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION mark_submission_as_graded(uuid,text) TO PUBLIC;
 REVOKE EXECUTE ON FUNCTION publish_assessment_submission(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION publish_assessment_submission(uuid) TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION publish_assessment_submission(uuid) TO PUBLIC;
 REVOKE EXECUTE ON FUNCTION publish_homework_submission(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION publish_homework_submission(uuid) TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION publish_homework_submission(uuid) TO PUBLIC;
 REVOKE EXECUTE ON FUNCTION recalculate_submission_score(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION recalculate_submission_score(uuid) TO anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION recalculate_submission_score(uuid) TO PUBLIC;
 
 DROP TRIGGER IF EXISTS trg_s4b3b0_protect_assessment_submissions ON public.assessment_submissions;
 DROP TRIGGER IF EXISTS trg_s4b3b0_protect_homework_submissions ON public.homework_submissions;
