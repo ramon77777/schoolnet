@@ -66,27 +66,27 @@ jobs:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/legacy-minimal.sql
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4a_school_pedagogy_overview.sql
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/course-core.sql
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b1_school_course_bridge.sql
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b2-tenant-ci/fixtures/course-content.sql
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2_student_school_courses.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/legacy-minimal.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4a_school_pedagogy_overview.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/course-core.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b1_school_course_bridge.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b2-tenant-ci/fixtures/course-content.sql
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2_student_school_courses.sql
       - name: Tester lectures eleves A/B, revocations, V1 et ROLLBACK
         env:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
-          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b2-tenant-ci/fixtures/student-courses-a-b.sql | tee /tmp/s4b2-result.txt
+          psql -X -A -t -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b2-tenant-ci/fixtures/student-courses-a-b.sql | tee /tmp/s4b2-result.txt
           grep -Fq 'S4B2_TENANT_A_B_PASS' /tmp/s4b2-result.txt
       - name: Tester retrait cible S4-B.2, sans supprimer S4-B.1
         env:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
-          psql -X -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b2_student_school_courses_rollback_manual.sql
-          psql -X -A -t -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN to_regprocedure('public.schoolnet_student_school_courses()') IS NULL AND to_regprocedure('public.schoolnet_student_school_course_detail(uuid)') IS NULL AND to_regprocedure('public.schoolnet_school_course_catalog(uuid)') IS NOT NULL AND to_regclass('schoolnet_private.school_course_links') IS NOT NULL AND (SELECT count(*) FROM public.courses)=0 THEN 'S4B2_ROLLBACK_CI_PASS' ELSE 'S4B2_ROLLBACK_CI_FAIL' END" | tee /tmp/s4b2-rollback.txt
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b2_student_school_courses_rollback_manual.sql
+          psql -X -A -t -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "SELECT CASE WHEN to_regprocedure('public.schoolnet_student_school_courses()') IS NULL AND to_regprocedure('public.schoolnet_student_school_course_detail(uuid)') IS NULL AND to_regprocedure('public.schoolnet_school_course_catalog(uuid)') IS NOT NULL AND to_regclass('schoolnet_private.school_course_links') IS NOT NULL AND (SELECT count(*) FROM public.courses)=0 THEN 'S4B2_ROLLBACK_CI_PASS' ELSE 'S4B2_ROLLBACK_CI_FAIL' END" | tee /tmp/s4b2-rollback.txt
           grep -Fq 'S4B2_ROLLBACK_CI_PASS' /tmp/s4b2-rollback.txt
       - name: Nettoyer completement le sandbox
         if: always()
