@@ -143,3 +143,12 @@ $function$;
 CREATE TRIGGER trg_notify_assessment_published
  AFTER INSERT OR UPDATE OF status ON public.assessments
  FOR EACH ROW EXECUTE FUNCTION public.notify_assessment_published();
+
+-- Simuler les droits observes sur Supabase principal AVANT durcissement.
+-- Contrairement au droit PUBLIC implicite PostgreSQL, la production
+-- attribue explicitement EXECUTE aux trois roles suivants.
+REVOKE ALL ON FUNCTION public.notify_assessment_published()
+ FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.notify_assessment_published()
+ TO anon, authenticated, service_role;
+
