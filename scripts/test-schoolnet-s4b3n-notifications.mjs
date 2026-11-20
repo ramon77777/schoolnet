@@ -6,6 +6,9 @@ import { readFileSync } from "node:fs";
 const file = (path) => readFileSync(path, "utf8");
 const sql = file("supabase/proposals/s4b3n_school_assessment_notifications.sql");
 const rollback = file("supabase/verification/s4b3n_school_assessment_notifications_rollback_manual.sql");
+const appliedMigration = file("supabase/migrations/20261120130939_schoolnet_s4b3n_official_assessment_notifications.sql");
+const aclProposal = file("supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql");
+const aclRollback = file("supabase/verification/s4b3n_legacy_assessment_notify_permission_rollback_manual.sql");
 const ui = file("src/features/notifications/pages/NotificationsPage.tsx");
 const bell = file("src/features/notifications/components/NotificationBell.tsx");
 const fixture = file("tests/s4b3n-tenant-ci/fixtures/notifications-a-b.sql");
@@ -97,5 +100,37 @@ test("La CI exploite uniquement Supabase local et verifie le retour arriere", ()
   assert.match(ci, /notifications-a-b\.sql/);
   assert.match(ci, /s4b3n_school_assessment_notifications_rollback_manual\.sql/);
   assert.match(ci, /supabase stop --no-backup/);
+  assert.doesNotMatch(ci, /supabase db push|supabase db reset --linked|vercel --prod/);
+});
+
+
+test("La migration 20261120130939 correspond octet pour octet au SQL de la CI", () => {
+  assert.equal(appliedMigration, sql);
+  assert.match(sql, /S4B3N_ROUTING_OFFICIEL/);
+  assert.match(sql, /S4B3N_POSTFLIGHT_FAILED/);
+});
+test("Le durcissement du trigger historique reste une proposition distincte", () => {
+  assert.match(aclProposal, /NON APPLIQUEE/);
+  assert.match(aclProposal, /REVOKE ALL ON FUNCTION public\.notify_assessment_published\(\)/);
+  assert.match(aclProposal, /FROM PUBLIC, anon, authenticated/);
+  assert.match(aclProposal, /S4B3N_PERMISSIONS_HARDENING_PASS/);
+  assert.doesNotMatch(aclProposal, /CREATE OR REPLACE FUNCTION|DROP TRIGGER|DELETE FROM public\./i);
+});
+test("Les controles ACL preservent le role service_role et le trigger", () => {
+  assert.match(aclProposal, /has_function_privilege\('service_role',v_oid,'EXECUTE'\)/);
+  assert.match(aclProposal, /trg_notify_assessment_published/);
+  assert.match(fixture, /S4B3N_PASS_LEGACY_ACL_HARDENING/);
+  assert.match(fixture, /S4B3N_PASS_LEGACY_TRIGGER_AFTER_REVOKE/);
+});
+test("Le rollback ACL restaure exactement les grants directs historiques", () => {
+  assert.match(aclRollback, /GRANT EXECUTE ON FUNCTION public\.notify_assessment_published\(\)/);
+  assert.match(aclRollback, /TO anon, authenticated/);
+  assert.match(aclRollback, /S4B3N_PERMISSIONS_ROLLBACK_PASS/);
+  assert.doesNotMatch(aclRollback, /GRANT EXECUTE.*TO PUBLIC|DROP FUNCTION|DELETE FROM public\./i);
+});
+test("La CI isole le durcissement et sa restauration, sans aucune commande prod", () => {
+  assert.match(ci, /s4b3n_legacy_assessment_notify_permission_hardening\.sql/);
+  assert.match(ci, /s4b3n_legacy_assessment_notify_permission_rollback_manual\.sql/);
+  assert.match(ci, /20261120130939_schoolnet_s4b3n_official_assessment_notifications\.sql/);
   assert.doesNotMatch(ci, /supabase db push|supabase db reset --linked|vercel --prod/);
 });
