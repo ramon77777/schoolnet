@@ -220,6 +220,19 @@ BEGIN
  IF (SELECT count(*) FROM public.quiz_choices
    WHERE question_id='b0000000-0000-4000-8000-000000000001'::uuid)<>1
  THEN RAISE EXCEPTION 'B0_FAIL_TEACHER_CANNOT_EDIT_OWN_CHOICES'; END IF;
+ IF EXISTS(SELECT 1 FROM public.assessment_submissions
+    WHERE id='c0000000-0000-4000-8000-000000000001'::uuid)
+ THEN RAISE EXCEPTION 'B0_FAIL_OWNER_TEACHER_READS_OFFICIAL_COPY_V1'; END IF;
+ blocked:=false;
+ BEGIN
+  INSERT INTO public.submission_question_grades(submission_id,question_id,points_awarded,max_points)
+  VALUES ('c0000000-0000-4000-8000-000000000001'::uuid,
+   'b0000000-0000-4000-8000-000000000001'::uuid,4,5);
+ EXCEPTION WHEN insufficient_privilege THEN blocked:=true;
+ END;
+ IF NOT blocked THEN RAISE EXCEPTION 'B0_FAIL_OWNER_TEACHER_MUTATES_OFFICIAL_COPY_V1'; END IF;
+ RAISE NOTICE 'B0_PASS_OWNER_TEACHER_RESTRICTED_TO_OFFICIAL_RPC';
+
  blocked:=false;
  BEGIN
   PERFORM public.publish_assessment_submission('c0000000-0000-4000-8000-000000000001'::uuid);
