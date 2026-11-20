@@ -130,8 +130,7 @@ begin
 
   return new;
 end;
-$function$
-
+$function$;
 
 DO $verify_rollback$
 BEGIN
