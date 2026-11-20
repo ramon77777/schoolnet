@@ -92,8 +92,9 @@ GRANT EXECUTE ON FUNCTION schoolnet_private.s4b3b0_is_official_submission(uuid)
 
 -- Policies restrictives : AND avec TOUTES les policies permissives V1.
 -- Aucune élévation de privilèges ; pas de DROP de policy historique.
--- Accès enseignant V1 conservé pour le PROPRIÉTAIRE du contenu ;
--- élève V2 : uniquement les futurs RPC contrôlés (B.1/B.2).
+-- Les enseignants propriétaires conservent l'accès aux évaluations et
+-- questions ; les COPIES officielles restent totalement privées jusqu'aux
+-- RPC B.4, y compris face aux écritures directes de leur enseignant.
 CREATE POLICY s4b3b0_assessment_catalog_guard
  ON public.assessments AS RESTRICTIVE FOR SELECT TO authenticated
  USING (
@@ -128,66 +129,24 @@ CREATE POLICY s4b3b0_correct_choices_guard
 -- avec un contrôle préalable du droit scolaire et une écriture atomique.
 CREATE POLICY s4b3b0_online_submissions_guard
  ON public.assessment_submissions AS RESTRICTIVE FOR ALL TO authenticated
- USING (
-  NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id)
-  OR public.is_assessment_owner(assessment_id)
- )
- WITH CHECK (
-  NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id)
-  OR public.is_assessment_owner(assessment_id)
- );
+ USING (NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id))
+ WITH CHECK (NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id));
 CREATE POLICY s4b3b0_homework_submissions_guard
  ON public.homework_submissions AS RESTRICTIVE FOR ALL TO authenticated
- USING (
-  NOT schoolnet_private.s4b3b0_is_official_assessment(homework_id)
-  OR public.is_assessment_owner(homework_id)
- )
- WITH CHECK (
-  NOT schoolnet_private.s4b3b0_is_official_assessment(homework_id)
-  OR public.is_assessment_owner(homework_id)
- );
+ USING (NOT schoolnet_private.s4b3b0_is_official_assessment(homework_id))
+ WITH CHECK (NOT schoolnet_private.s4b3b0_is_official_assessment(homework_id));
 CREATE POLICY s4b3b0_legacy_submissions_guard
  ON public.submissions AS RESTRICTIVE FOR ALL TO authenticated
- USING (
-  NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id)
-  OR public.is_assessment_owner(assessment_id)
- )
- WITH CHECK (
-  NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id)
-  OR public.is_assessment_owner(assessment_id)
- );
+ USING (NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id))
+ WITH CHECK (NOT schoolnet_private.s4b3b0_is_official_assessment(assessment_id));
 CREATE POLICY s4b3b0_submission_answers_guard
  ON public.submission_answers AS RESTRICTIVE FOR ALL TO authenticated
- USING (
-  NOT schoolnet_private.s4b3b0_is_official_submission(submission_id)
-  OR EXISTS (
-    SELECT 1 FROM public.assessment_submissions s
-    WHERE s.id=submission_answers.submission_id AND public.is_assessment_owner(s.assessment_id)
-  )
- )
- WITH CHECK (
-  NOT schoolnet_private.s4b3b0_is_official_submission(submission_id)
-  OR EXISTS (
-    SELECT 1 FROM public.assessment_submissions s
-    WHERE s.id=submission_answers.submission_id AND public.is_assessment_owner(s.assessment_id)
-  )
- );
+ USING (NOT schoolnet_private.s4b3b0_is_official_submission(submission_id))
+ WITH CHECK (NOT schoolnet_private.s4b3b0_is_official_submission(submission_id));
 CREATE POLICY s4b3b0_question_grades_guard
  ON public.submission_question_grades AS RESTRICTIVE FOR ALL TO authenticated
- USING (
-  NOT schoolnet_private.s4b3b0_is_official_submission(submission_id)
-  OR EXISTS (
-    SELECT 1 FROM public.assessment_submissions s
-    WHERE s.id=submission_question_grades.submission_id AND public.is_assessment_owner(s.assessment_id)
-  )
- )
- WITH CHECK (
-  NOT schoolnet_private.s4b3b0_is_official_submission(submission_id)
-  OR EXISTS (
-    SELECT 1 FROM public.assessment_submissions s
-    WHERE s.id=submission_question_grades.submission_id AND public.is_assessment_owner(s.assessment_id)
-  )
- );
+ USING (NOT schoolnet_private.s4b3b0_is_official_submission(submission_id))
+ WITH CHECK (NOT schoolnet_private.s4b3b0_is_official_submission(submission_id));
 
 -- V1 : une RLS "student_id = auth.uid()" n'empêche pas l'élève de s'auto-
 -- noter en écrivant directement score/status. Contrôle BEFORE défensif
