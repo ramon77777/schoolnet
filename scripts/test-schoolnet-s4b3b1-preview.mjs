@@ -6,6 +6,7 @@ import {isStudentOfficialAssessmentPreview} from
 
 const read=path=>readFileSync(path,"utf8");
 const sql=read("supabase/proposals/s4b3b1_student_official_assessment_preview.sql");
+const appliedSql=read("supabase/migrations/20261120145127_schoolnet_s4b3b1_student_official_assessment_preview.sql");
 const rollback=read("supabase/verification/s4b3b1_student_official_assessment_preview_rollback_manual.sql");
 const scenario=read("tests/s4b3b1-tenant-ci/fixtures/preview-a-b.sql");
 const model=read("src/features/student/lib/studentSchoolAssessmentPreviewModel.ts");
@@ -32,6 +33,13 @@ function validPreview(){
  };
 }
 
+test("La migration 20261120145127 est la copie exacte du SQL déjà appliqué",()=>{
+ assert.equal(appliedSql,sql);
+ assert.match(appliedSql,/S4B3B1_PREVIEW_SQL_PASS/);
+ assert.match(appliedSql,/S4B3B1_POSTFLIGHT_FAILED/);
+ assert.match(appliedSql,/CREATE FUNCTION public\.schoolnet_student_school_assessment_preview/);
+ assert.match(appliedSql,/CREATE FUNCTION schoolnet_private\.student_school_assessment_preview/);
+});
 test("Projection JSON strictement conforme et champs publics uniquement",()=>{
  const data=validPreview();
  assert.equal(isStudentOfficialAssessmentPreview(data,courseId,assessmentId),true);
@@ -131,6 +139,7 @@ test("Rollback dédié ne retire pas B.0, N ni les données V1",()=>{
 test("CI ne touche que le Postgres local jetable et compile l'interface",()=>{
  assert.match(ci,/supabase start -x/);
  assert.match(ci,/s4b3b1_student_official_assessment_preview\.sql/);
+ assert.match(ci,/20261120145127_schoolnet_s4b3b1_student_official_assessment_preview\.sql/);
  assert.match(ci,/s4b3b1-tenant-ci\/fixtures\/preview-a-b\.sql/);
  assert.match(ci,/s4b3b1_student_official_assessment_preview_rollback_manual\.sql/);
  assert.match(ci,/supabase stop --no-backup/);
