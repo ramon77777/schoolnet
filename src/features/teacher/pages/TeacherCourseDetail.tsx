@@ -186,7 +186,9 @@ export default function TeacherCourseDetail() {
   const [resourceCount, setResourceCount] = useState(0);
   const [officialStudentSummary, setOfficialStudentSummary] = useState<OfficialStudentSummary | null>(null);
   const [officialSummaryRevision, setOfficialSummaryRevision] = useState(0);
-  const officialSummaryKey = `${user?.id ?? ""}|${courseId ?? ""}`;
+  const teacherId = user?.id ?? "";
+  const isRealTeacher = Boolean(teacherId && !user?.isDemo && user?.role === "teacher");
+  const officialSummaryKey = `${teacherId}|${courseId ?? ""}`;
   const activeOfficialSummary =
     officialStudentSummary?.key === officialSummaryKey ? officialStudentSummary : null;
 
@@ -367,7 +369,7 @@ export default function TeacherCourseDetail() {
   }, [students]);
 
   useEffect(() => {
-    if (authLoading || !courseId || !user || user.isDemo || user.role !== "teacher") return;
+    if (authLoading || !courseId || !isRealTeacher) return;
     let cancelled = false;
     void getTeacherCourseClassSummary(courseId)
       .then((data) => {
@@ -386,8 +388,7 @@ export default function TeacherCourseDetail() {
       });
     return () => { cancelled = true; };
   }, [
-    authLoading, courseId, user?.id, user?.isDemo, user?.role,
-    officialSummaryKey, officialSummaryRevision,
+    authLoading, courseId, isRealTeacher, officialSummaryKey, officialSummaryRevision,
   ]);
 
   const subtitle = useMemo(() => {
