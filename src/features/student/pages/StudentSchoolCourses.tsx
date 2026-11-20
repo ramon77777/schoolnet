@@ -11,34 +11,30 @@ export default function StudentSchoolCourses(){
   const allowed=!authLoading&&!!user&&!user.isDemo&&user.role==="student";
   const [data,setData]=useState<StudentSchoolCourseCatalog|null>(null);
   const [owner,setOwner]=useState("");
-  const [loading,setLoading]=useState(true);
+  const userId=user?.id??"";
+  const loading=authLoading||(allowed&&owner!==userId);
   const [error,setError]=useState<string|null>(null);
   const [revision,setRevision]=useState(0);
-  const refresh=useCallback(()=>setRevision(n=>n+1),[]);
+  const refresh=useCallback(()=>{setOwner("");setRevision(n=>n+1);},[]);
   useEffect(()=>{
-    if(authLoading)return;
-    if(!allowed||!user){
-      setData(null);setOwner("");setError(null);setLoading(false);
-      return;
-    }
+    if(authLoading||!allowed||!userId)return;
     let cancelled=false;
-    setLoading(true);setError(null);
     void getStudentSchoolCourses()
       .then(result=>{
         if(cancelled)return;
-        setData(result);setOwner(user.id);
+        setData(result);setOwner(userId);setError(null);
       })
       .catch(cause=>{
         if(cancelled)return;
-        setData(null);setOwner(user.id);
+        setData(null);setOwner(userId);
         setError(isStudentSchoolCoursesPending(cause)
           ?"Les cours officiels de votre établissement ne sont pas encore activés sur ce serveur."
           :"Impossible d'afficher les cours de votre classe. Vérifiez votre affectation auprès de l'établissement.");
       })
-      .finally(()=>{if(!cancelled)setLoading(false);});
+      ;
     return ()=>{cancelled=true;};
-  },[authLoading,allowed,user?.id,revision]);
-  const catalog=allowed&&owner===user?.id?data:null;
+  },[authLoading,allowed,userId,revision]);
+  const catalog=allowed&&owner===userId?data:null;
   return (
     <main className="space-y-5 pb-10">
       <section className="sn-card bg-gradient-to-r from-white via-blue-50 to-indigo-100 p-5 md:p-7">

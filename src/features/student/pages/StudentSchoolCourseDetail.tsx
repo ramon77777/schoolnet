@@ -36,21 +36,18 @@ export default function StudentSchoolCourseDetail(){
   const allowed=!authLoading&&!!user&&!user.isDemo&&user.role==="student";
   const [detail,setDetail]=useState<CourseDetail|null>(null);
   const [loadedKey,setLoadedKey]=useState("");
-  const [loading,setLoading]=useState(true);
+  const userId=user?.id??"";
+  const canRequest=allowed&&Boolean(courseId);
   const [error,setError]=useState<string|null>(null);
   const [revision,setRevision]=useState(0);
-  const key=`${user?.id??""}|${courseId??""}`;
-  const refresh=useCallback(()=>setRevision(n=>n+1),[]);
+  const key=`${userId}|${courseId??""}`;
+  const loading=authLoading||(canRequest&&loadedKey!==key);
+  const refresh=useCallback(()=>{setLoadedKey("");setRevision(n=>n+1);},[]);
   useEffect(()=>{
-    if(authLoading)return;
-    if(!allowed||!user||!courseId){
-      setDetail(null);setLoadedKey("");setError(null);setLoading(false);
-      return;
-    }
+    if(authLoading||!canRequest||!courseId)return;
     let cancelled=false;
-    setLoading(true);setError(null);
     void getStudentSchoolCourseDetail(courseId)
-      .then(result=>{if(cancelled)return;setDetail(result);setLoadedKey(key);})
+      .then(result=>{if(cancelled)return;setDetail(result);setLoadedKey(key);setError(null);})
       .catch(cause=>{
         if(cancelled)return;
         setDetail(null);setLoadedKey(key);
@@ -58,10 +55,10 @@ export default function StudentSchoolCourseDetail(){
           ?"Le détail des cours officiels n'est pas encore activé sur ce serveur."
           :"Ce cours n'est plus disponible pour votre classe ou votre accès a été révoqué.");
       })
-      .finally(()=>{if(!cancelled)setLoading(false);});
+      ;
     return ()=>{cancelled=true;};
-  },[authLoading,allowed,user?.id,courseId,key,revision]);
-  const current=allowed&&loadedKey===key?detail:null;
+  },[authLoading,canRequest,courseId,key,revision]);
+  const current=canRequest&&loadedKey===key?detail:null;
   const general=useMemo(()=>current?.resources.filter(r=>r.sectionId===null)??[],[current]);
   return (
     <main className="space-y-5 pb-10">

@@ -49,7 +49,8 @@ function nullableText(x:unknown):x is string|null {
 }
 export function safeSchoolResourceUrl(value:unknown):value is string {
   if (typeof value!=="string" || !value.startsWith("https://") ||
-      /[\u0000-\u0020\u007f]/.test(value) || value.length>4096) return false;
+      Array.from(value).some(ch=>ch.charCodeAt(0)<=32||ch.charCodeAt(0)===127) ||
+      value.length>4096) return false;
   try {
     const url=new URL(value);
     return url.protocol==="https:" && !!url.hostname &&
