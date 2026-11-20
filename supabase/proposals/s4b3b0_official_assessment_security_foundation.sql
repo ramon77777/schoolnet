@@ -9,6 +9,7 @@ DO $s4b3b0_preflight$
 BEGIN
  IF to_regprocedure('schoolnet_private.s4b3b0_is_official_assessment(uuid)') IS NOT NULL
     OR to_regprocedure('schoolnet_private.s4b3b0_is_official_submission(uuid)') IS NOT NULL
+    OR to_regprocedure('schoolnet_private.s4b3b0_is_official_question(uuid)') IS NOT NULL
     OR to_regprocedure('schoolnet_private.s4b3b0_protect_student_submission()') IS NOT NULL
     OR to_regclass('schoolnet_private.school_assessment_links') IS NULL
     OR to_regprocedure('public.get_my_role()') IS NULL
@@ -44,6 +45,25 @@ $s4b3b0$;
 REVOKE ALL ON FUNCTION schoolnet_private.s4b3b0_is_official_assessment(uuid)
  FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION schoolnet_private.s4b3b0_is_official_assessment(uuid)
+ TO authenticated;
+
+-- La lecture directe des quiz_choices ne doit jamais déduire le caractère
+-- officiel d'une question via une sous-requête soumise aux RLS de l'élève.
+-- Cette classification privée consulte les métadonnées sans dévoiler is_correct.
+CREATE FUNCTION schoolnet_private.s4b3b0_is_official_question(p_question_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=pg_catalog AS $s4b3b0$
+ SELECT COALESCE(
+  auth.uid() IS NOT NULL AND p_question_id IS NOT NULL
+  AND EXISTS(
+   SELECT 1 FROM public.quiz_questions q
+   JOIN schoolnet_private.school_assessment_links al ON al.assessment_id=q.assessment_id
+   WHERE q.id=p_question_id
+  ),false);
+$s4b3b0$;
+REVOKE ALL ON FUNCTION schoolnet_private.s4b3b0_is_official_question(uuid)
+ FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION schoolnet_private.s4b3b0_is_official_question(uuid)
  TO authenticated;
 
 CREATE FUNCTION schoolnet_private.s4b3b0_is_official_submission(p_submission_id uuid)
@@ -93,11 +113,7 @@ CREATE POLICY s4b3b0_questions_guard
 CREATE POLICY s4b3b0_correct_choices_guard
  ON public.quiz_choices AS RESTRICTIVE FOR SELECT TO authenticated
  USING (
-  NOT EXISTS (
-    SELECT 1 FROM public.quiz_questions q
-    WHERE q.id=quiz_choices.question_id
-      AND schoolnet_private.s4b3b0_is_official_assessment(q.assessment_id)
-  )
+  NOT schoolnet_private.s4b3b0_is_official_question(question_id)
   OR EXISTS (
     SELECT 1 FROM public.quiz_questions q
     JOIN public.assessments a ON a.id=q.assessment_id
