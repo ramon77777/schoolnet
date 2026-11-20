@@ -2,8 +2,9 @@
 
 **Date : 20 novembre 2026**  
 **Base de développement :** `main` `dc55920b2d35841c45937acf432eab1637299f53`  
-**Statut :** proposition GitHub en branche isolée. Aucune migration sur Supabase
-principal, aucune fusion ni publication sur Vercel officiel.
+**Statut :** migration SQL S4-B.3-A installée et vérifiée sur Supabase principal
+le 20 novembre 2026. Code sur la branche de la PR #22 (brouillon) ; aucune
+fusion GitHub ni publication du frontend sur Vercel officiel.
 
 ## Décision produit
 
@@ -39,8 +40,15 @@ soumissions ou des notes avec un contrôle d'accès V1 insuffisant.
 
 ## Données et permissions
 
-Proposition SQL **non installée** :
-`supabase/proposals/s4b3a_school_assessment_links.sql`.
+**Migration appliquée sur Supabase principal** (ne pas réexécuter) :
+`20261120112312_schoolnet_s4b3a_official_assessment_links`.
+
+- Fichier de migration versionné :
+  `supabase/migrations/20261120112312_schoolnet_s4b3a_official_assessment_links.sql`.
+- Source SQL appliquée et conservée sans modification :
+  `supabase/proposals/s4b3a_school_assessment_links.sql`.
+- Le fichier versionné reproduit exactement le SQL déjà appliqué ;
+  il sert à la traçabilité Git et **ne doit pas être rejoué sur cette base**.
 
 - Table `schoolnet_private.school_assessment_links` :
   une seule association par évaluation, historisée par
@@ -75,6 +83,15 @@ Proposition SQL **non installée** :
   origine Preview refusée, révocation d'une affiliation et d'un lien.
 - Rollback manuel ciblé testé sans retirer les RPC S4-B.
 - Pas de comptes ni de données de test ajoutés sur Supabase principal.
+- Contrôles post-migration sur Supabase principal : table privée créée avec RLS,
+  accès direct `anon`/`authenticated` refusé ; huit fonctions présentes avec
+  permissions conformes et `search_path` figé. Aucun rattachement automatique
+  (`school_assessment_links` = 0) ; `assessments` = 14,
+  `course_enrollments` = 2, `student_progress` = 2, sans variation.
+- La recette utilisateur avec des comptes autorisés et l'isolation A/B réelle
+  restent à homologuer ; les tests en CI isolée ne valent pas recette métier.
+- Preview Vercel du commit initial `68ea3801` : READY, lecture seule.
+  Le frontend n'est pas encore intégré au site officiel.
 
 ## Étapes suivantes
 
@@ -89,5 +106,7 @@ parent/administration d'établissement, avec protection de toutes
 les données personnelles et sans fuite entre établissements.
 
 **Important :** la présente PR prépare S4-B.3-A et n'achève
-pas à elle seule tout S4-B.3. L'installation SQL et la fusion
-GitHub/Vercel nécessitent des autorisations explicites distinctes.
+pas à elle seule tout S4-B.3. Le GO SQL a été accordé et la migration
+est déjà appliquée. Les GO de fusion dans `main` et de publication
+Vercel restent distincts et ne sont pas accordés. Le rollback manuel
+reste une procédure ciblée à ne pas exécuter sans décision dédiée.
