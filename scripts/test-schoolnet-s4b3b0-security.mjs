@@ -4,13 +4,19 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const src=(p)=>readFileSync(p,"utf8");
 const sql=src("supabase/proposals/s4b3b0_official_assessment_security_foundation.sql");
+const installedMigration=src("supabase/migrations/20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation.sql");
 const rollback=src("supabase/verification/s4b3b0_official_assessment_security_rollback_manual.sql");
 const core=src("tests/s4b3b0-tenant-ci/fixtures/submission-core.sql");
 const scenario=src("tests/s4b3b0-tenant-ci/fixtures/security-a-b.sql");
 const ci=src(".github/workflows/schoolnet-s4b3b0-security-ci.yml");
-test("La proposition SQL reste separée de toute migration principale",()=>{
+test("La source historique conserve ses gardes et n’efface pas les donnees",()=>{
  assert.match(sql,/NE PAS EXÉCUTER sur Supabase principal/);
  assert.doesNotMatch(sql,/\b(?:DROP TABLE|TRUNCATE TABLE|DELETE FROM public\.notifications)\b/i);
+});
+test("La migration 20261120142210 archive exactement le SQL applique",()=>{
+ assert.equal(installedMigration,sql);
+ assert.match(installedMigration,/S4B3B0_SECURITY_FOUNDATION_PASS/);
+ assert.match(installedMigration,/S4B3B0_POSTFLIGHT_FAILED/);
 });
 test("Le lien scolaire meme revoqué garde son statut officiel",()=>{
  assert.match(sql,/schoolnet_private\.school_assessment_links al/);
@@ -98,6 +104,7 @@ test("La CI teste les deux etablissements et V1 dans une base jetable",()=>{
  assert.match(ci,/supabase start -x/);
  assert.match(ci,/tests\/s4b3b0-tenant-ci\/fixtures\/security-a-b\.sql/);
  assert.match(ci,/s4b3b0_official_assessment_security_rollback_manual\.sql/);
+ assert.match(ci,/20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation\.sql/);
  assert.match(ci,/supabase stop --no-backup/);
  assert.doesNotMatch(ci,/supabase db push|supabase db reset --linked|vercel --prod/);
 });
