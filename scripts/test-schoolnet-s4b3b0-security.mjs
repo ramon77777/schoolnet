@@ -36,6 +36,19 @@ test("Restrictions combinées AND avec les anciennes policies permissives",()=>{
   "public.homework_submissions","public.submissions","public.submission_answers","public.submission_question_grades"])
   assert.ok(sql.includes("ON "+table+" AS RESTRICTIVE"),table);
 });
+test("Même un enseignant propriétaire ne peut modifier une copie officielle via V1",()=>{
+ const keys=["online_submissions_guard","homework_submissions_guard",
+  "legacy_submissions_guard","submission_answers_guard","question_grades_guard"];
+ for(const k of keys){
+  const pattern=new RegExp("CREATE POLICY s4b3b0_"+k+"[\\s\\S]*?;");
+  const section=sql.match(pattern)?.[0];
+  assert.ok(section,k);
+  assert.doesNotMatch(section,/OR public\.is_assessment_owner/);
+ }
+ assert.match(scenario,/B0_FAIL_OWNER_TEACHER_MUTATES_OFFICIAL_COPY_V1/);
+ assert.match(scenario,/B0_PASS_OWNER_TEACHER_RESTRICTED_TO_OFFICIAL_RPC/);
+});
+
 test("La correction V1 n'est pas accessible a l'eleve ni au mauvais professeur",()=>{
  assert.match(sql,/S4B3B0_GRADING_NOT_AUTHORIZED/);
  assert.match(sql,/a\.created_by=auth\.uid\(\)/);
