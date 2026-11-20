@@ -253,7 +253,7 @@ BEGIN
  BEGIN
   PERFORM public.publish_homework_submission('c1000000-0000-4000-8000-000000000001'::uuid);
  EXCEPTION WHEN OTHERS THEN
-  IF SQLSTATE='P0001' AND SQLERRM ~* 'autor' THEN
+  IF SQLSTATE='P0001' AND SQLERRM='Rendu introuvable ou non corrigé.' THEN
     blocked:=true;
   ELSE RAISE; END IF;
  END;
