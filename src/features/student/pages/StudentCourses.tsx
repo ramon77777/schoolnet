@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 type DbCourse = {
   id: string;
@@ -177,6 +177,17 @@ export default function StudentCourses() {
         <div className="text-sm text-gray-500">
           Retrouvez ici les cours auxquels vous êtes inscrit et votre progression.
         </div>
+      </div>
+      <div className="sn-card border border-indigo-100 bg-indigo-50 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-slate-900">Cours de mon établissement</div>
+          <p className="mt-1 text-sm text-slate-600">
+            Accédez aux cours de votre classe officielle, indépendamment des inscriptions aux cours libres.
+          </p>
+        </div>
+        <Link to="/app/student/school-courses" className="sn-btn-primary">
+          Voir mes cours officiels
+        </Link>
       </div>
 
       {user?.isDemo && (

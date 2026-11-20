@@ -225,6 +225,9 @@ export default function DashboardLayout() {
             >
               📘 Mes cours
             </NavLink>
+            <NavLink className={navItem} to="/app/student/school-courses">
+              🏫 Cours de mon établissement
+            </NavLink>
 
             <NavLink
               className={navItem}

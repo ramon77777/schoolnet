@@ -1,0 +1,8 @@
+# SCHOOLNET S4-B.2 — Supabase local et jetable. Aucune liaison distante.
+project_id = "schoolnet_s4b2_tenant_ci"
+
+[db]
+major_version = 15
+
+[db.seed]
+enabled = false
