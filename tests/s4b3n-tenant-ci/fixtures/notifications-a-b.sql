@@ -228,7 +228,7 @@ INSERT INTO public.assessments(id,course_id,type,status,title,created_by) VALUES
 SET LOCAL ROLE authenticated;
 SELECT public.schoolnet_teacher_link_school_assessment('a0000000-0000-4000-8000-000000000006');
 RESET ROLE;
-UPDATE public.schoolnet_school_student_class_assignments SET status='revoked'
+UPDATE public.schoolnet_school_student_class_assignments SET status='revoked',revoked_at=pg_catalog.now()
 WHERE school_id='20000000-0000-4000-8000-000000000001'::uuid
  AND student_id='10000000-0000-4000-8000-000000000005'::uuid;
 UPDATE public.assessments SET status='published'
@@ -240,7 +240,7 @@ BEGIN
  THEN RAISE EXCEPTION 'S4B3N_FAIL_REVOKED_CLASS_ASSIGNEE'; END IF;
  RAISE NOTICE 'S4B3N_PASS_REVOKED_CLASS_ASSIGNEE';
 END;$assignment_revoked$;
-UPDATE public.schoolnet_school_student_class_assignments SET status='active'
+UPDATE public.schoolnet_school_student_class_assignments SET status='active',revoked_at=NULL
 WHERE school_id='20000000-0000-4000-8000-000000000001'::uuid
  AND student_id='10000000-0000-4000-8000-000000000005'::uuid;
 
@@ -251,7 +251,7 @@ INSERT INTO public.assessments(id,course_id,type,status,title,created_by) VALUES
 SET LOCAL ROLE authenticated;
 SELECT public.schoolnet_teacher_link_school_assessment('a0000000-0000-4000-8000-000000000007');
 RESET ROLE;
-UPDATE public.schoolnet_school_teacher_subject_assignments SET status='revoked'
+UPDATE public.schoolnet_school_teacher_subject_assignments SET status='revoked',revoked_at=pg_catalog.now()
 WHERE id='60000000-0000-4000-8000-000000000001'::uuid;
 UPDATE public.assessments SET status='published'
 WHERE id='a0000000-0000-4000-8000-000000000007';
@@ -262,7 +262,7 @@ BEGIN
  THEN RAISE EXCEPTION 'S4B3N_FAIL_REVOKED_TEACHER_ASSIGNMENT'; END IF;
  RAISE NOTICE 'S4B3N_PASS_REVOKED_TEACHER_ASSIGNMENT';
 END;$teacher_revoked$;
-UPDATE public.schoolnet_school_teacher_subject_assignments SET status='active'
+UPDATE public.schoolnet_school_teacher_subject_assignments SET status='active',revoked_at=NULL
 WHERE id='60000000-0000-4000-8000-000000000001'::uuid;
 
 -- Ecole suspendue : aucune information scolaire vers d'autres comptes.
