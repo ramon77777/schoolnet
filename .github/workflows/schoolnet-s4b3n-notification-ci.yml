@@ -8,6 +8,7 @@ on:
       - 'supabase/proposals/s4b3n_school_assessment_notifications.sql'
       - 'supabase/migrations/20261120130939_schoolnet_s4b3n_official_assessment_notifications.sql'
       - 'supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql'
+      - 'supabase/migrations/20261120132205_schoolnet_s4b3n_legacy_assessment_notify_permission_hardening.sql'
       - 'supabase/verification/s4b3n_legacy_assessment_notify_permission_rollback_manual.sql'
       - 'docs/releases/SCHOOLNET_S4B3N_NOTIFICATIONS_EVALUATIONS_2026-11-20.md'
       - 'supabase/verification/s4b3n_school_assessment_notifications_rollback_manual.sql'
