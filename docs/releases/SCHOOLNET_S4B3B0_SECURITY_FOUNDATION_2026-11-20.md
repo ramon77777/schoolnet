@@ -50,9 +50,11 @@ Huit politiques **RESTRICTIVE** supplémentaires sont proposées sur les
 évaluations, questions, choix, remises en ligne, devoirs avec fichiers,
 soumissions historiques, réponses et détails de notes. Elles agissent par
 intersection avec les RLS permissives : elles n'ajoutent aucun droit V1.
-Les enseignants propriétaires conservent l'accès à leurs contenus ; les
-élèves ne peuvent pas utiliser les tables V1 pour une évaluation officielle.
-Les futures opérations V2 passeront par des RPC contrôlées côté serveur.
+Les enseignants propriétaires conservent l'accès aux évaluations et aux
+questions nécessaires à leur préparation. **Toute lecture ou écriture directe
+d'une copie officielle (remise, réponse, note) est bloquée pour les rôles
+applicatifs, y compris l'enseignant propriétaire** : les futures opérations V2
+passeront exclusivement par des RPC contrôlées côté serveur (B.2/B.4).
 
 Deux triggers préservent l'interface V1 mais empêchent un **élève** de
 s'auto-attribuer un score, une correction, une date de publication ou un
