@@ -230,13 +230,19 @@ BEGIN
  BEGIN
   PERFORM public.mark_submission_as_graded_v2('c0000000-0000-4000-8000-000000000001'::uuid,
     'essai',0,NULL);
- EXCEPTION WHEN OTHERS THEN blocked:=true;
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLSTATE='P0001' AND SQLERRM ~* 'autor' THEN
+    blocked:=true;
+  ELSE RAISE; END IF;
  END;
  IF NOT blocked THEN RAISE EXCEPTION 'B0_FAIL_V2_GRADED_OFFICIAL_WITH_OLD_RPC'; END IF;
  blocked:=false;
  BEGIN
   PERFORM public.publish_homework_submission('c1000000-0000-4000-8000-000000000001'::uuid);
- EXCEPTION WHEN OTHERS THEN blocked:=true;
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLSTATE='P0001' AND SQLERRM ~* 'autor' THEN
+    blocked:=true;
+  ELSE RAISE; END IF;
  END;
  IF NOT blocked THEN RAISE EXCEPTION 'B0_FAIL_V1_RPC_PUBLISHED_OFFICIAL_HOMEWORK'; END IF;
  PERFORM public.mark_submission_as_graded('c0000000-0000-4000-8000-000000000005'::uuid,'Correction V1');
@@ -247,6 +253,24 @@ BEGIN
  RAISE NOTICE 'B0_PASS_TEACHER_V1_COMPATIBLE_AND_OFFICIAL_LOCKED';
 END;$teacher_a$;
 RESET ROLE;
+-- Une révocation ultérieure ne rétablit PAS les anciennes voies V1.
+UPDATE schoolnet_private.school_assessment_links
+ SET status='revoked',revoked_at=now(),
+ revoked_by='10000000-0000-4000-8000-000000000003'::uuid
+ WHERE assessment_id='a0000000-0000-4000-8000-000000000001'::uuid;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
+SET LOCAL ROLE authenticated;
+DO $revoked$
+BEGIN
+ IF schoolnet_private.s4b3b0_is_official_assessment(
+      'a0000000-0000-4000-8000-000000000001'::uuid) IS DISTINCT FROM true
+ OR EXISTS(SELECT 1 FROM public.quiz_choices
+      WHERE question_id='b0000000-0000-4000-8000-000000000001'::uuid)
+ THEN RAISE EXCEPTION 'B0_FAIL_REVOKED_LINK_LEAK'; END IF;
+ RAISE NOTICE 'B0_PASS_REVOKED_LINK_STILL_PROTECTED';
+END;$revoked$;
+RESET ROLE;
+
 DO $final$
 BEGIN
  IF (SELECT count(*) FROM public.course_enrollments)<>3
