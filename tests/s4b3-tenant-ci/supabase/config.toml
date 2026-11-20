@@ -1,0 +1,10 @@
+# SCHOOLNET S4-B.3-A — Supabase CI jetable et isole.
+project_id = "schoolnet_s4b3a_tenant_ci"
+
+[db]
+major_version = 15
+port = 54342
+shadow_port = 54343
+
+[db.seed]
+enabled = false
