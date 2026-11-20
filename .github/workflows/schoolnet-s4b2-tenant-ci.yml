@@ -12,6 +12,11 @@ on:
       - 'src/layouts/DashboardLayout.tsx'
       - 'scripts/test-schoolnet-s4b2-course-access.mjs'
       - 'scripts/test-schoolnet-s4b2-courses-unified.mjs'
+      - 'scripts/test-schoolnet-s4b2r-teacher-summary.mjs'
+      - 'src/features/teacher/pages/TeacherCourseDetail.tsx'
+      - 'src/features/teacher/lib/**'
+      - 'supabase/proposals/s4b2r_teacher_course_class_summary.sql'
+      - 'supabase/verification/s4b2r_teacher_course_class_summary_rollback_manual.sql'
       - 'package.json'
   workflow_dispatch:
 
@@ -23,7 +28,7 @@ concurrency:
 
 jobs:
   quality:
-    name: S4-B.2 - 23 contrats + 16 UX, lint et build
+    name: S4-B.2 - 23 contrats + 16 UX + 20 enseignants, lint et build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -40,6 +45,8 @@ jobs:
         run: npm run qa:s4b2
       - name: Tests de navigation unifiee S4-B.2
         run: npm run qa:s4b2-ui
+      - name: Tests correctifs enseignants S4-B.2-R
+        run: npm run qa:s4b2-r
       - name: ESLint
         run: npm run lint
       - name: Compilation TypeScript et Vite
@@ -61,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
-      - name: Installer schema de test V1 + S3-C + S4-A + S4-B.1 + S4-B.2
+      - name: Installer schema de test V1 + S3-C + S4-A + S4-B.1 + S4-B.2 + S4-B.2-R
         env:
           PGPASSWORD: postgres
         run: |
@@ -73,13 +80,21 @@ jobs:
           psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b1_school_course_bridge.sql
           psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b2-tenant-ci/fixtures/course-content.sql
           psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2_student_school_courses.sql
-      - name: Tester lectures eleves A/B, revocations, V1 et ROLLBACK
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2r_teacher_course_class_summary.sql
+      - name: Tester lectures eleves A/B, profs A/B, revocations, V1 et ROLLBACK
         env:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
           psql -X -A -t -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b2-tenant-ci/fixtures/student-courses-a-b.sql | tee /tmp/s4b2-result.txt
           grep -Fq 'S4B2_TENANT_A_B_PASS' /tmp/s4b2-result.txt
+      - name: Tester rollback correctif enseignant sans perdre S4-B.2
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54332 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b2r_teacher_course_class_summary_rollback_manual.sql | tee /tmp/s4b2r-rollback.txt
+          grep -Fq 'S4B2R_ROLLBACK_PASS' /tmp/s4b2r-rollback.txt
       - name: Tester retrait cible S4-B.2, sans supprimer S4-B.1
         env:
           PGPASSWORD: postgres

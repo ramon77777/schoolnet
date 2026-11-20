@@ -67,6 +67,78 @@ VALUES ('70000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-00000000
 INSERT INTO public.student_progress(course_id,student_id,progress_percent)
 VALUES ('70000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000005',30);
 
+-- Recette enseignant : les deux etablissements possedent un eleve
+-- officiellement affecte, mais le cours libre V1 ne doit pas etre
+-- transforme en cours officiel. Aucune identite n'est renvoyee par la RPC.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+DO $teacher_a$
+DECLARE x jsonb;denied boolean:=false;
+BEGIN
+ x:=public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000001');
+ IF x->>'isOfficial'<>'true' OR x->>'officialStudentCount'<>'1'
+   OR (SELECT COUNT(*) FROM jsonb_object_keys(x))<>3
+   OR x::text LIKE '%Eleve A%'
+   OR x::text LIKE '%10000000-0000-4000-8000-000000000005%'
+ THEN RAISE EXCEPTION 'S4B2R_FAIL: enseignant A a un effectif erronne ou une fuite'; END IF;
+ x:=public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000003');
+ IF x->>'isOfficial'<>'false' OR x->>'officialStudentCount'<>'0'
+ THEN RAISE EXCEPTION 'S4B2R_FAIL: cours libre V1 presente comme officiel'; END IF;
+ BEGIN
+  PERFORM public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000002');
+ EXCEPTION WHEN SQLSTATE '42501' THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'S4B2R_FAIL: enseignant A voit ecole B'; END IF;
+ RAISE NOTICE 'S4B2R_PASS_TEACHER_A_NO_PII';
+END;
+$teacher_a$;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000004',true);
+DO $teacher_b$
+DECLARE x jsonb;denied boolean:=false;
+BEGIN
+ x:=public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000002');
+ IF x->>'isOfficial'<>'true' OR x->>'officialStudentCount'<>'1'
+ THEN RAISE EXCEPTION 'S4B2R_FAIL: enseignant B ne voit pas sa classe'; END IF;
+ BEGIN
+  PERFORM public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN SQLSTATE '42501' THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'S4B2R_FAIL: enseignant B voit ecole A'; END IF;
+ RAISE NOTICE 'S4B2R_PASS_TEACHER_B_ISOLATION';
+END;
+$teacher_b$;
+
+DO $non_teachers$
+DECLARE uid uuid; denied boolean;
+BEGIN
+ FOREACH uid IN ARRAY ARRAY[
+  '10000000-0000-4000-8000-000000000005'::uuid,
+  '10000000-0000-4000-8000-000000000008'::uuid,
+  '10000000-0000-4000-8000-000000000001'::uuid
+ ] LOOP
+  PERFORM set_config('request.jwt.claim.sub',uid::text,true);
+  denied:=false;
+  BEGIN
+   PERFORM public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000001');
+  EXCEPTION WHEN SQLSTATE '42501' THEN denied:=true; END;
+  IF NOT denied THEN RAISE EXCEPTION 'S4B2R_FAIL: role non enseignant autorise'; END IF;
+ END LOOP;
+ RAISE NOTICE 'S4B2R_PASS_NON_TEACHER_DENIAL';
+END;
+$non_teachers$;
+RESET ROLE;
+SET LOCAL ROLE anon;
+DO $no_anon$
+DECLARE denied boolean:=false;
+BEGIN
+ BEGIN
+  PERFORM public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000001');
+ EXCEPTION WHEN SQLSTATE '42501' THEN denied:=true; END;
+ IF NOT denied THEN RAISE EXCEPTION 'S4B2R_FAIL: acces anonyme'; END IF;
+ RAISE NOTICE 'S4B2R_PASS_ANON_DENIAL';
+END;
+$no_anon$;
+RESET ROLE;
+
 -- Connexion synthetique A : liste et chapitres autorises.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
@@ -175,6 +247,20 @@ END;
 $rev_student$;
 RESET ROLE;
 
+-- Le compteur officiel suit immediatement la revocation de l'eleve.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+DO $rev_student_teacher$
+DECLARE x jsonb;
+BEGIN
+ x:=public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000001');
+ IF x->>'isOfficial'<>'true' OR x->>'officialStudentCount'<>'0'
+ THEN RAISE EXCEPTION 'S4B2R_FAIL: eleve revoque reste compte'; END IF;
+ RAISE NOTICE 'S4B2R_PASS_REVOKED_STUDENT_COUNT';
+END;
+$rev_student_teacher$;
+RESET ROLE;
+
 -- Reactivation puis revocation de l'appartenance ecole.
 UPDATE public.schoolnet_school_student_class_assignments
 SET status='active',revoked_at=NULL WHERE student_id='10000000-0000-4000-8000-000000000005';
@@ -227,6 +313,19 @@ BEGIN
 END;
 $rev_link$;
 RESET ROLE;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+DO $rev_teacher_link$
+DECLARE x jsonb;
+BEGIN
+ x:=public.schoolnet_teacher_course_class_summary('70000000-0000-4000-8000-000000000001');
+ IF x->>'isOfficial'<>'false' OR x->>'officialStudentCount'<>'0'
+ THEN RAISE EXCEPTION 'S4B2R_FAIL: lien revoque affiche un effectif'; END IF;
+ RAISE NOTICE 'S4B2R_PASS_REVOKED_LINK';
+END;
+$rev_teacher_link$;
+RESET ROLE;
+
 UPDATE schoolnet_private.school_course_links
 SET status='active',revoked_at=NULL,revoked_by=NULL
 WHERE course_id='70000000-0000-4000-8000-000000000001';

@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { splitTeacherCourseResources } from "@/features/teacher/lib/teacherCourseResources";
+import {
+  getTeacherCourseClassSummary,
+  isTeacherCourseClassSummaryActivationPending,
+} from "@/features/teacher/lib/teacherCourseClassSummaryApi";
+import type { TeacherCourseClassSummary } from "@/features/teacher/lib/teacherCourseClassSummaryModel";
 
 type CourseStatus = "active" | "archived";
 type ResourceType =
@@ -65,16 +71,24 @@ type ProgressRow = {
   progress_percent: number;
 };
 
+type ResourceView = {
+  id: string;
+  type: "PDF" | "Vidéo" | "Lien" | "Fichier" | "Word" | "PowerPoint";
+  label: string;
+  url: string;
+};
+
 type SectionView = {
   id: string;
   title: string;
   orderIndex: number;
-  items: {
-    id: string;
-    type: "PDF" | "Vidéo" | "Lien" | "Fichier" | "Word" | "PowerPoint";
-    label: string;
-    url: string;
-  }[];
+  items: ResourceView[];
+};
+
+type OfficialStudentSummary = {
+  key: string;
+  data: TeacherCourseClassSummary | null;
+  error: string | null;
 };
 
 type AssessmentView = {
@@ -167,6 +181,14 @@ export default function TeacherCourseDetail() {
   const [sections, setSections] = useState<SectionView[]>([]);
   const [assessments, setAssessments] = useState<AssessmentView[]>([]);
   const [students, setStudents] = useState<StudentView[]>([]);
+  const [generalResources, setGeneralResources] = useState<ResourceView[]>([]);
+  const [unmatchedResources, setUnmatchedResources] = useState<ResourceView[]>([]);
+  const [resourceCount, setResourceCount] = useState(0);
+  const [officialStudentSummary, setOfficialStudentSummary] = useState<OfficialStudentSummary | null>(null);
+  const [officialSummaryRevision, setOfficialSummaryRevision] = useState(0);
+  const officialSummaryKey = `${user?.id ?? ""}|${courseId ?? ""}`;
+  const activeOfficialSummary =
+    officialStudentSummary?.key === officialSummaryKey ? officialStudentSummary : null;
 
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [resourceSectionId, setResourceSectionId] = useState("");
@@ -191,6 +213,9 @@ export default function TeacherCourseDetail() {
     if (!user || user.isDemo) {
       setCourse(null);
       setSections([]);
+      setGeneralResources([]);
+      setUnmatchedResources([]);
+      setResourceCount(0);
       setAssessments([]);
       setStudents([]);
       setLoading(false);
@@ -273,19 +298,22 @@ export default function TeacherCourseDetail() {
 
       setCourse(courseResult.data as CourseRow);
 
+      const groupedResources = splitTeacherCourseResources(resourceRows, sectionRows);
+      const asResourceView = (resource: ResourceRow): ResourceView => ({
+        id: resource.id,
+        type: resourceTypeLabel(resource.type),
+        label: resource.title,
+        url: resource.url,
+      });
+      setResourceCount(groupedResources.total);
+      setGeneralResources(groupedResources.general.map(asResourceView));
+      setUnmatchedResources(groupedResources.unmatched.map(asResourceView));
       setSections(
         sectionRows.map((section) => ({
           id: section.id,
           title: section.title,
           orderIndex: section.order_index,
-          items: resourceRows
-            .filter((resource) => resource.section_id === section.id)
-            .map((resource) => ({
-              id: resource.id,
-              type: resourceTypeLabel(resource.type),
-              label: resource.title,
-              url: resource.url,
-            })),
+          items: (groupedResources.bySection.get(section.id) ?? []).map(asResourceView),
         }))
       );
 
@@ -317,6 +345,9 @@ export default function TeacherCourseDetail() {
       setError(safeErrorMessage(err, "Impossible de charger le détail du cours."));
       setCourse(null);
       setSections([]);
+      setGeneralResources([]);
+      setUnmatchedResources([]);
+      setResourceCount(0);
       setAssessments([]);
       setStudents([]);
     } finally {
@@ -335,9 +366,29 @@ export default function TeacherCourseDetail() {
     return Math.round(total / students.length);
   }, [students]);
 
-  const resourceCount = useMemo(() => {
-    return sections.reduce((sum, section) => sum + section.items.length, 0);
-  }, [sections]);
+  useEffect(() => {
+    if (authLoading || !courseId || !user || user.isDemo || user.role !== "teacher") return;
+    let cancelled = false;
+    void getTeacherCourseClassSummary(courseId)
+      .then((data) => {
+        if (cancelled) return;
+        setOfficialStudentSummary({ key: officialSummaryKey, data, error: null });
+      })
+      .catch((cause: unknown) => {
+        if (cancelled) return;
+        setOfficialStudentSummary({
+          key: officialSummaryKey,
+          data: null,
+          error: isTeacherCourseClassSummaryActivationPending(cause)
+            ? "L'effectif officiel n'est pas encore activé sur ce serveur."
+            : "Impossible de vérifier l'effectif de la classe. Les inscriptions V1 restent accessibles.",
+        });
+      });
+    return () => { cancelled = true; };
+  }, [
+    authLoading, courseId, user?.id, user?.isDemo, user?.role,
+    officialSummaryKey, officialSummaryRevision,
+  ]);
 
   const subtitle = useMemo(() => {
     if (!course) return "";
@@ -557,12 +608,18 @@ export default function TeacherCourseDetail() {
 
       {!isLoading && !error && course && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <InfoCard label="Sections" value={String(sections.length)} />
-            <InfoCard label="Ressources" value={String(resourceCount)} />
+            <InfoCard label="Ressources (total)" value={String(resourceCount)} />
             <InfoCard label="Évaluations" value={String(assessments.length)} />
-            <InfoCard label="Apprenants" value={String(students.length)} />
-            <InfoCard label="Progression moy." value={`${averageProgress}%`} />
+            <InfoCard
+              label="Élèves officiels"
+              value={activeOfficialSummary?.data?.isOfficial
+                ? String(activeOfficialSummary.data.officialStudentCount)
+                : "—"}
+            />
+            <InfoCard label="Inscriptions V1" value={String(students.length)} />
+            <InfoCard label="Progression V1" value={`${averageProgress}%`} />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -624,27 +681,8 @@ export default function TeacherCourseDetail() {
                         </div>
 
                         {section.items.length > 0 ? (
-                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            {section.items.map((item) => (
-                              <div
-                                key={item.id}
-                                className="rounded-2xl bg-gray-50 border border-gray-100 p-3 flex items-center justify-between gap-3"
-                              >
-                                <div className="min-w-0 text-sm text-gray-800">
-                                  <span className="font-semibold">{item.type}</span>{" "}
-                                  <span className="text-gray-600">— {item.label}</span>
-                                </div>
-                                <button
-                                  className="sn-btn-ghost sn-press"
-                                  type="button"
-                                  onClick={() =>
-                                    window.open(item.url, "_blank", "noopener,noreferrer")
-                                  }
-                                >
-                                  Ouvrir
-                                </button>
-                              </div>
-                            ))}
+                          <div className="mt-3">
+                            <TeacherResourceList items={section.items} />
                           </div>
                         ) : (
                           <div className="mt-3 text-sm text-gray-500">
@@ -656,6 +694,33 @@ export default function TeacherCourseDetail() {
                   </div>
                 )}
               </div>
+
+              {generalResources.length > 0 && (
+                <div className="sn-card p-5 space-y-3">
+                  <div>
+                    <div className="font-semibold">Ressources générales</div>
+                    <p className="text-sm text-gray-500">
+                      Ressources de ce cours non associées à un chapitre.
+                    </p>
+                  </div>
+                  <TeacherResourceList items={generalResources} />
+                </div>
+              )}
+
+              {unmatchedResources.length > 0 && (
+                <div className="sn-card border border-amber-200 p-5 space-y-3">
+                  <div>
+                    <div className="font-semibold text-amber-900">
+                      Ressources à vérifier
+                    </div>
+                    <p className="text-sm text-amber-800">
+                      Ces ressources indiquent un chapitre qui n'appartient plus
+                      à ce cours. Elles ne sont pas visibles dans l'espace élève.
+                    </p>
+                  </div>
+                  <TeacherResourceList items={unmatchedResources} />
+                </div>
+              )}
 
               <div className="sn-card p-5 space-y-4">
                 <div>
@@ -809,17 +874,54 @@ export default function TeacherCourseDetail() {
                 )}
               </div>
 
+              <div className="sn-card p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-semibold">Élèves de la classe officielle</div>
+                  <button
+                    type="button"
+                    className="sn-btn-ghost sn-press"
+                    onClick={() => {
+                      setOfficialStudentSummary(null);
+                      setOfficialSummaryRevision(n => n + 1);
+                    }}
+                  >
+                    ↻ Actualiser
+                  </button>
+                </div>
+                {!activeOfficialSummary ? (
+                  <p className="text-sm text-gray-500">Vérification de l'affectation…</p>
+                ) : activeOfficialSummary.error ? (
+                  <p role="status" className="text-sm text-amber-800">
+                    {activeOfficialSummary.error}
+                  </p>
+                ) : activeOfficialSummary.data?.isOfficial ? (
+                  <p className="text-sm text-gray-700">
+                    <strong>{activeOfficialSummary.data.officialStudentCount}</strong>
+                    {" "}élève(s) officiellement affecté(s) à votre classe.
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    Ce cours n'a pas de rattachement scolaire actif.
+                  </p>
+                )}
+                <p className="text-xs leading-5 text-gray-500">
+                  Effectif agrégé de la classe, sans inscription automatique au
+                  cours libre ni communication des identités des élèves.
+                </p>
+              </div>
+
               <div className="sn-card p-5 space-y-4">
                 <div>
-                  <div className="font-semibold">Apprenants inscrits</div>
+                  <div className="font-semibold">Inscriptions individuelles (V1)</div>
                   <div className="text-sm text-gray-500">
-                    Suivi rapide de la progression par apprenant.
+                    Progression des apprenants inscrits individuellement au cours libre,
+                    distincte de l'effectif officiel de l'établissement.
                   </div>
                 </div>
 
                 {students.length === 0 ? (
                   <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
-                    Aucun apprenant inscrit.
+                    Aucune inscription individuelle V1 pour ce cours.
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -851,6 +953,31 @@ export default function TeacherCourseDetail() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function TeacherResourceList({ items }: { items: ResourceView[] }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {items.map(item => (
+        <div
+          key={item.id}
+          className="rounded-2xl bg-gray-50 border border-gray-100 p-3 flex items-center justify-between gap-3"
+        >
+          <div className="min-w-0 text-sm text-gray-800">
+            <span className="font-semibold">{item.type}</span>{" "}
+            <span className="text-gray-600">— {item.label}</span>
+          </div>
+          <button
+            className="sn-btn-ghost sn-press"
+            type="button"
+            onClick={() => window.open(item.url, "_blank", "noopener,noreferrer")}
+          >
+            Ouvrir
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
