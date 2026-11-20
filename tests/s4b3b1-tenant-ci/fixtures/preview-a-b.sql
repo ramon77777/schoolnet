@@ -163,8 +163,8 @@ END $student_a$;
 -- Refus du brouillon, cours V1, mauvais cours et evaluation historique non liee.
 DO $student_a_denials$
 DECLARE v_denied boolean;
-DECLARE v_course uuid:='70000000-0000-4000-8000-000000000001'::uuid;
-DECLARE v_assessment uuid;
+ v_course uuid:='70000000-0000-4000-8000-000000000001'::uuid;
+ v_assessment uuid;
 BEGIN
  FOREACH v_assessment IN ARRAY ARRAY[
  'a0000000-0000-4000-8000-000000000002'::uuid,
