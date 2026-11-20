@@ -139,7 +139,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 CREATE TRIGGER trg_notify_assessment_published
  AFTER INSERT OR UPDATE OF status ON public.assessments
  FOR EACH ROW EXECUTE FUNCTION public.notify_assessment_published();
