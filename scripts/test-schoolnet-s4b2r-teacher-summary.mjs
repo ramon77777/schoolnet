@@ -132,9 +132,14 @@ test("S4B2-R 19 - isolation SQL sur sandbox avec revocations et rollback",()=>{
  assert.match(ci,/127\.0\.0\.1/);
  assert.doesNotMatch(ci,/supabase db push|supabase link|secrets\./);
 });
-test("S4B2-R 20 - migration principale et inscriptions V1 restees intactes",()=>{
+test("S4B2-R 20 - migration principale tracee et inscriptions V1 intactes",()=>{
  const doc=read("docs/releases/SCHOOLNET_S4B2_R_ENSEIGNANT_RESSOURCES_EFFECTIFS_2026-11-20.md");
- assert.match(doc,/aucune migration.{0,50}principal/i);
+ const applied=read("supabase/migrations/20261120104039_schoolnet_s4b2r_teacher_course_class_summary_20261120.sql");
+ const proposal=read("supabase/proposals/s4b2r_teacher_course_class_summary.sql");
+ assert.match(doc,/migration SQL installee sur Supabase principal/i);
+ assert.match(doc,/20261120104039/);
  assert.match(doc,/course_enrollments/);
  assert.match(doc,/Aucun élève/i);
+ assert.equal((applied.match(/^CREATE FUNCTION /gm)||[]).length,2);
+ assert.equal(applied.slice(applied.indexOf("DO $preflight$")),proposal.slice(proposal.indexOf("DO $preflight$")));
 });
