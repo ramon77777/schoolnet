@@ -37,3 +37,22 @@ Le banc S4-B.2 utilise `127.0.0.1:54332` (shadow `54333`),
 plutot que le port Supabase par defaut `54322`, afin d'eviter une
 collision avec le banc S4-B.1 lorsque plusieurs workflows GitHub
 s'executent simultanement. Aucun port heberge n'est modifie.
+
+
+## Correctif S4-B.2-R — effectif de classe de l'enseignant
+
+La proposition `supabase/proposals/s4b2r_teacher_course_class_summary.sql`
+est appliquee **seulement** au Postgres du runner (port 54332).
+Elle cree deux fonctions read-only, dont un helper prive verifiant que
+l'enseignant est proprietaire du cours et encore affecte a la bonne
+classe, annee et matiere dans un etablissement actif. Le retour JSON
+contient uniquement `courseId`, `isOfficial` et
+`officialStudentCount` ; aucun nom ou identifiant d'eleve.
+
+La recette A/B dans `student-courses-a-b.sql` confirme : effectif de
+l'ecole A = 1 pour le professeur A, celui de B = 1 pour B, refus du
+professeur A sur B et reciproquement, refus parent/eleve/admin/anonyme,
+cours libres V1 non transformes, nombre mis a jour sur revocation de
+l'eleve et aucun effectif apres revocation du lien cours.
+Le retour cible S4-B.2-R est teste AVANT le rollback S4-B.2 historique.
+Aucune migration ni mutation n'est installee sur la base principale.

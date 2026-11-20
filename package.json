@@ -18,6 +18,7 @@
     "qa:s4b1": "node --experimental-strip-types --test scripts/test-schoolnet-s4b1-course-bridge.mjs",
     "qa:s4b2": "node --experimental-strip-types --test scripts/test-schoolnet-s4b2-course-access.mjs",
     "qa:s4b2-ui": "node --experimental-strip-types --test scripts/test-schoolnet-s4b2-courses-unified.mjs",
+    "qa:s4b2-r": "node --experimental-strip-types --test scripts/test-schoolnet-s4b2r-teacher-summary.mjs",
     "qa:e2e:readiness": "node --experimental-strip-types --test scripts/test-schoolnet-e2e-readiness.mjs",
     "qa:sandbox:prepare": "node --test scripts/test-schoolnet-sandbox-preparation.mjs",
     "sandbox:check": "node scripts/check-schoolnet-sandbox-env.mjs"
