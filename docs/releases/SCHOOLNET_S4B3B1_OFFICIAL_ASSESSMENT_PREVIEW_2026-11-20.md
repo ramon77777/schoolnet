@@ -3,7 +3,7 @@
 **Date :** 20 novembre 2026  
 **Branche isolée :** `feature/schoolnet-s4b3b1-official-assessment-preview-20261120`  
 **Base :** `main` au commit `b845c3326d7a696b4a945e6b77aa09f4198bdde4`  
-**État :** développement et tests CI sur GitHub uniquement. **Aucune activation sur Supabase principal ni fusion de code autorisée.**
+**État au 20 novembre 2026 :** backend SQL S4-B.3-B.1 **installé et vérifié sur Supabase principal** (`20261120145127_schoolnet_s4b3b1_student_official_assessment_preview`). La PR n°25 reste **ouverte en brouillon, non fusionnée** ; le frontend Vercel officiel est **inchangé**. Les remises restent désactivées.
 
 ## 1. Objectif et périmètre
 
@@ -25,8 +25,17 @@ les remises de fichiers nécessitent S4-B.3-B.3.
 
 ## 2. Architecture SQL
 
-Proposition non installée :
+SQL **déjà appliqué sur Supabase principal** (ne pas réexécuter) :
+`20261120145127_schoolnet_s4b3b1_student_official_assessment_preview`.
+
+**Archive GitHub identique au SQL exécuté :**
+`supabase/migrations/20261120145127_schoolnet_s4b3b1_student_official_assessment_preview.sql`.
+
+**Source historique conservée sans modification :**
 `supabase/proposals/s4b3b1_student_official_assessment_preview.sql`.
+La mention « PROPOSITION UNIQUEMENT / NE PAS EXÉCUTER » dans cette
+source et sa copie est **historique, antérieure à l'installation** ; elle
+est conservée pour garantir l'identité exacte du fichier exécuté.
 
 - `public.schoolnet_student_school_assessment_preview(p_course_id,p_assessment_id)` :
   RPC exposée, **SECURITY INVOKER**, exécution réservée à `authenticated`.
@@ -69,8 +78,10 @@ même si la remise B.2 n'est pas encore activée. Une politique de
 - La page fonctionne sur mobile, conserve un retour au cours, propose
   « Actualiser » et masque les données d'un compte précédent si la session
   ou l'URL change. Tout le contenu est affiché **en texte React échappé**.
-- Si le SQL n'est pas encore installé, un message explicite indique
-  l'activation en attente. Il n'y a pas de repli vers un chemin V1.
+- Le backend SQL est maintenant installé. La page frontend n'est **pas
+  encore publiée** ; le message « activation en attente » reste une
+  protection contre un environnement où le RPC n'aurait pas été installé.
+  Il n'y a jamais de repli vers un chemin V1.
 
 ## 4. Tests
 
@@ -101,11 +112,34 @@ Rollback **à réserver à une autorisation distincte** :
 ## 5. Portes de validation
 
 - **GO développement GitHub branche isolée :** accordé.
-- **GO migration SQL B.1 sur Supabase principal : NON accordé.**
+- **GO migration SQL B.1 sur Supabase principal : accordé et exécuté le 20 novembre 2026 (`20261120145127`). Ne pas rejouer cette migration.**
 - **GO publication GitHub `main` et Vercel production : NON accordé.**
 - **GO exécution/remise réelle par un élève : NON accordé ; reste B.2.**
 
-Aucun fichier `supabase/migrations/*.sql` n'est créé pour B.1 avant
-l'autorisation de déployer la migration. Si ce SQL est ensuite autorisé
-et installé, son fichier de traçabilité devra être **identique à la source
-SQL réellement exécutée**, sans réapplication.
+Le fichier `supabase/migrations/20261120145127_schoolnet_s4b3b1_student_official_assessment_preview.sql`
+a été ajouté **après installation autorisée** et correspond exactement
+au SQL déjà exécuté. Il sert exclusivement à la traçabilité : aucune
+nouvelle migration Supabase n'est à appliquer dans le cadre de cette PR.
+
+## 6. Contrôles de production après installation (lecture seule)
+
+| Vérification | Résultat |
+|---|---:|
+| Fonction publique `SECURITY INVOKER` | 1, `anon` refusé |
+| Fonction privée `SECURITY DEFINER` | 1, `anon` refusé |
+| Politiques RLS restrictives B.0 | 8 |
+| Déclencheurs B.0 actifs | 2 |
+| Évaluations | 15 |
+| Soumissions en ligne | 9 |
+| Devoirs déposés | 4 |
+| Réponses / corrections par question | 16 / 11 |
+| Notifications | 78 |
+| Inscriptions V1 / progressions V1 | 2 / 2 |
+| Rattachements officiels actifs | 1 |
+
+Les deux fonctions possèdent un `search_path` fixé à `pg_catalog`.
+Aucune alerte Supabase spécifique à B.1 n'a été relevée. Les tests SQL A/B,
+l'absence de fuite des corrections et le rollback ont été vérifiés
+sur une **base locale jetable**, sans modification des données de production.
+La recette avec un élève connecté reste à effectuer **après publication
+Vercel autorisée**.
