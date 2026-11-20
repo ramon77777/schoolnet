@@ -42,7 +42,7 @@ function notificationCategory(eventKey: string | null) {
   if (eventKey?.startsWith("report_card_published:")) return "Bulletins";
   if (eventKey?.startsWith("public_enrollment_request:")) return "Inscriptions";
   if (eventKey?.startsWith("attendance:closed:")) return "Présences et retards";
-  if (eventKey === "assessment_published") return "Devoirs et évaluations";
+  if (eventKey === "assessment_published" || eventKey === "assessment_withdrawn") return "Devoirs et évaluations";
   if (eventKey === "correction_published") return "Résultats et corrections";
   if (eventKey?.startsWith("submission:")) return "Travaux remis";
   if (eventKey?.startsWith("timetable:")) return "Emploi du temps";
@@ -149,7 +149,7 @@ export default function NotificationsPage() {
       if (category === "enrollments") query = query.like("event_key", "public_enrollment_request:%");
       if (category === "attendance") query = query.like("event_key", "attendance:closed:%");
       // Les déclencheurs historiques utilisent des clés exactes sans préfixe.
-      if (category === "assessments") query = query.eq("event_key", "assessment_published");
+      if (category === "assessments") query = query.in("event_key", ["assessment_published", "assessment_withdrawn"]);
       if (category === "results") query = query.eq("event_key", "correction_published");
       if (category === "submissions") query = query.like("event_key", "submission:%");
       if (category === "timetable") query = query.like("event_key", "timetable:%");
