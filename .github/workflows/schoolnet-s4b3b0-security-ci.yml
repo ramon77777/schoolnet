@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/schoolnet-s4b3b0-security-ci.yml'
       - 'supabase/proposals/s4b3b0_official_assessment_security_foundation.sql'
+      - 'supabase/migrations/20261120142210_schoolnet_s4b3b0_official_assessment_security_foundation.sql'
       - 'supabase/verification/s4b3b0_official_assessment_security_rollback_manual.sql'
       - 'tests/s4b3b0-tenant-ci/**'
       - 'scripts/test-schoolnet-s4b3b0-security.mjs'
