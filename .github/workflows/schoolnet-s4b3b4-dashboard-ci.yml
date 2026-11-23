@@ -17,6 +17,7 @@ on:
       - 'supabase/verification/s4b3b3n_official_teacher_submission_notifications_rollback_manual.sql'
       - 'supabase/verification/s4b3b3_official_teacher_grading_rollback_manual.sql'
       - 'tests/s4b3b3-tenant-ci/**'
+      - 'tests/s4b3b4-tenant-ci/**'
       - 'src/features/schools/lib/officialTeacherGradingApi.ts'
       - 'src/features/schools/lib/officialTeacherGradingModel.ts'
       - 'src/features/teacher/pages/TeacherOfficialCorrections.tsx'
@@ -176,7 +177,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
-          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3b3-tenant-ci/fixtures/corrections-a-b.sql | tee /tmp/b3-tests.log
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3b4-tenant-ci/fixtures/dashboard-a-b.sql | tee /tmp/b3-tests.log
           grep -Fq 'S4B3B3_OFFICIAL_TEACHER_A_B_PASS' /tmp/b3-tests.log
       - name: Verifier le retour arriere B.4 sur Postgres local uniquement
         env:
