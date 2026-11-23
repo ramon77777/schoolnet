@@ -191,10 +191,22 @@ export default function StudentSchoolAssessmentPreview(){
        </div>
       )}
      </section>
-     <p className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900" role="status">
-      Consultation uniquement : il n'est pas encore possible de commencer,
-      enregistrer ou remettre cette évaluation. Ces actions seront activées
-      après les contrôles de sécurité de S4-B.3-B.2.
+     {current.submissionMode==="file_upload"||["file_only","file_and_questions"].includes(current.examContentMode??"")?(
+      <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900" role="status">
+       La remise de cette évaluation nécessite un fichier. Cette fonction sera activée séparément.
+      </p>
+     ):current.dueAt&&Date.now()>=Date.parse(current.dueAt)?(
+      <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900" role="status">
+       L'échéance est dépassée. La consultation reste disponible, mais la remise n'est plus ouverte.
+      </p>
+     ):(
+      <Link className="sn-btn-primary inline-flex items-center justify-center"
+       to={"/app/student/school-courses/"+courseId+"/assessments/"+assessmentId+"/take"}>
+       Commencer ou reprendre l'évaluation
+      </Link>
+     )}
+     <p className="text-xs text-slate-600">
+      La remise est enregistrée par un service scolaire sécurisé B.2 après vérification des droits.
      </p>
     </>
    )}

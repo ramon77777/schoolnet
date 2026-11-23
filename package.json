@@ -26,7 +26,8 @@
     "qa:s4b3n": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3n-notifications.mjs",
     "qa:s4b3b0": "node --test scripts/test-schoolnet-s4b3b0-security.mjs",
     "qa:s4b3b1": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3b1-preview.mjs",
-    "qa:s4b3b1:richtext": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3b1-richtext.mjs"
+    "qa:s4b3b1:richtext": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3b1-richtext.mjs",
+    "qa:s4b3b2": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3b2-attempts.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",

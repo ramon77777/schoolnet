@@ -65,6 +65,7 @@ import StudentAssessmentResult from "../features/student/pages/StudentAssessment
 import StudentCourseDetail from "../features/student/pages/StudentCourseDetail";
 import StudentSchoolCourseDetail from "@/features/student/pages/StudentSchoolCourseDetail";
 import StudentSchoolAssessmentPreview from "@/features/student/pages/StudentSchoolAssessmentPreview";
+import StudentSchoolAssessmentTake from "@/features/student/pages/StudentSchoolAssessmentTake";
 import StudentAssessmentDetails from "../features/student/pages/StudentAssessmentDetails";
 import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
@@ -164,6 +165,7 @@ export const router = createBrowserRouter([
               { path: "student/school-courses", element: <Navigate to="/app/student/courses?tab=official" replace /> },
               { path: "student/school-courses/:courseId", element: <StudentSchoolCourseDetail /> },
               { path: "student/school-courses/:courseId/assessments/:assessmentId", element: <StudentSchoolAssessmentPreview /> },
+              { path: "student/school-courses/:courseId/assessments/:assessmentId/take", element: <StudentSchoolAssessmentTake /> },
 
               { path: "student/live", element: <LiveSessionsPage /> },
               { path: "student/live/:sessionId", element: <LiveRoomPage /> },
