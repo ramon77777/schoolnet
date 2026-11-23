@@ -9,7 +9,7 @@ const rollback=read("supabase/verification/s4b3b4_student_official_dashboard_rol
 const api=read("src/features/student/lib/studentOfficialDashboardApi.ts");
 const page=read("src/features/student/pages/StudentDashboard.tsx");
 const officialComponent=read("src/features/student/components/StudentOfficialDashboardSummary.tsx");
-const fixture=read("tests/s4b3b3-tenant-ci/fixtures/corrections-a-b.sql");
+const fixture=read("tests/s4b3b4-tenant-ci/fixtures/dashboard-a-b.sql");
 const ci=read(".github/workflows/schoolnet-s4b3b4-dashboard-ci.yml");
 const course={
   courseId:"course-a",title:"Mathematiques",description:null,schoolId:"school-a",
