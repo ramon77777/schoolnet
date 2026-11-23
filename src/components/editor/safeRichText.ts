@@ -10,7 +10,7 @@
  * événement JavaScript ou style arbitraire n'est transféré au rendu.
  */
 
-const FORMATTING_TAGS = new Set([
+const FORMATTING_TAGS: ReadonlySet<string> = new Set([
   "p", "div", "br", "hr",
   "strong", "b", "em", "i", "u", "s", "del",
   "h1", "h2", "h3",
@@ -19,7 +19,7 @@ const FORMATTING_TAGS = new Set([
 ] as const);
 
 /** Supprimer entièrement les balises non textuelles et leurs descendants. */
-const DROP_WITH_CONTENTS = new Set([
+const DROP_WITH_CONTENTS: ReadonlySet<string> = new Set([
   "script", "style", "iframe", "object", "embed", "applet",
   "svg", "math", "template", "noscript", "head", "base", "link", "meta",
   "form", "input", "button", "textarea", "select", "option",
@@ -70,7 +70,7 @@ export function mapSafeRichNode(node: Node, depth = 0): SafeRichNode[] {
 
   const element = node as Element;
   const tag = element.tagName.toLowerCase();
-  if (DROP_WITH_CONTENTS.has(tag as never)) return [];
+  if (DROP_WITH_CONTENTS.has(tag)) return [];
 
   const children = Array.from(element.childNodes).flatMap((child) =>
     mapSafeRichNode(child, depth + 1),
@@ -78,7 +78,7 @@ export function mapSafeRichNode(node: Node, depth = 0): SafeRichNode[] {
 
   // Une balise inconnue (y compris <a href="javascript:...">) est
   // ignorée, mais son texte reste lisible. Aucun attribut n'est copié.
-  if (!FORMATTING_TAGS.has(tag as SafeRichTag)) return children;
+  if (!FORMATTING_TAGS.has(tag)) return children;
 
   const safeTag = tag as SafeRichTag;
   const align = ALIGNABLE_TAGS.has(safeTag) ? getSafeAlignment(element) : undefined;
