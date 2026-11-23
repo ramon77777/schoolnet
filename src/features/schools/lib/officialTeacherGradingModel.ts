@@ -38,7 +38,7 @@ export function isRecord(value:unknown):value is Record<string,unknown>{
  return value!==null&&typeof value==="object"&&!Array.isArray(value);
 }
 function keys(o:Record<string,unknown>,values:readonly string[]){
- return Object.keys(o).length===values.length&&values.every(k=>Object.hasOwn(o,k));
+ return Object.keys(o).length===values.length&&values.every(k=>Object.prototype.hasOwnProperty.call(o,k));
 }
 function str(v:unknown,max=10000):v is string{
  return typeof v==="string"&&v.length>0&&v.length<=max;
@@ -75,7 +75,7 @@ export function isTeacherOfficialCopies(
    "assessmentId","courseId","title","maxScore","classSize","counts","questions","copies",
  ])||input.assessmentId!==assessmentId||!str(input.courseId)||!str(input.title)||
   !optScore(input.maxScore)||!count(input.classSize)||!isRecord(input.counts)||
-  !keys(input.counts,countKeys)||countKeys.some(k=>!count(input.counts[k]))||
+  !keys(input.counts,countKeys)||countKeys.some(k=>!count((input.counts as Record<string,unknown>)[k]))||
   !Array.isArray(input.questions)||input.questions.length>500||
   !Array.isArray(input.copies)||input.copies.length>250)return false;
  const questionIds=new Set<string>();

@@ -197,7 +197,7 @@ export default function StudentSchoolAssessmentTake(){
      {state.status==="published"?"Le résultat a été publié par votre enseignant.":
         state.status==="graded"?"Votre copie est corrigée ; la note attend sa publication.":
         "Votre enseignant pourra la corriger puis publier le résultat."}</div>}
-    {state.status==="published"&&publishedResult?.assessmentId===assessmentId&&(
+    {state.status==="published"&&publishedResult!==null&&publishedResult.assessmentId===assessmentId&&(
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2"
         role="status" aria-label="Résultat officiel publié">
        <h2 className="font-bold text-emerald-900">Résultat officiel publié</h2>
