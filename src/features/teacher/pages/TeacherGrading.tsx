@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { getSchoolAssessmentTeacherContext } from "@/features/schools/lib/schoolAssessmentBridgeApi";
 
 type SubmissionStatus = "in_progress" | "submitted" | "graded" | "published";
 type AssessmentType = "quiz" | "assignment" | "exam";
@@ -164,6 +165,35 @@ export default function TeacherGrading() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [targetAssessment, setTargetAssessment] = useState<TargetAssessmentInfo | null>(null);
+  const [officialRouteStatus, setOfficialRouteStatus] = useState<"checking" | "legacy" | "error">("checking");
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!assessmentId || !user || user.isDemo || user.role !== "teacher") {
+      setOfficialRouteStatus("legacy");
+      return;
+    }
+    let active = true;
+    setOfficialRouteStatus("checking");
+    void getSchoolAssessmentTeacherContext(assessmentId)
+      .then((context) => {
+        if (!active) return;
+        if (context.eligible && context.linked) {
+          navigate(`/app/teacher/assessments/${assessmentId}/official-corrections`, { replace: true });
+          return;
+        }
+        setOfficialRouteStatus("legacy");
+      })
+      .catch((cause) => {
+        if (!active) return;
+        console.error("[TeacherGrading] official assessment routing error:", cause);
+        setRows([]);
+        setLoading(false);
+        setError("Impossible de vérifier le rattachement officiel. Réessayez depuis Évaluations.");
+        setOfficialRouteStatus("error");
+      });
+    return () => { active = false; };
+  }, [assessmentId, authLoading, user?.id, user?.isDemo, user?.role, navigate]);
 
   const loadRows = useCallback(async () => {
     if (!user || user.isDemo) {
@@ -471,9 +501,9 @@ export default function TeacherGrading() {
   }, [user, assessmentId]);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || officialRouteStatus !== "legacy") return;
     void loadRows();
-  }, [authLoading, loadRows, refreshKey]);
+  }, [authLoading, officialRouteStatus, loadRows, refreshKey]);
 
   const counts = useMemo(() => {
     const c: Record<SubmissionStatus, number> = {
@@ -507,7 +537,7 @@ export default function TeacherGrading() {
   }, [rows, statusFilter, query]);
 
   const total = counts.submitted + counts.graded + counts.published + counts.in_progress;
-  const isLoading = authLoading || loading;
+  const isLoading = authLoading || loading || officialRouteStatus === "checking";
 
   function clearAssessmentTarget() {
     const next = new URLSearchParams(searchParams);
@@ -534,6 +564,18 @@ export default function TeacherGrading() {
           ↻ Rafraîchir
         </button>
       </div>
+
+      {!assessmentId && !isLoading && (
+        <div className="sn-card p-4 flex flex-wrap items-center justify-between gap-3 border border-indigo-100 bg-indigo-50/50">
+          <p className="text-sm text-indigo-900">
+            Les copies des cours officiels SCHOOLNET V2 sont accessibles depuis la fiche de chaque évaluation.
+          </p>
+          <button type="button" className="sn-btn-primary sn-press"
+            onClick={() => navigate("/app/teacher/assessments")}>
+            Ouvrir mes évaluations
+          </button>
+        </div>
+      )}
 
       {targetAssessment && (
         <div className="sn-card p-4 flex flex-wrap items-center justify-between gap-3 border border-blue-100 bg-blue-50/50">

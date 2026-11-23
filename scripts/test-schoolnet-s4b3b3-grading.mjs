@@ -12,6 +12,8 @@ const rollback=read("supabase/verification/s4b3b3_official_teacher_grading_rollb
 const teacherPage=read("src/features/teacher/pages/TeacherOfficialCorrections.tsx");
 const studentPage=read("src/features/student/pages/StudentSchoolAssessmentTake.tsx");
 const teacherDetail=read("src/features/teacher/pages/TeacherAssessmentDetail.tsx");
+const teacherAssessments=read("src/features/teacher/pages/TeacherAssessments.tsx");
+const teacherGrading=read("src/features/teacher/pages/TeacherGrading.tsx");
 const api=read("src/features/schools/lib/officialTeacherGradingApi.ts");
 const routes=read("src/routes/router.tsx");
 const scenario=read("tests/s4b3b3-tenant-ci/fixtures/corrections-a-b.sql");
@@ -137,6 +139,19 @@ test("B3 interface - aucune lecture ni écriture directe des tables de copies",(
  assert.match(teacherPage,/window\.confirm/);
  assert.match(teacherPage,/SafeRichText/);
  assert.doesNotMatch(teacherPage,/dangerouslySetInnerHTML|\.from\("assessment_submissions"\)/);
+});
+test("B3 - la liste Évaluations oriente les cours officiels vers la correction V2",()=>{
+ assert.match(teacherAssessments,/getSchoolAssessmentTeacherContext/);
+ assert.match(teacherAssessments,/context\.eligible && context\.linked/);
+ assert.match(teacherAssessments,/\/official-corrections/);
+ assert.match(teacherAssessments,/\/app\/teacher\/grading\?assessmentId=/);
+ assert.match(teacherAssessments,/correctionsNavigatingId/);
+ assert.match(teacherGrading,/getSchoolAssessmentTeacherContext/);
+ assert.match(teacherGrading,/context\.eligible && context\.linked/);
+ assert.match(teacherGrading,/official-corrections/);
+ assert.match(teacherGrading,/replace: true/);
+ assert.match(teacherGrading,/officialRouteStatus !== "legacy"/);
+ assert.match(teacherGrading,/Ouvrir mes évaluations/);
 });
 test("B3 élève - résultat uniquement après publication, chronomètre clos",()=>{
  assert.match(studentPage,/getStudentOfficialPublishedResult/);

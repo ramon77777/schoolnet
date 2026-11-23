@@ -11,6 +11,8 @@ on:
       - 'src/features/schools/lib/officialTeacherGradingModel.ts'
       - 'src/features/teacher/pages/TeacherOfficialCorrections.tsx'
       - 'src/features/teacher/pages/TeacherAssessmentDetail.tsx'
+      - 'src/features/teacher/pages/TeacherAssessments.tsx'
+      - 'src/features/teacher/pages/TeacherGrading.tsx'
       - 'src/features/student/pages/StudentSchoolAssessmentTake.tsx'
       - 'src/routes/router.tsx'
       - 'scripts/test-schoolnet-s4b3b3-grading.mjs'
