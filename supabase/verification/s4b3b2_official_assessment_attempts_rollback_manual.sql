@@ -47,7 +47,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION schoolnet_private.notify_teacher_on_submission()
  RETURNS trigger
@@ -164,7 +164,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 
 DO $rollback_post$
 BEGIN

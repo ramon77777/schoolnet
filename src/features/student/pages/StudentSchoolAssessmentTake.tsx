@@ -45,8 +45,8 @@ export default function StudentSchoolAssessmentTake(){
  const [notice,setNotice]=useState<string|null>(null);
  const [busy,setBusy]=useState<OfficialAttemptAction|null>(null);
  const [refreshNumber,setRefreshNumber]=useState(0);
- const [receivedAt,setReceivedAt]=useState(Date.now());
- const [tick,setTick]=useState(Date.now());
+ const [receivedAt,setReceivedAt]=useState(0);
+ const [tick,setTick]=useState(0);
  const eligible=allowed&&!!courseId&&!!assessmentId;
  const loading=authLoading||(eligible&&loadedKey!==key);
  const current=eligible&&loadedKey===key?preview:null;
@@ -55,7 +55,7 @@ export default function StudentSchoolAssessmentTake(){
  const online=current?isOfficialOnlineMode(current.submissionMode,current.examContentMode):false;
  const seconds=state?remainingAttemptSeconds(state,receivedAt,tick):null;
  const expired=seconds!==null?seconds<=0:
-   !!current?.dueAt&&Date.now()>=Date.parse(current.dueAt);
+   !!current?.dueAt&&tick>0&&tick>=Date.parse(current.dueAt);
  const canEdit=!!current&&!!state&&online&&state.status==="in_progress"&&!expired&&!busy;
  const payload=useMemo(()=>buildOfficialAnswerPayload(current?.questions??[],answers),[current,answers]);
  const hasResponse=payload.length>0||freeform.trim().length>0;

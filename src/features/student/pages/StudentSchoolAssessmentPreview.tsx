@@ -59,6 +59,12 @@ export default function StudentSchoolAssessmentPreview(){
  const [loadedFor,setLoadedFor]=useState("");
  const [error,setError]=useState<string|null>(null);
  const [revision,setRevision]=useState(0);
+ const [nowMs,setNowMs]=useState<number|null>(null);
+ useEffect(()=>{
+  const once=window.setTimeout(()=>setNowMs(Date.now()),0);
+  const refresh=window.setInterval(()=>setNowMs(Date.now()),30000);
+  return ()=>{window.clearTimeout(once);window.clearInterval(refresh);};
+ },[]);
  const key=[user?.id??"",courseId??"",assessmentId??""].join("|");
  const canLoad=allowed&&!!courseId&&!!assessmentId;
  const loading=authLoading||(canLoad&&loadedFor!==key);
@@ -195,7 +201,9 @@ export default function StudentSchoolAssessmentPreview(){
       <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900" role="status">
        La remise de cette évaluation nécessite un fichier. Cette fonction sera activée séparément.
       </p>
-     ):current.dueAt&&Date.now()>=Date.parse(current.dueAt)?(
+     ):nowMs===null?(
+      <p className="text-sm text-slate-600" role="status">Vérification de l'échéance…</p>
+     ):current.dueAt&&nowMs>=Date.parse(current.dueAt)?(
       <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900" role="status">
        L'échéance est dépassée. La consultation reste disponible, mais la remise n'est plus ouverte.
       </p>
