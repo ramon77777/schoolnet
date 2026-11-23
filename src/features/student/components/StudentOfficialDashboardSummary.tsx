@@ -16,7 +16,7 @@ export default function StudentOfficialDashboardSummary(){
  const userId=user?.id??"";
  useEffect(()=>{
   if(authLoading)return;
-  if(!allowed){setData(EMPTY_OFFICIAL_DASHBOARD);setLoadedFor("");setError(null);return;}
+  if(!allowed)return;
   let cancelled=false;
   void getStudentOfficialDashboard().then(result=>{
    if(cancelled)return;
