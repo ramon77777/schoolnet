@@ -17,6 +17,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import StudentOfficialDashboardSummary from "@/features/student/components/StudentOfficialDashboardSummary";
 
 type CourseRow = {
   id: string;
@@ -836,6 +837,8 @@ export default function StudentDashboard() {
         </div>
       )}
 
+      <StudentOfficialDashboardSummary />
+
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 text-white shadow-lg sm:p-8">
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
 
@@ -844,7 +847,7 @@ export default function StudentDashboard() {
         <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
-              🎓 Mon espace scolaire
+              🎓 Mon espace libre — V1
             </div>
 
             <h1 className="text-2xl font-bold sm:text-3xl">
@@ -923,7 +926,7 @@ export default function StudentDashboard() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           icon="📈"
-          title="Progression générale"
+          title="Progression des cours libres"
           value={`${dashboard.overallProgress}%`}
           helper={`${data.courses.length} cours suivi${
             data.courses.length > 1
@@ -935,7 +938,7 @@ export default function StudentDashboard() {
 
         <KpiCard
           icon="🏅"
-          title="Moyenne publiée"
+          title="Moyenne publiée — V1"
           value={
             dashboard.averageScore !==
             null
@@ -948,7 +951,7 @@ export default function StudentDashboard() {
 
         <KpiCard
           icon="✅"
-          title="Évaluations terminées"
+          title="Évaluations terminées — V1"
           value={String(
             dashboard.completedCount,
           )}
@@ -1058,8 +1061,8 @@ export default function StudentDashboard() {
         <div className="sn-card p-5 sm:p-6">
           <div>
             <div className="font-semibold text-gray-900">
-              Répartition des
-              évaluations
+              Évaluations des
+              cours libres V1
             </div>
 
             <div className="mt-1 text-sm text-gray-500">
