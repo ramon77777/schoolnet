@@ -43,6 +43,7 @@ import TeacherClasses from "../features/teacher/pages/TeacherClasses";
 import TeacherAssessments from "../features/teacher/pages/TeacherAssessments";
 import TeacherAssessmentCreate from "../features/teacher/pages/TeacherAssessmentCreate";
 import TeacherAssessmentDetail from "../features/teacher/pages/TeacherAssessmentDetail";
+import TeacherOfficialCorrections from "@/features/teacher/pages/TeacherOfficialCorrections";
 import TeacherAssessmentEdit from "../features/teacher/pages/TeacherAssessmentEdit";
 import TeacherGrading from "../features/teacher/pages/TeacherGrading";
 import TeacherGradingDetail from "../features/teacher/pages/TeacherGradingDetail";
@@ -360,6 +361,10 @@ export const router = createBrowserRouter([
               {
                 path: "teacher/assessments/:id/edit",
                 element: <TeacherAssessmentEdit />,
+              },
+              {
+                path: "teacher/assessments/:id/official-corrections",
+                element: <TeacherOfficialCorrections />,
               },
 
               { path: "teacher/grading", element: <TeacherGrading /> },

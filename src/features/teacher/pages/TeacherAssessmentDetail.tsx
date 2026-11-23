@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import TeacherSchoolAssessmentLinker from "@/features/teacher/components/TeacherSchoolAssessmentLinker";
+import {getSchoolAssessmentTeacherContext} from "@/features/schools/lib/schoolAssessmentBridgeApi";
 
 type AssessmentType = "quiz" | "assignment" | "exam";
 type AssessmentStatus = "draft" | "published" | "closed";
@@ -483,8 +484,20 @@ export default function TeacherAssessmentDetail() {
     }
   }
 
-  function goToCorrections() {
+  async function goToCorrections() {
     if (!assessment) return;
+    if (user?.role==="teacher" && !user.isDemo) {
+      try {
+        const context=await getSchoolAssessmentTeacherContext(assessment.id);
+        if(context.eligible&&context.linked) {
+          navigate(`/app/teacher/assessments/${assessment.id}/official-corrections`);
+          return;
+        }
+      }catch {
+        alert("Impossible de vérifier le lien officiel de la classe. Vérifiez votre connexion puis réessayez.");
+        return;
+      }
+    }
     navigate(`/app/teacher/grading?assessmentId=${encodeURIComponent(assessment.id)}`);
   }
 
@@ -604,7 +617,7 @@ export default function TeacherAssessmentDetail() {
                     : "Publier"}
                 </button>
 
-                <button className="sn-btn-primary sn-press" onClick={goToCorrections}>
+                <button className="sn-btn-primary sn-press" onClick={()=>void goToCorrections()}>
                   Corrections
                 </button>
               </div>
@@ -831,7 +844,7 @@ export default function TeacherAssessmentDetail() {
               <div className="sn-card p-5 space-y-4">
                 <div className="font-semibold">Actions rapides</div>
 
-                <button className="sn-btn-primary w-full sn-press" onClick={goToCorrections}>
+                <button className="sn-btn-primary w-full sn-press" onClick={()=>void goToCorrections()}>
                   Aller aux corrections
                 </button>
 

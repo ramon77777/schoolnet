@@ -3,6 +3,8 @@ import {useNavigate,useParams} from "react-router-dom";
 import SafeRichText from "@/components/editor/SafeRichText";
 import {useAuth} from "@/lib/auth/AuthProvider";
 import {getStudentOfficialAssessmentPreview} from "@/features/student/lib/studentSchoolAssessmentPreviewApi";
+import {getStudentOfficialPublishedResult} from "@/features/schools/lib/officialTeacherGradingApi";
+ import {formatOfficialPoints,type StudentOfficialPublishedResult} from "@/features/schools/lib/officialTeacherGradingModel";
 import type {StudentOfficialAssessmentPreview} from "@/features/student/lib/studentSchoolAssessmentPreviewModel";
 import {
  requestOfficialAttempt,getOfficialAttemptError,
@@ -38,6 +40,8 @@ export default function StudentSchoolAssessmentTake(){
  const [loadedKey,setLoadedKey]=useState("");
  const [preview,setPreview]=useState<StudentOfficialAssessmentPreview|null>(null);
  const [attempt,setAttempt]=useState<OfficialAttemptState|null>(null);
+ const [publishedResult,setPublishedResult]=useState<StudentOfficialPublishedResult|null>(null);
+ const [resultError,setResultError]=useState<string|null>(null);
  const [answers,setAnswers]=useState<Record<string,string>>({});
  const [freeform,setFreeform]=useState("");
  const [dirty,setDirty]=useState(false);
@@ -84,6 +88,20 @@ export default function StudentSchoolAssessmentTake(){
   const id=window.setInterval(()=>setTick(Date.now()),1000);
   return ()=>window.clearInterval(id);
  },[]);
+ useEffect(()=>{
+  if(!eligible||!courseId||!assessmentId||state?.status!=="published")return;
+  let cancelled=false;
+  void getStudentOfficialPublishedResult(courseId,assessmentId)
+   .then(result=>{
+    if(cancelled)return;
+    setPublishedResult(result);setResultError(null);
+   }).catch(()=>{
+    if(cancelled)return;
+    setResultError("Le résultat publié n'a pas pu être chargé. Cliquez sur Actualiser.");
+   });
+  return ()=>{cancelled=true;};
+ },[eligible,courseId,assessmentId,state?.status,refreshNumber]);
+
  useEffect(()=>{
   if(!dirty||finished)return;
   const onLeave=(e:BeforeUnloadEvent)=>{
@@ -157,7 +175,7 @@ export default function StudentSchoolAssessmentTake(){
     </div>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
      <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Échéance</p><b>{dateLabel(current.dueAt)}</b></div>
-     <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Temps restant</p><b>{state.status==="not_started"?"Débute après le lancement":durationLabel(seconds)}</b></div>
+     <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Temps restant</p><b>{state.status==="not_started"?"Débute après le lancement":finished?"Évaluation terminée":durationLabel(seconds)}</b></div>
      <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Questions complétées</p><b>{payload.length} / {current.questions.length}</b></div>
     </div>
     <div className="rounded-xl bg-slate-50 p-4">
@@ -176,7 +194,24 @@ export default function StudentSchoolAssessmentTake(){
     )}
     {finished&&<div className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
      Votre copie est remise et verrouillée{state.submittedAt?" depuis le "+dateLabel(state.submittedAt):""}.
-     Les corrections et les notes seront disponibles à l'étape prévue pour l'enseignant.</div>}
+     {state.status==="published"?"Le résultat a été publié par votre enseignant.":
+        state.status==="graded"?"Votre copie est corrigée ; la note attend sa publication.":
+        "Votre enseignant pourra la corriger puis publier le résultat."}</div>}
+    {state.status==="published"&&publishedResult?.assessmentId===assessmentId&&(
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-2"
+        role="status" aria-label="Résultat officiel publié">
+       <h2 className="font-bold text-emerald-900">Résultat officiel publié</h2>
+       <p className="text-xl font-extrabold text-emerald-900">
+        {formatOfficialPoints(publishedResult.score)} / {formatOfficialPoints(publishedResult.maxScore)} points
+       </p>
+       <p className="text-sm text-emerald-800">Publié le {dateLabel(publishedResult.publishedAt)}</p>
+       <p className="text-sm whitespace-pre-wrap text-emerald-950">
+        {publishedResult.feedback??"Aucune appréciation supplémentaire."}
+       </p>
+      </div>
+     )}
+    {state.status==="published"&&resultError&&
+       <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900" role="alert">{resultError}</p>}
     {state.status==="in_progress"&&expired&&<div role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">
      Délai dépassé : le serveur refuse désormais les nouvelles sauvegardes et remises. Vos brouillons précédemment enregistrés restent conservés.</div>}
    </section>
