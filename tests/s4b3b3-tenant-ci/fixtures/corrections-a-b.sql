@@ -381,4 +381,40 @@ BEGIN
  RAISE NOTICE 'B3_PASS_OFFICIAL_NOTIFICATION_ONCE';
 END $db_assert$;
 SELECT 'S4B3B3_OFFICIAL_TEACHER_A_B_PASS' AS result;
+
+-- B.4 : la synthese officielle est strictement limitee aux donnees de l'eleve.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000005',true);
+DO $student_b4_a$
+DECLARE d jsonb;
+BEGIN
+ d:=public.schoolnet_student_official_dashboard();
+ IF jsonb_array_length(d->'courses')<>1
+ OR (d #>> '{courses,0,courseId}')<>'70000000-0000-4000-8000-000000000001'
+ OR jsonb_array_length(d->'assessments')<>1
+ OR (d #>> '{assessments,0,status}')<>'published'
+ OR (d #>> '{assessments,0,score}')<>'17'
+ OR (d #>> '{assessments,0,maxScore}')<>'20'
+ OR (d #>> '{assessments,0,courseId}')<>'70000000-0000-4000-8000-000000000001'
+ OR (d #> '{assessments,0}') ? 'feedback'
+ THEN RAISE EXCEPTION 'B4_FAIL_STUDENT_A_SUMMARY'; END IF;
+ RAISE NOTICE 'B4_PASS_STUDENT_A_PUBLISHED_SCORE';
+END $student_b4_a$;
+RESET ROLE;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000006',true);
+DO $student_b4_b$
+DECLARE d jsonb;
+BEGIN
+ d:=public.schoolnet_student_official_dashboard();
+ IF jsonb_array_length(d->'courses')<>1
+ OR (d #>> '{courses,0,courseId}')<>'70000000-0000-4000-8000-000000000002'
+ OR EXISTS (
+  SELECT 1 FROM jsonb_array_elements(d->'assessments') AS a(item)
+  WHERE a.item->>'assessmentId'='a0000000-0000-4000-8000-000000000001'
+ )
+ THEN RAISE EXCEPTION 'B4_FAIL_STUDENT_B_ISOLATION'; END IF;
+ RAISE NOTICE 'B4_PASS_STUDENT_B_ISOLATED';
+END $student_b4_b$;
+RESET ROLE;
 ROLLBACK;
