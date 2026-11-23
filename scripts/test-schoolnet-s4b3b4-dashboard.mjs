@@ -8,6 +8,7 @@ const sql=read("supabase/proposals/s4b3b4_student_official_dashboard.sql");
 const rollback=read("supabase/verification/s4b3b4_student_official_dashboard_rollback_manual.sql");
 const api=read("src/features/student/lib/studentOfficialDashboardApi.ts");
 const page=read("src/features/student/pages/StudentDashboard.tsx");
+const officialComponent=read("src/features/student/components/StudentOfficialDashboardSummary.tsx");
 const fixture=read("tests/s4b3b3-tenant-ci/fixtures/corrections-a-b.sql");
 const ci=read(".github/workflows/schoolnet-s4b3b4-dashboard-ci.yml");
 const course={
@@ -53,16 +54,17 @@ test("B4 SQL : une seule RPC et l'acces classe securise existant",()=>{
 test("B4 : navigateur sans SELECT direct des notes officielles",()=>{
   assert.match(api,/supabase\.rpc\("schoolnet_student_official_dashboard"\)/);
   assert.doesNotMatch(api,/\.from\(|\.insert\(|\.update\(|\.delete\(/);
-  assert.match(page,/getStudentOfficialDashboard/);
-  assert.match(page,/officialDashboard/);
-  assert.match(page,/student\/school-courses/);
+  assert.match(page,/StudentOfficialDashboardSummary/);
+  assert.match(officialComponent,/getStudentOfficialDashboard/);
+  assert.match(officialComponent,/student\/school-courses/);
 });
 test("B4 : conservation V1, pas de faux calcul de moyenne trimestrielle",()=>{
   assert.match(page,/course_enrollments/);
   assert.match(page,/student_progress/);
   assert.match(page,/homework_submissions/);
   assert.doesNotMatch(page,/student_period_averages/);
-  assert.match(page,/Moyenne des résultats publiés/);
+  assert.match(officialComponent,/Moyenne des résultats publiés/);
+  assert.match(page,/Moyenne publiée — V1/);
 });
 test("B4 : scenario PostgreSQL A\\/B et rollback cible",()=>{
   assert.match(fixture,/B4_PASS_STUDENT_A_PUBLISHED_SCORE/);
