@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/schoolnet-s4b3b3-grading-ci.yml'
       - 'supabase/proposals/s4b3b3_official_teacher_grading.sql'
+      - 'supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql'
+      - 'supabase/verification/s4b3b3n_official_teacher_submission_notifications_rollback_manual.sql'
       - 'supabase/verification/s4b3b3_official_teacher_grading_rollback_manual.sql'
       - 'tests/s4b3b3-tenant-ci/**'
       - 'src/features/schools/lib/officialTeacherGradingApi.ts'
@@ -146,6 +148,13 @@ jobs:
           set -euo pipefail
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b3_official_teacher_grading.sql | tee /tmp/b3-install.log
           grep -Fq 'S4B3B3_OFFICIAL_TEACHER_GRADING_PASS' /tmp/b3-install.log
+      - name: Installer la notification de copie officielle en Postgres LOCAL uniquement
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql | tee /tmp/b3n-install.log
+          grep -Fq 'S4B3B3N_SUBMISSION_NOTIFY_PASS' /tmp/b3n-install.log
       - name: Tester corrections A/B, notes confidentielles et publication unique
         env:
           PGPASSWORD: postgres
@@ -153,6 +162,13 @@ jobs:
           set -euo pipefail
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3b3-tenant-ci/fixtures/corrections-a-b.sql | tee /tmp/b3-tests.log
           grep -Fq 'S4B3B3_OFFICIAL_TEACHER_A_B_PASS' /tmp/b3-tests.log
+      - name: Restaurer le notifier historique B.2 apres les tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3b3n_official_teacher_submission_notifications_rollback_manual.sql | tee /tmp/b3n-rollback.log
+          grep -Fq 'S4B3B3N_SUBMISSION_NOTIFY_ROLLBACK_PASS' /tmp/b3n-rollback.log
       - name: Valider rollback B.3, sans affecter B.2
         env:
           PGPASSWORD: postgres

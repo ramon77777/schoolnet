@@ -235,6 +235,17 @@ BEGIN
   OR v #>> '{questions,0,choices,1,isCorrect}'<>'true'
  THEN RAISE EXCEPTION 'B3_FAIL_TEACHER_A_LIST'; END IF;
  s:=(v #>> '{copies,0,id}')::uuid;
+ IF (SELECT count(*) FROM public.notifications n
+     WHERE n.user_id='10000000-0000-4000-8000-000000000003'::uuid
+       AND n.event_key='school:assessment:submission:teacher'
+       AND n.related_id=s
+       AND n.action_url='/app/teacher/assessments/a0000000-0000-4000-8000-000000000001/official-corrections')<>1
+ THEN RAISE EXCEPTION 'B3N_FAIL_OFFICIAL_TEACHER_SUBMISSION_NOTIFICATION'; END IF;
+ IF (SELECT count(*) FROM public.notifications n
+     WHERE n.user_id='10000000-0000-4000-8000-000000000004'::uuid
+       AND n.event_key='school:assessment:submission:teacher')<>0
+ THEN RAISE EXCEPTION 'B3N_FAIL_CROSS_SCHOOL_NOTIFICATION_LEAK'; END IF;
+ RAISE NOTICE 'B3N_PASS_TEACHER_NOTIFIED_ONCE_A_B_SAFE';
  denied:=false;
  BEGIN
   PERFORM public.schoolnet_teacher_official_grade(

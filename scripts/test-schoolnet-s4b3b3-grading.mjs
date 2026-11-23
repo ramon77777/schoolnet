@@ -18,6 +18,8 @@ const api=read("src/features/schools/lib/officialTeacherGradingApi.ts");
 const routes=read("src/routes/router.tsx");
 const scenario=read("tests/s4b3b3-tenant-ci/fixtures/corrections-a-b.sql");
 const ci=read(".github/workflows/schoolnet-s4b3b3-grading-ci.yml");
+const teacherNoticeSql=read("supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql");
+const teacherNoticeRollback=read("supabase/verification/s4b3b3n_official_teacher_submission_notifications_rollback_manual.sql");
 const assessmentId="a0000000-0000-4000-8000-000000000001";
 const sample=()=>({
  assessmentId,courseId:"70000000-0000-4000-8000-000000000001",
@@ -171,6 +173,23 @@ test("B3 tests PostgreSQL - A/B, notes, refus, publications, notifications",()=>
  "B3_PASS_OFFICIAL_NOTIFICATION_ONCE","B3_PASS_CROSS_SCHOOL_STUDENT_RESULT_DENIED",
  "S4B3B3_OFFICIAL_TEACHER_A_B_PASS",
  ])assert.ok(scenario.includes(name),name);
+});
+test("B3-N - notifier des copies officielles strictement borne à la classe",()=>{
+ assert.match(teacherNoticeSql,/CREATE OR REPLACE FUNCTION schoolnet_private\.notify_teacher_on_submission/);
+ assert.match(teacherNoticeSql,/TG_TABLE_NAME='assessment_submissions'/);
+ assert.match(teacherNoticeSql,/school:assessment:submission:teacher/);
+ assert.match(teacherNoticeSql,/\/official-corrections/);
+ assert.match(teacherNoticeSql,/schoolnet_school_teacher_subject_assignments/);
+ assert.match(teacherNoticeSql,/schoolnet_school_student_class_assignments/);
+ assert.match(teacherNoticeSql,/schoolnet_school_memberships/);
+ assert.match(teacherNoticeSql,/ON CONFLICT DO NOTHING/);
+ assert.match(teacherNoticeSql,/RETURN NEW/);
+ assert.match(teacherNoticeRollback,/S4B3B3N_SUBMISSION_NOTIFY_ROLLBACK_PASS/);
+ assert.match(teacherNoticeRollback,/les notifications de copies officielles attendent/);
+ assert.match(scenario,/B3N_PASS_TEACHER_NOTIFIED_ONCE_A_B_SAFE/);
+ assert.match(scenario,/B3N_FAIL_CROSS_SCHOOL_NOTIFICATION_LEAK/);
+ assert.match(ci,/s4b3b3n_official_teacher_submission_notifications\.sql/);
+ assert.match(ci,/s4b3b3n_official_teacher_submission_notifications_rollback_manual\.sql/);
 });
 test("B3 CI - base locale jetable, rollback manuel, jamais de migration principale",()=>{
  assert.match(ci,/npm run qa:s4b3b3/);

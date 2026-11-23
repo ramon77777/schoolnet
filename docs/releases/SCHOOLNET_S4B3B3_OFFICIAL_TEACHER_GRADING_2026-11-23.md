@@ -93,3 +93,26 @@ principal** et avant la fusion dans `main` / publication Vercel.
 La copie de test officielle déjà remise ne doit pas être retouchée
 automatiquement ; toute correction et publication réelle devra être
 effectuée avec le compte enseignant, après validation explicite.
+
+## Navigation et notifications des copies officielles (23/11/2026)
+
+- La liste **Évaluations → Corrections** résout maintenant le lien officiel
+  avec `schoolnet_teacher_school_assessment_context`, en conservant V1 pour
+  les évaluations non rattachées.
+- Les anciens liens ciblés `/app/teacher/grading?assessmentId=...`
+  redirigent vers B.3 après vérification des droits. L'ancien menu
+  **Corrections** conserve V1 et un lien explicite vers les évaluations.
+- Le déclencheur historique B.2 bloquait intentionnellement les notifications
+  de remise officielle pour éviter les liens V1 inaccessibles.
+  La nouvelle **proposition non installée sur Supabase principal**
+  `supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql`
+  prévoit un événement unique lors des prochaines remises, destiné au
+  professeur réellement affecté à la classe/année/établissement, avec
+  une redirection vers `/official-corrections`.
+- Aucun backfill automatique : la copie déjà remise avant l'activation
+  de cette proposition ne recevra pas rétroactivement de notification.
+  Activation sur Supabase principal et éventuel rattrapage de cette
+  notification **soumis à autorisation distincte**.
+- Scénarios PostgreSQL A/B jetable pour vérifier la notification au bon
+  enseignant, l'absence de fuite vers l'établissement B, le bon lien
+  officiel, le dédoublonnage et le retour arrière V1.
