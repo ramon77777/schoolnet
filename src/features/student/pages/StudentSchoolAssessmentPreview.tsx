@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useState} from "react";
 import {Link,useParams} from "react-router-dom";
+import SafeRichText from "@/components/editor/SafeRichText";
 import {useAuth} from "@/lib/auth/AuthProvider";
 import {
  getStudentOfficialAssessmentPreview,
@@ -27,14 +28,12 @@ function OfficialQuestion({question,index}:{
     <h3 className="text-base font-bold text-slate-900">Question {index+1}</h3>
     <span className="sn-badge sn-badge-blue">{questionKind(question.type)}</span>
    </div>
-   <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">
-    {question.prompt}
-   </p>
+   <SafeRichText value={question.prompt} className="text-slate-800"/>
    {question.choices.length>0&&(
     <ol className="list-decimal pl-6 space-y-2" aria-label="Choix proposés en lecture seule">
      {question.choices.map(choice=>(
       <li key={choice.id} className="text-sm text-slate-700 whitespace-pre-wrap break-words">
-       {choice.text}
+       <SafeRichText value={choice.text} className="text-slate-700"/>
       </li>
      ))}
     </ol>
@@ -157,9 +156,11 @@ export default function StudentSchoolAssessmentPreview(){
       </dl>
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
        <h2 className="font-bold text-slate-900">Consignes de l'enseignant</h2>
-       <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap break-words">
-        {current.description?.trim()||"Aucune consigne particulière n'a été ajoutée."}
-       </p>
+       <SafeRichText
+        value={current.description}
+        fallback="Aucune consigne particulière n'a été ajoutée."
+        className="mt-2 text-slate-700"
+       />
       </div>
       {current.instructionFileName&&(
        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">

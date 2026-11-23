@@ -9,6 +9,9 @@ on:
       - 'supabase/verification/s4b3b1_student_official_assessment_preview_rollback_manual.sql'
       - 'tests/s4b3b1-tenant-ci/**'
       - 'src/features/student/pages/StudentSchoolAssessmentPreview.tsx'
+      - 'src/components/editor/safeRichText.ts'
+      - 'src/components/editor/SafeRichText.tsx'
+      - 'scripts/test-schoolnet-s4b3b1-richtext.mjs'
       - 'src/features/student/lib/studentSchoolAssessmentPreviewApi.ts'
       - 'src/features/student/lib/studentSchoolAssessmentPreviewModel.ts'
       - 'src/features/student/components/StudentSchoolCourseAssessments.tsx'
@@ -37,8 +40,9 @@ jobs:
           cache: npm
       - name: Installer les dependances verrouillees
         run: npm ci --no-audit --no-fund
-      - name: QA stricte B.1 et non-regression B.0
+      - name: QA B.1, formatage securise et non-regression B.0
         run: |
+          npm run qa:s4b3b1:richtext
           npm run qa:s4b3b1
           npm run qa:s4b3b0
       - name: Non-regression V2
