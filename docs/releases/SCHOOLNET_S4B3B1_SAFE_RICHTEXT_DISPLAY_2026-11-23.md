@@ -36,7 +36,7 @@ d'injection de HTML.
 
 Création de deux modules indépendants :
 
-- `src/components/editor/safeRichText.ts` : convertit le HTML dans
+- `src/components/editor/safeRichTextParser.ts` : convertit le HTML dans
   un document inerte `DOMParser` puis dans un arbre de nœuds typés
   à balises **strictement autorisées**.
 - `src/components/editor/SafeRichText.tsx` : produit uniquement
@@ -82,6 +82,20 @@ d'isolation A/B sur base Supabase **locale jetable**, du lint et du build.
 
 L'éditeur TipTap enseignant n'est pas modifié. Aucune dépendance npm
 nouvelle n'est installée.
+
+### Compatibilité Windows — correctif du 23 novembre 2026
+
+Après la première recette locale sous Windows, la compilation TypeScript a
+signalé `TS1192` et `TS1261`. Les fichiers
+`safeRichText.ts` et `SafeRichText.tsx` pouvaient être confondus par la
+résolution des imports sur un système de fichiers insensible à la casse.
+
+La branche `fix/schoolnet-s4b3b1-windows-case-collision-20261123` conserve le contenu du parseur sans modification
+et le renomme `safeRichTextParser.ts`. Les imports, le test de formatage et
+le déclencheur GitHub Actions sont adaptés. Un contrôle supplémentaire
+vérifie l'absence de collisions de noms insensibles à la casse, même sous
+Linux. La vérification finale de `npm run build` sera réalisée sur le
+Worktree Windows `schoolnet-tests` avant toute autorisation de fusion.
 
 ## 4. Périmètre non autorisé
 

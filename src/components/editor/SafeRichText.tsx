@@ -1,7 +1,7 @@
 import {createElement,useMemo} from "react";
 import type {CSSProperties,ReactNode} from "react";
-import {parseSafeRichText} from "./safeRichText";
-import type {SafeRichNode,SafeRichTag} from "./safeRichText";
+import {parseSafeRichText} from "./safeRichTextParser";
+import type {SafeRichNode,SafeRichTag} from "./safeRichTextParser";
 
 type Props={
   value:string|null|undefined;
