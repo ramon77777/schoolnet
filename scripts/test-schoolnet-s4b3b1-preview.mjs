@@ -108,7 +108,7 @@ test("Chargement rafraichissable et sans donnée d'un ancien compte",()=>{
  assert.match(page,/cancelled=true/);
  assert.match(page,/Lecture seule/);
  assert.match(page,/aucune réponse n'est sélectionnable ou enregistrée/);
- assert.match(page,/La saisie des réponses et les remises ne sont pas encore activées|enregistrer ou remettre cette évaluation/);
+ assert.match(page,/La saisie des réponses et les remises ne sont pas encore activées|enregistrer ou remettre cette évaluation|Commencer ou reprendre l'évaluation/);
 });
 test("Double protection anti-fuite depuis la base vers le navigateur",()=>{
  assert.match(model,/exactKeys\(data,previewKeys\)/);

@@ -35,7 +35,7 @@ CREATE TRIGGER trg_refresh_progress_assessment_submission
 AFTER INSERT OR UPDATE OR DELETE ON public.assessment_submissions
 FOR EACH ROW EXECUTE FUNCTION public.trigger_refresh_progress_from_assessment_submission();
 
-CREATE TABLE public.course_teachers (
+CREATE TABLE IF NOT EXISTS public.course_teachers (
  course_id uuid NOT NULL REFERENCES public.courses(id),
  teacher_id uuid NOT NULL REFERENCES public.profiles(id)
 );
