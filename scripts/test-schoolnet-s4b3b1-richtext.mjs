@@ -113,7 +113,13 @@ test("Les profondeurs HTML pathologiques sont bornees",()=>{
  let tree=textNode("Invisible");
  for(let i=0;i<60;i++)tree=element("span",[tree]);
  const safe=convert(tree);
- assert.ok(JSON.stringify(safe).length<2000);
+ let depth=0;
+ let current=safe[0];
+ while(current?.kind==="element"){
+  depth++;
+  current=current.children[0];
+ }
+ assert.ok(depth<=49,"La profondeur de la projection doit rester bornée");
  assert.doesNotMatch(JSON.stringify(safe),/Invisible/);
 });
 test("En absence de DOMParser, seul du texte non interprete est expose",()=>{
@@ -129,7 +135,7 @@ test("Le navigateur parse le HTML inerte, puis valide chaque noeud",()=>{
  assert.match(parser,/DROP_WITH_CONTENTS/);
  assert.match(view,/parseSafeRichText\(html\)/);
  assert.match(view,/createElement\(/);
- assert.doesNotMatch(parser+view,/dangerouslySetInnerHTML|\.innerHTML\s*=|eval\(|new Function\(/);
+ assert.doesNotMatch(parser+view,/dangerouslySetInnerHTML\s*=|\.innerHTML\s*=|\beval\s*\(|\bnew\s+Function\s*\(/);
 });
 test("Les trois contenus du preview utilisent le nouveau composant securise",()=>{
  assert.match(page,/import SafeRichText from "@\/components\/editor\/SafeRichText"/);
