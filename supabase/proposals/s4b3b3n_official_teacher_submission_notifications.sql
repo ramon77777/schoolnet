@@ -204,7 +204,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$function$
+$function$;
 
 DO $post$
 BEGIN
