@@ -85,10 +85,17 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3A_PASS_FOREIGN_WRITE_DENIED'; END;
 
  p1:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
-   't1','Trimestre 1',DATE '2026-09-01',DATE '2026-12-20');
+   'AUTO:T',E'\t Trimestre 1 \t',DATE '2026-09-01',DATE '2026-12-20');
  p2:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
-   'T2','Trimestre 2',DATE '2026-12-21',DATE '2027-03-20');
+   'T1','Trimestre 2',DATE '2026-12-21',DATE '2027-03-20');
  IF p1 IS NULL OR p1=p2 THEN RAISE EXCEPTION 'C3A_CREATE_FAILED'; END IF;
+ v:=public.schoolnet_school_grading_configuration(a_school);
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'periods') row
+    WHERE row->>'id'=p1::text AND row->>'code'='T1' AND row->>'name'='Trimestre 1')
+ OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'periods') row
+    WHERE row->>'id'=p2::text AND row->>'code'='T2')
+ THEN RAISE EXCEPTION 'C3A1_CODE_NOT_SERVER_ALLOCATED_OR_NAME_NOT_TRIMMED'; END IF;
+ RAISE NOTICE 'C3A1_PASS_AUTO_SEQUENCE_AND_TRIM';
  RAISE NOTICE 'C3A_PASS_PERIODS_A';
  BEGIN
   PERFORM public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
@@ -106,6 +113,13 @@ BEGIN
  OR (v->'assessments'->0->>'includeInAverage')::boolean IS NOT TRUE
  THEN RAISE EXCEPTION 'C3A_READ_AFTER_WRITE'; END IF;
  RAISE NOTICE 'C3A_PASS_COEFFICIENTS_A';
+ PERFORM public.schoolnet_school_upsert_grading_period(a_school,p2,year_id,
+   'S9',E'  Trimestre 2 \t',DATE '2026-12-21',DATE '2027-03-20');
+ v:=public.schoolnet_school_grading_configuration(a_school);
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'periods') row
+    WHERE row->>'id'=p2::text AND row->>'code'='T2' AND row->>'name'='Trimestre 2')
+ THEN RAISE EXCEPTION 'C3A1_CODE_CHANGED_ON_EDIT'; END IF;
+ RAISE NOTICE 'C3A1_PASS_CODE_IMMUTABLE';
 
  BEGIN
   PERFORM public.schoolnet_school_set_subject_coefficient(a_school,p1,class_b,sub,1);
@@ -139,6 +153,33 @@ BEGIN
   RAISE EXCEPTION 'C3A_LOCKED_PERIOD_MOVE';
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3A_PASS_LOCKED_MOVE_DENIED'; END;
  RAISE NOTICE 'C3A_PASS_LOCKED_PERIOD';
+ p1:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
+   'S','Premier semestre',DATE '2027-03-21',DATE '2027-04-20');
+ p2:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
+   'P','Période personnalisée',DATE '2027-04-21',DATE '2027-05-20');
+ v:=public.schoolnet_school_grading_configuration(a_school);
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'periods') row
+    WHERE row->>'id'=p1::text AND row->>'code'='S1')
+ OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'periods') row
+    WHERE row->>'id'=p2::text AND row->>'code'='P01')
+ THEN RAISE EXCEPTION 'C3A1_BAD_KIND_PREFIX'; END IF;
+ p1:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
+   'T','Troisième trimestre',DATE '2027-05-21',DATE '2027-06-20');
+ v:=public.schoolnet_school_grading_configuration(a_school);
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'periods') row
+    WHERE row->>'id'=p1::text AND row->>'code'='T3')
+ THEN RAISE EXCEPTION 'C3A1_THIRD_TRIMESTER_NOT_SEQUENTIAL'; END IF;
+ RAISE NOTICE 'C3A1_PASS_TYPES_TRIMESTER_SEMESTER_CUSTOM';
+ BEGIN
+  PERFORM public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
+   'T','Trimestre quatre',DATE '2027-06-21',DATE '2027-07-01');
+  RAISE EXCEPTION 'C3A1_TRIMESTER_LIMIT_BYPASSED';
+ EXCEPTION WHEN check_violation THEN RAISE NOTICE 'C3A1_PASS_TRIMESTER_LIMIT'; END;
+ BEGIN
+  PERFORM public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
+   'X7','Code non autorise',DATE '2027-06-21',DATE '2027-07-01');
+  RAISE EXCEPTION 'C3A1_FREE_CODE_ALLOWED';
+ EXCEPTION WHEN check_violation THEN RAISE NOTICE 'C3A1_PASS_FREE_CODE_DENIED'; END;
 END $school_a$;
 RESET ROLE;
 

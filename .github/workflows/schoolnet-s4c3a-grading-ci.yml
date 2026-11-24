@@ -1,17 +1,21 @@
-name: SCHOOLNET S4-C.3-A - official grading configuration (draft)
+name: SCHOOLNET S4-C.3-A - official grading configuration + C3-A.1 auto codes
 on:
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/schoolnet-s4c3a-grading-ci.yml'
       - 'src/features/schools/lib/schoolGradeConfiguration*'
+      - 'src/features/schools/lib/schoolGradePeriodCodes.ts'
       - 'src/features/schools/pages/LocalSchoolGradeConfiguration.tsx'
       - 'src/routes/router.tsx'
       - 'src/layouts/DashboardLayout.tsx'
       - 'supabase/proposals/s4c3a_official_periods_coefficients.sql'
+      - 'supabase/proposals/s4c3a1_automatic_period_codes.sql'
+      - 'supabase/verification/s4c3a1_automatic_period_codes_rollback_manual.sql'
       - 'supabase/verification/s4c3a_official_periods_coefficients_rollback_manual.sql'
       - 'tests/s4c3a-tenant-ci/fixtures/periods-a-b.sql'
       - 'scripts/test-schoolnet-s4c3a-periods.mjs'
+      - 'scripts/test-schoolnet-s4c3a1-auto-codes.mjs'
       - 'package.json'
   workflow_dispatch:
 permissions:
@@ -30,6 +34,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run qa:s4c3a
+      - run: npm run qa:s4c3a1
       - run: npm run qa:s4b3c2
       - run: npm run lint
       - run: npm run build
@@ -80,6 +85,14 @@ jobs:
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
             -f supabase/proposals/s4c3a_official_periods_coefficients.sql 2>&1 | tee /tmp/c3a-install.log
           grep -Fq 'S4C3A_G2_PROPOSAL_ONLY' /tmp/c3a-install.log
+      - name: Installer C3-A.1 auto-codes sur PostgreSQL LOCAL uniquement
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3a1_automatic_period_codes.sql 2>&1 | tee /tmp/c3a1-install.log
+          grep -Fq 'S4C3A1_AUTOCODE_INSTALLED' /tmp/c3a1-install.log
       - name: Tester A/B, ecritures, verrouillage, roles et revision de liens
         env:
           PGPASSWORD: postgres
@@ -94,10 +107,21 @@ jobs:
             C3A_PASS_V1_DENIED C3A_PASS_ZERO_COEFF_DENIED C3A_PASS_LOCKED_PERIOD \
             C3A_PASS_SCHOOL_B_SAME_CODE C3A_PASS_TEACHER_DENIED \
             C3A_PASS_REVOKED_ADMIN_DENIED C3A_PASS_ANON_DENIED \
+            C3A1_PASS_AUTO_SEQUENCE_AND_TRIM C3A1_PASS_CODE_IMMUTABLE \
+            C3A1_PASS_TYPES_TRIMESTER_SEMESTER_CUSTOM \
+            C3A1_PASS_TRIMESTER_LIMIT C3A1_PASS_FREE_CODE_DENIED \
             S4C3A_TENANT_FIXTURE_ROLLED_BACK
           do
             grep -Fq "$proof" /tmp/c3a-tests.log
           done
+      - name: Verifier rollback fonction-only C3-A.1 sur PostgreSQL LOCAL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/verification/s4c3a1_automatic_period_codes_rollback_manual.sql 2>&1 | tee /tmp/c3a1-rollback.log
+          grep -Fq 'S4C3A1_ROLLBACK_READY' /tmp/c3a1-rollback.log
       - name: Verifier rollback cible C3-A sur PostgreSQL LOCAL
         env:
           PGPASSWORD: postgres

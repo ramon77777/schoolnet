@@ -11,11 +11,13 @@ import {
 } from "@/features/schools/lib/schoolGradeConfigurationApi";
 import {availablePeriods,validCoefficient,type SchoolGradeConfig,type SchoolGradePeriod}
  from "@/features/schools/lib/schoolGradeConfigurationModel";
+import {periodKindFromCode,previewNextPeriodCode,suggestedPeriodName,
+ type SchoolPeriodKind} from "@/features/schools/lib/schoolGradePeriodCodes";
 
 type LoadState="idle"|"loading"|"ready"|"pending"|"error";
-type PeriodDraft={code:string;name:string;startsOn:string;endsOn:string};
+type PeriodDraft={kind:SchoolPeriodKind;name:string;startsOn:string;endsOn:string};
 type AssessmentDraft={coefficient:string;include:boolean};
-const empty:PeriodDraft={code:"",name:"",startsOn:"",endsOn:""};
+const empty:PeriodDraft={kind:"trimester",name:"",startsOn:"",endsOn:""};
 function activationPending(cause:unknown):boolean{
  if(!cause||typeof cause!=="object")return false;
  const e=cause as {code?:unknown;message?:unknown;details?:unknown};
@@ -55,6 +57,9 @@ export default function LocalSchoolGradeConfiguration(){
  const subjects=current?.subjects.filter(s=>s.schoolYearId===selectedYearId)??[];
  const assessments=current?.assessments.filter(a=>a.schoolYearId===selectedYearId)??[];
  const year=current?.years.find(y=>y.id===selectedYearId)??null;
+ const editingPeriod=periods.find(p=>p.id===editingPeriodId)??null;
+ const previewCode=editingPeriod?.code??previewNextPeriodCode(periods,periodDraft.kind);
+ const defaultName=suggestedPeriodName(periodDraft.kind,previewCode);
 
  useEffect(()=>{
   if(!allowed||!user?.id)return;
@@ -101,20 +106,25 @@ export default function LocalSchoolGradeConfiguration(){
  }
  function newPeriod(){
   setEditingPeriodId(null);
-  setPeriodDraft({code:"",name:"",startsOn:"",endsOn:""});
+  setPeriodDraft(empty);
  }
  function editPeriod(p:SchoolGradePeriod){
   setEditingPeriodId(p.id);
-  setPeriodDraft({code:p.code,name:p.name,startsOn:p.startsOn,endsOn:p.endsOn});
+  setPeriodDraft({kind:periodKindFromCode(p.code),name:p.name.trim(),startsOn:p.startsOn,endsOn:p.endsOn});
  }
  function submitPeriod(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
   if(!current||!selectedSchool||!year||busy)return;
+  const name=(periodDraft.name||defaultName).trim();
+  if(!previewCode||name.length<2){
+   setActionError("Code automatique indisponible ou nom de période invalide.");return;
+  }
   if(periodDraft.startsOn<year.startsOn||periodDraft.endsOn>year.endsOn||
     periodDraft.startsOn>periodDraft.endsOn){
    setActionError("Les dates doivent être comprises dans l'année scolaire.");return;
   }
-  const input={schoolId:selectedSchool.id,periodId:editingPeriodId,schoolYearId:year.id,...periodDraft};
+  const input={schoolId:selectedSchool.id,periodId:editingPeriodId,schoolYearId:year.id,
+   periodKind:periodDraft.kind,name,startsOn:periodDraft.startsOn,endsOn:periodDraft.endsOn};
   void run(async()=>{await saveSchoolGradePeriod(input);newPeriod();},"Période enregistrée.");
  }
  function confirmLock(p:SchoolGradePeriod){
@@ -221,7 +231,7 @@ export default function LocalSchoolGradeConfiguration(){
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
      {periods.map(p=><div key={p.id} className="rounded-xl border border-slate-200 p-4">
       <div className="flex flex-wrap justify-between gap-2">
-       <strong>{p.name} ({p.code})</strong>
+       <strong>{p.name.trim()} ({p.code})</strong>
        <span className={"text-xs font-semibold "+(p.isLocked?"text-amber-700":"text-slate-600")}>
         {p.isLocked?"Verrouillée":"Modifiable"}
        </span>
@@ -244,12 +254,22 @@ export default function LocalSchoolGradeConfiguration(){
       {editingPeriodId&&<button type="button" className="sn-btn-ghost" onClick={newPeriod}>Annuler</button>}
      </div>
      <div className="grid gap-3 md:grid-cols-2">
-      <label className="space-y-1 text-sm"><span className="font-semibold">Code (ex. T1, S1)</span>
-       <input required maxLength={16} className="sn-input w-full" value={periodDraft.code}
-        onChange={e=>setPeriodDraft(d=>({...d,code:e.target.value}))} disabled={busy}/>
+      <label className="space-y-1 text-sm"><span className="font-semibold">Type de période</span>
+       <select className="sn-input w-full" value={periodDraft.kind}
+        disabled={busy||Boolean(editingPeriodId)}
+        onChange={e=>setPeriodDraft(d=>({...d,kind:e.target.value as SchoolPeriodKind,name:""}))}>
+        <option value="trimester">Trimestre</option>
+        <option value="semester">Semestre</option>
+        <option value="custom">Personnalisée</option>
+       </select>
       </label>
-      <label className="space-y-1 text-sm"><span className="font-semibold">Nom de la période</span>
-       <input required maxLength={90} className="sn-input w-full" value={periodDraft.name}
+      <label className="space-y-1 text-sm"><span className="font-semibold">Code automatique</span>
+       <input className="sn-input w-full bg-slate-100" readOnly aria-label="Code automatique"
+        value={previewCode??"Numérotation épuisée"}/>
+      </label>
+      <label className="space-y-1 text-sm md:col-span-2"><span className="font-semibold">Nom de la période</span>
+       <input required maxLength={90} className="sn-input w-full"
+        value={periodDraft.name||defaultName}
         onChange={e=>setPeriodDraft(d=>({...d,name:e.target.value}))} disabled={busy}/>
       </label>
       <label className="space-y-1 text-sm"><span className="font-semibold">Date de début</span>
@@ -263,9 +283,13 @@ export default function LocalSchoolGradeConfiguration(){
         disabled={busy}/>
       </label>
      </div>
-     <p className="text-xs text-slate-600">Les périodes d'une même année ne peuvent se chevaucher.
+     <p className="text-xs text-slate-600">Le code affiché est une estimation : PostgreSQL attribue le code définitif
+      pour cet établissement et cette année, sans permettre sa modification. Les périodes ne peuvent se chevaucher.
       Après verrouillage, aucune réouverture n'est disponible dans cette étape.</p>
-     <button type="submit" className="sn-btn-primary" disabled={busy}>
+     {!previewCode&&<p role="alert" className="text-xs text-amber-700">
+      Tous les codes disponibles pour ce type sont utilisés. Choisissez une autre catégorie.
+     </p>}
+     <button type="submit" className="sn-btn-primary" disabled={busy||!previewCode}>
       {busy?"Enregistrement…":"Enregistrer la période"}
      </button>
     </form>
