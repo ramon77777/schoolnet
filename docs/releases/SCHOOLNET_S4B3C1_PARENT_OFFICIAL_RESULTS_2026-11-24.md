@@ -2,11 +2,15 @@
 
 **Date :** 24 novembre 2026.
 
-**Périmètre :** G1 validé par l’utilisateur ; développement sur branche dédiée et livraison en pull request brouillon.
+**Périmètre :** G1 validé par l’utilisateur ; développement sur branche dédiée et livraison en pull request brouillon. L’installation SQL C.1 sur `schoolnet_2.0` a ensuite reçu un GO distinct et a réussi le 24 novembre 2026.
 
 **Branche :** `feature/schoolnet-s4b3c1-parent-official-results-20261124`.
 
 **Base :** PR #29, commit `de7f6aee72ff7bb84f27be40dcb2bf30218a654d`.
+
+**Source SQL approuvée et installée :** commit `289a8aa05be1d1d69fecbaea0e21f414983d322d`.
+
+**État de livraison :** SQL principal installé et postflight réussi ; [PR #30](https://github.com/ramon77777/schoolnet/pull/30) en brouillon ; recette avec un parent réel encore à effectuer. Fusion dans `main` et publication Vercel non autorisées.
 
 ## 1. Résultat livré et dépendances
 
@@ -18,11 +22,15 @@ La sélection d’un enfant et « Tous mes enfants » sont conservées au retour
 
 Cette branche dépend de B.4 / PR #29, elle-même dépendante de B.3 / PR #28 et B.2 / PR #27. Ces branches étant encore en brouillon lors de la préparation, la comparaison avec `main` contient aussi leurs changements. La revue propre à C.1 doit comparer le commit de base ci-dessus à la tête de cette branche. La PR C.1 ne doit pas être fusionnée indépendamment de ces dépendances.
 
-## 2. Limite de l’autorisation actuelle
+## 2. Autorisations et état réel de la livraison
 
-La validation G1 autorise le code, les tests isolés, la branche et la PR brouillon. **Le SQL C.1 n’est pas installé sur Supabase principal.** Aucun compte, lien familial, résultat, note ou notification réels n’a été créé ou modifié pour ces tests.
+La validation G1 a autorisé le code, les tests isolés, la branche et la PR brouillon. L’utilisateur a ensuite autorisé explicitement l’installation SQL C.1 sur Supabase principal. **Cette installation est réalisée**, sous la version `20261124090800`, avec le nom `schoolnet_s4b3c1_parent_official_results`.
 
-L’installation SQL principale, le choix et le rattachement éventuel d’un parent réel de recette, la fusion dans `main` et la publication Vercel demandent leurs validations distinctes prévues au cadrage. Le compte élève de recette B.4 n’avait aucun `parent_links` lors de l’audit ; les tests positifs C.1 utilisent donc des familles fictives isolées.
+L’opération porte sur les fonctions et leurs permissions. Elle ne crée aucun compte ni lien familial et n’écrit aucune note, copie ou notification métier. Le postflight réel a utilisé des claims vides et des arguments `NULL` pour ses essais de refus, sans prendre l’identité d’un parent ou d’un enfant réel.
+
+**La recette fonctionnelle avec un parent connecté à la base principale n’est pas encore effectuée.** Le choix de ce parent et son éventuel rattachement restent à valider séparément. Lors de l’audit familial antérieur à cette installation, le compte élève de recette B.4 n’avait aucun `parent_links` ; ce constat n’a pas été réaudité pendant le postflight et ne constitue pas une nouvelle vérification des liens. Les recettes positives déjà réalisées utilisent des familles fictives isolées.
+
+La fusion dans `main` et la publication Vercel restent soumises à leurs GO distincts ; aucune de ces deux opérations n’est autorisée par le GO SQL.
 
 La propriété `git.deploymentEnabled` de `vercel.json` désactive le déploiement automatique pour le nom exact de la branche C.1. Elle ne change pas les règles des autres branches.
 
@@ -79,18 +87,48 @@ La protection exclut toute évaluation présente dans `school_assessment_links`,
 
 Les définitions réelles, modes de sécurité, propriétaires, volatilité, `search_path` et ACL ont été sauvegardés dans `s4b3c1_legacy_parent_rpcs_original_snapshot.json`. Le remplacement SQL est strictement contrôlé par les empreintes avant et après ; une dérive impose une nouvelle revue. Les huit policies restrictives B.0 restent intactes.
 
-## 6. Préflight, installation proposée et retour arrière
+## 6. Installation réalisée, contrôles et retour arrière
 
 | Fichier dans `supabase/` | Usage |
 |---|---|
-| `verification/s4b3c1_parent_official_results_preflight_readonly.sql` | Vérifier les prérequis, l’absence des nouvelles fonctions et les versions/ACL historiques en transaction `READ ONLY`. |
-| `proposals/s4b3c1_parent_official_results.sql` | Proposition atomique : créer cinq fonctions de lecture et protéger les trois anciennes RPC. |
+| `verification/s4b3c1_parent_official_results_preflight_readonly.sql` | Préflight utilisé avant installation : prérequis, absence des nouvelles fonctions et versions/ACL historiques en transaction `READ ONLY`. |
+| `proposals/s4b3c1_parent_official_results.sql` | Source approuvée du commit `289a8aa`, exécutée atomiquement pour créer cinq fonctions de lecture et protéger les trois anciennes RPC. |
+| `migrations/20261124090800_schoolnet_s4b3c1_parent_official_results.sql` | Archive exacte des octets installés ; ne pas réinstaller la migration déjà enregistrée. |
+| `verification/s4b3c1_parent_official_results_postflight_readonly.sql` | Contrôles après installation : corps, ACL, modes de sécurité, huit policies B.0 et refus sans sujet Auth, en transaction `READ ONLY`. |
+| `verification/s4b3c1_parent_official_results_installation_2026-11-24.json` | Preuve d’installation : autorisation, version, empreintes, postflight et métadonnées comparées avant/après. |
 | `verification/s4b3c1_parent_official_results_rollback_manual.sql` | Retirer les cinq nouvelles fonctions, conserver les protections V1. |
 | `verification/s4b3c1_legacy_parent_rpcs_restore_original_manual.sql` | Restauration historique exceptionnelle et séparée, réouvrant l’ancien chemin insuffisamment cloisonné. |
 
-Le préflight a été exécuté en lecture seule sur `schoolnet_2.0` le 24 novembre 2026 et a retourné `S4B3C1_PREFLIGHT_READONLY_PASS`. Il faudra le relancer juste avant toute installation autorisée.
+Le préflight en lecture seule sur `schoolnet_2.0` a retourné `S4B3C1_PREFLIGHT_READONLY_PASS`. Après le GO distinct, l’installation a utilisé le fichier exact du commit approuvé et a réussi. Le postflight réel a ensuite retourné **`S4B3C1_POSTFLIGHT_READONLY_PASS`**, avec `transactionReadOnly=on` et refus des accès sans sujet Auth ou sous rôle `anon`.
 
-Après un GO distinct, l’installation devra utiliser le fichier exact du commit approuvé, dans une transaction atomique, avec arrêt à la première erreur. Le marqueur attendu est `S4B3C1_PARENT_OFFICIAL_RESULTS_PASS`. Aucun schéma de données ni aucune donnée familiale n’est modifié par la proposition ; elle change des fonctions et leurs permissions.
+### Preuve de la version installée
+
+| Élément | Valeur observée |
+|---|---|
+| Projet | `schoolnet_2.0`, PostgreSQL `17.6` |
+| Version de migration | `20261124090800` |
+| Nom de migration | `schoolnet_s4b3c1_parent_official_results` |
+| Commit source approuvé | `289a8aa05be1d1d69fecbaea0e21f414983d322d` |
+| Historique SQL | Une entrée de script SQL de **18 932 caractères**, identique à la source approuvée. |
+| Archive source | **18 932 octets**, conservés à l’identique. |
+| MD5 source et historique | `cad54e9eb2549abb734eafac40012bb3` |
+| SHA-256 source | `e579a5ca055fd1c487072a3b1eeeb969601645e58d4d35e5bf4bf583622b79be` |
+
+Le postflight a validé les cinq corps de fonctions C.1 et leurs propriétaires, modes de sécurité, volatilité, `search_path` et ACL. Il a également confirmé les trois empreintes historiques après protection figurant en section 5, avec leurs ACL conservées.
+
+Les huit policies restrictives B.0 sont identiques avant et après : leur empreinte composite reste `b955ce92ac762770641cc876db2c08e6`. L’empreinte des définitions et ACL des autres fonctions des schémas `public` et `schoolnet_private` incluses dans le contrôle reste `eb77a814959843255148d455460be7c5`. Les tables protégées contrôlées conservent leur propriétaire `postgres` et leur RLS active. Ces comparaisons portent sur les métadonnées enregistrées dans la preuve JSON ; elles ne sont pas une recette utilisateur parent.
+
+Les advisors de sécurité sont identiques avant et après l’installation. Aucune nouvelle alerte C.1 n’a été constatée :
+
+| Groupe existant | Niveau | Nombre avant et après |
+|---|---|---|
+| [rls_enabled_no_policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) | INFO | 13 |
+| [function_search_path_mutable](https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable) | WARN | 14 |
+| [anon_security_definer_function_executable](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) | WARN | 45 |
+| [authenticated_security_definer_function_executable](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) | WARN | 114 |
+| [auth_leaked_password_protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) | WARN | 1 |
+
+### Retour arrière uniquement sur décision distincte
 
 Le rollback normal attend `S4B3C1_PARENT_OFFICIAL_RESULTS_ROLLBACK_PASS`. Il ne doit jamais entraîner automatiquement la restauration des anciennes RPC non protégées.
 
@@ -100,7 +138,9 @@ La restauration exceptionnelle exige les API C.1 déjà retirées, les empreinte
 
 La commande `npm run qa:s4b3c1` vérifie le contrat strict, les dates/notes, les associations d’enfants, les données interdites, les routes et les bornes Unicode. La suite parent V1 reste couverte par `scripts/test-schoolnet-lot5c-parent-children.mjs`.
 
-Les 209 tests Node de C.1 et des régressions sélectionnées ont passé localement lors de la préparation. `npm run lint` passe sans erreur, avec quatre avertissements préexistants hors du lot. `npm run build` passe, avec l’avertissement de taille du bundle déjà présent.
+Les **209 tests Node** de C.1 et des régressions sélectionnées ont passé lors de la préparation du commit approuvé. Ce commit `289a8aa` a également obtenu une CI verte, incluant les trois jobs décrits ci-dessous et **12 tests navigateur**. `npm run lint` passe sans erreur, avec quatre avertissements préexistants hors du lot. `npm run build` passe, avec l’avertissement de taille du bundle déjà présent.
+
+La préparation du commit de traçabilité ajoute l’archive d’installation et un test de parité, octet par octet, entre la proposition approuvée et l’archive de migration. La suite C.1 comporte ainsi **17 tests**, pour **210 tests Node** dans l’ensemble sélectionné. Ces **210 tests ont été réexécutés localement après archivage et ont tous passé**. Les 12 tests navigateur sont inchangés. La CI du prochain commit de synchronisation doit être relancée et identifiée séparément ; la réussite de la CI du commit `289a8aa` ne vaut pas preuve d’exécution de ce test supplémentaire en CI.
 
 Les fixtures `tests/s4b3c1-tenant-ci/fixtures/` reconstituent les anciennes RPC exactes puis des familles A/B/fratrie entièrement fictives. Elles vérifient notamment :
 
@@ -123,9 +163,9 @@ Le workflow `.github/workflows/schoolnet-s4b3c1-parent-results-ci.yml` comporte 
 
 Les tests navigateur ont été transférés vers ce job car le bac à sable local interdit les sockets nécessaires à Chromium. Ils ne constituent pas une recette réelle d’un parent connecté à Supabase principal. Les résultats de chaque job et leur commit sont consultables depuis la pull request.
 
-## 8. Prochaine recette, après validation de l’installation
+## 8. Prochaine recette : parent réel, après installation technique validée
 
-La prochaine étape est le GO ciblé pour le SQL C.1, puis le choix explicite du parent de test. Si un lien doit être créé pour cette recette, son parent et son enfant doivent être identifiés et autorisés séparément.
+Le GO SQL a été donné et l’installation technique est validée. La prochaine étape est le choix explicite du parent de test, avec un lien familial existant et autorisé. Si un lien doit être créé pour cette recette, son parent et son enfant doivent être identifiés et autorisés séparément ; aucun lien n’est créé automatiquement à la suite de l’installation.
 
 Pour récupérer le code dans le checkout Windows de test, conserver d’abord les modifications locales éventuelles, puis créer une branche locale dédiée suivant la branche distante C.1. Ne pas écraser la branche locale B.4. Relancer le serveur Vite après changement de branche.
 

@@ -6,6 +6,7 @@ on:
       - '.github/workflows/schoolnet-s4b3c1-parent-results-ci.yml'
       - 'src/features/parent/**'
       - 'supabase/proposals/s4b3c1_parent_official_results.sql'
+      - 'supabase/migrations/20261124090800_schoolnet_s4b3c1_parent_official_results.sql'
       - 'supabase/verification/s4b3c1*'
       - 'tests/s4b3c1-tenant-ci/**'
       - 'tests/s4b3c1-ui/**'
@@ -226,6 +227,13 @@ jobs:
           set -euo pipefail
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3c1_parent_official_results.sql | tee /tmp/c1-install.log
           grep -Fq 'S4B3C1_PARENT_OFFICIAL_RESULTS_PASS' /tmp/c1-install.log
+      - name: Verifier le postflight en lecture seule et les refus sans identite
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/verification/s4b3c1_parent_official_results_postflight_readonly.sql | tee /tmp/c1-postflight.log
+          grep -Fq 'S4B3C1_POSTFLIGHT_READONLY_PASS' /tmp/c1-postflight.log
       - name: Tester familles A/B, publication et refus des anciens chemins
         env:
           PGPASSWORD: postgres

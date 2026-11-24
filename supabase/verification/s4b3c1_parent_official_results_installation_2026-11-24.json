@@ -1,0 +1,275 @@
+{
+  "project": "schoolnet_2.0",
+  "projectRef": "anttmbhaphkhmkoqsofd",
+  "installedDate": "2026-11-24",
+  "authorization": "GO pour installer le SQL C.1 sur Supabase principal",
+  "approvedSourceCommit": "289a8aa05be1d1d69fecbaea0e21f414983d322d",
+  "approvedSourcePath": "supabase/proposals/s4b3c1_parent_official_results.sql",
+  "migration": {
+    "version": "20261124090800",
+    "name": "schoolnet_s4b3c1_parent_official_results"
+  },
+  "sourceChecksums": {
+    "md5": "cad54e9eb2549abb734eafac40012bb3",
+    "sha256": "e579a5ca055fd1c487072a3b1eeeb969601645e58d4d35e5bf4bf583622b79be",
+    "bytes": 18932
+  },
+  "migrationHistory": {
+    "version": "20261124090800",
+    "name": "schoolnet_s4b3c1_parent_official_results",
+    "statement_count": 1,
+    "first_statement_characters": 18932,
+    "first_statement_md5": "cad54e9eb2549abb734eafac40012bb3"
+  },
+  "installationSuccess": true,
+  "preflight": "S4B3C1_PREFLIGHT_READONLY_PASS",
+  "postflight": {
+    "result": "S4B3C1_POSTFLIGHT_READONLY_PASS",
+    "functions": [
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=public"
+        ],
+        "bodyMd5": "98d3c69aac01c1bcf0c061b024476da7",
+        "signature": "public.get_parent_child_assessment_detail(uuid,uuid)",
+        "volatility": "v",
+        "definitionMd5": "b89c4719c8b5b5fa427cf634328da45e",
+        "securityDefiner": true
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=public"
+        ],
+        "bodyMd5": "cdbfd88dfb68d6e0131b336d4673b416",
+        "signature": "public.get_parent_child_assessment_submissions(uuid)",
+        "volatility": "s",
+        "definitionMd5": "56a21d53edfc0dc8b5eb5addfe0e8a0c",
+        "securityDefiner": true
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=public"
+        ],
+        "bodyMd5": "a156ca36d28b1b59fb76817b812c1e2d",
+        "signature": "public.get_parent_child_homework_submissions(uuid)",
+        "volatility": "s",
+        "definitionMd5": "deddc10f89c5f3d7623161440d7922e7",
+        "securityDefiner": true
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "cb9de127953543d4b3bb3feeb5e299ad",
+        "signature": "public.schoolnet_parent_official_result(uuid,uuid)",
+        "volatility": "s",
+        "definitionMd5": "a6859f5a9249956f103dd7222362d405",
+        "securityDefiner": false
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "14287b22e8164c61042faa373d47f688",
+        "signature": "public.schoolnet_parent_official_results()",
+        "volatility": "s",
+        "definitionMd5": "5e001f32dd0064289cb071d0148132ee",
+        "securityDefiner": false
+      },
+      {
+        "acl": "{postgres=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "3dab15b18217d38b217a6ef9001b44a7",
+        "signature": "schoolnet_private.parent_official_result_rows(uuid,uuid)",
+        "volatility": "s",
+        "definitionMd5": "d95b901304b4a30898de22c7607a81ae",
+        "securityDefiner": true
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "a33486cb017eada436f3729f7c7e939e",
+        "signature": "schoolnet_private.parent_official_result(uuid,uuid)",
+        "volatility": "s",
+        "definitionMd5": "60af8bef1d6cb739049d1890e4671106",
+        "securityDefiner": true
+      },
+      {
+        "acl": "{postgres=X/postgres,authenticated=X/postgres}",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "011b328d2661f527ed4d2b44157a23fb",
+        "signature": "schoolnet_private.parent_official_results()",
+        "volatility": "s",
+        "definitionMd5": "94de8696c5eca83982250938fd69299f",
+        "securityDefiner": true
+      }
+    ],
+    "b0PolicyCount": 8,
+    "b0PolicyFingerprint": "b955ce92ac762770641cc876db2c08e6",
+    "transactionReadOnly": "on",
+    "noSubjectAndAnonDenied": true
+  },
+  "preservedMetadata": {
+    "before": {
+      "server_version": "17.6",
+      "b0_policy_count": 8,
+      "b0_policy_fingerprint": "b955ce92ac762770641cc876db2c08e6",
+      "other_functions_fingerprint": "eb77a814959843255148d455460be7c5",
+      "protected_tables": [
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "assessment_submissions",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "parent_links",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "profiles",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "schoolnet_school_student_class_assignments",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "schoolnet_school_teacher_subject_assignments",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "school_assessment_links",
+          "schema": "schoolnet_private"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "school_course_links",
+          "schema": "schoolnet_private"
+        }
+      ]
+    },
+    "after": {
+      "server_version": "17.6",
+      "b0_policy_count": 8,
+      "b0_policy_fingerprint": "b955ce92ac762770641cc876db2c08e6",
+      "other_functions_fingerprint": "eb77a814959843255148d455460be7c5",
+      "protected_tables": [
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "assessment_submissions",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "parent_links",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "profiles",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "schoolnet_school_student_class_assignments",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "schoolnet_school_teacher_subject_assignments",
+          "schema": "public"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "school_assessment_links",
+          "schema": "schoolnet_private"
+        },
+        {
+          "rls": true,
+          "owner": "postgres",
+          "table": "school_course_links",
+          "schema": "schoolnet_private"
+        }
+      ]
+    }
+  },
+  "securityAdvisors": {
+    "unchanged": true,
+    "groups": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 13,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 14,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 45,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 114,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "level": "WARN",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+      }
+    ]
+  },
+  "dataScope": "DDL de fonctions et permissions uniquement ; aucun compte, lien familial, note ou notification metier modifie par cette installation. Tests negatifs avec claims vides et arguments NULL uniquement.",
+  "realParentAcceptanceTest": "Non execute ; parent de recette et rattachement eventuel a valider separement.",
+  "rollout": {
+    "draftPullRequest": 30,
+    "mergedToMain": false,
+    "vercelPublished": false
+  }
+}

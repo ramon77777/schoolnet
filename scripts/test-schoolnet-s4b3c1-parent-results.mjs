@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   isParentOfficialUuid,
   isParentOfficialResult,
@@ -170,4 +171,10 @@ test("C1 : un détail ouvert depuis Tous mes enfants conserve ce choix au retour
   assert.equal(all.searchParams.get("source"), "official");
   const selected = new URL(parentOfficialResultUrl(childA.childId, resultA.assessmentId), "https://schoolnet.example");
   assert.equal(selected.searchParams.has("allChildren"), false);
+});
+
+test("C1 : la migration archivée est identique octet par octet à la proposition approuvée", () => {
+  const proposal = readFileSync(new URL("../supabase/proposals/s4b3c1_parent_official_results.sql", import.meta.url));
+  const archive = readFileSync(new URL("../supabase/migrations/20261124090800_schoolnet_s4b3c1_parent_official_results.sql", import.meta.url));
+  assert.equal(archive.equals(proposal), true, "L’archive C.1 doit conserver exactement les octets de la proposition SQL approuvée.");
 });
