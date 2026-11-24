@@ -158,7 +158,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
-          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3c2-tenant-ci/fixtures/supervision-a-b.sql | tee /tmp/c2-a-b.log
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3c2-tenant-ci/fixtures/supervision-a-b.sql 2>&1 | tee /tmp/c2-a-b.log
           grep -Fq 'C2_PASS_SCHOOL_A' /tmp/c2-a-b.log
           grep -Fq 'C2_PASS_SCHOOL_B' /tmp/c2-a-b.log
           grep -Fq 'C2_PASS_FOREIGN_SCHOOL_DENIED' /tmp/c2-a-b.log
