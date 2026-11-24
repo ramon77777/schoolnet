@@ -16,7 +16,7 @@ function obj(v:unknown):v is Record<string,unknown>{
  return v!==null&&typeof v==="object"&&!Array.isArray(v);
 }
 function exact(v:Record<string,unknown>,expected:readonly string[]):boolean{
- return Object.keys(v).length===expected.length&&expected.every(k=>Object.hasOwn(v,k));
+ return Object.keys(v).length===expected.length&&expected.every(k=>Object.prototype.hasOwnProperty.call(v,k));
 }
 const str=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=5000;
 const integer=(v:unknown):v is number=>typeof v==="number"&&Number.isSafeInteger(v)&&v>=0;
