@@ -20,7 +20,8 @@ export async function saveSchoolGradePeriod(input:PeriodInput):Promise<string>{
   throw new Error("Période invalide.");
  const {data,error}=await supabase.rpc("schoolnet_school_upsert_grading_period",{
   p_school_id:input.schoolId,p_period_id:input.periodId,p_school_year_id:input.schoolYearId,
-  p_code:periodPrefix(input.periodKind),p_name:input.name.trim(),
+  // AUTO: is deliberately rejected by C.3-A's old SQL regex (fail closed).
+  p_code:"AUTO:"+periodPrefix(input.periodKind),p_name:input.name.trim(),
   p_starts_on:input.startsOn,p_ends_on:input.endsOn,
  });
  if(error)throw error;
