@@ -1,0 +1,37 @@
+name: SCHOOLNET S4-B.3-C.2 - school admin supervision
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4b3c2-supervision-ci.yml'
+      - 'src/features/schools/**'
+      - 'src/routes/router.tsx'
+      - 'src/layouts/DashboardLayout.tsx'
+      - 'supabase/proposals/s4b3c2_school_assessment_supervision.sql'
+      - 'supabase/verification/s4b3c2*'
+      - 'scripts/test-schoolnet-s4b3c2-supervision.mjs'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4b3c2
+      - run: npm run qa:s4b3c1
+      - run: npm run qa:s4b3b4
+      - run: npm run qa:s4b3b3
+      - run: npm run qa:s4a
+      - run: npm run lint
+      - run: npm run build
