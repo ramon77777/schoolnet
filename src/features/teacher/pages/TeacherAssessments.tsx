@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { getSchoolAssessmentTeacherContext } from "@/features/schools/lib/schoolAssessmentBridgeApi";
 
 type AssessmentType = "quiz" | "assignment" | "exam";
 type AssessmentStatus = "draft" | "published" | "closed";
@@ -115,6 +116,7 @@ export default function TeacherAssessments() {
   const [rows, setRows] = useState<AssessmentView[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [correctionsNavigatingId, setCorrectionsNavigatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadAssessments = useCallback(async () => {
@@ -216,8 +218,24 @@ export default function TeacherAssessments() {
     }
   }
 
-  function goToCorrections(assessmentId: string) {
-    navigate(`/app/teacher/grading?assessmentId=${encodeURIComponent(assessmentId)}`);
+  async function goToCorrections(assessmentId: string) {
+    if (!user || user.isDemo || correctionsNavigatingId) return;
+    setCorrectionsNavigatingId(assessmentId);
+    try {
+      // Le service officiel protege l'acces par classe/etablissement.
+      // V1 reste conserve pour les evaluations NON rattachees.
+      const context = await getSchoolAssessmentTeacherContext(assessmentId);
+      if (context.eligible && context.linked) {
+        navigate(`/app/teacher/assessments/${assessmentId}/official-corrections`);
+        return;
+      }
+      navigate(`/app/teacher/grading?assessmentId=${encodeURIComponent(assessmentId)}`);
+    } catch (cause) {
+      console.error("[TeacherAssessments] corrections routing error:", cause);
+      setError("Impossible de vérifier le rattachement officiel de cette évaluation. Réessayez.");
+    } finally {
+      setCorrectionsNavigatingId(null);
+    }
   }
 
   const isLoading = authLoading || loading;
@@ -339,9 +357,10 @@ export default function TeacherAssessments() {
                 <button
                   type="button"
                   className="sn-btn-primary sn-press"
-                  onClick={() => goToCorrections(row.id)}
+                  onClick={() => void goToCorrections(row.id)}
+                  disabled={correctionsNavigatingId !== null}
                 >
-                  Corrections
+                  {correctionsNavigatingId === row.id ? "Vérification..." : "Corrections"}
                 </button>
               </div>
             </div>

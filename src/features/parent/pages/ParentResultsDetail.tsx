@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -12,6 +13,8 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import ParentOfficialResultDetail from "../components/ParentOfficialResultDetail";
+import { parentResultsUrl } from "../lib/parentOfficialResultsModel";
 
 /* =========================================================
    Types
@@ -331,7 +334,7 @@ function isQuestionAnswered(
    Page
 ========================================================= */
 
-export default function ParentResultsDetail() {
+function LegacyParentResultsDetail() {
   const navigate = useNavigate();
 
   const { id } =
@@ -345,8 +348,8 @@ export default function ParentResultsDetail() {
     loading: authLoading,
   } = useAuth();
 
-  const childId =
-    searchParams.get("childId");
+  const childId = searchParams.get("childId") ?? searchParams.get("child");
+  const generation = useRef(0);
 
   const [student, setStudent] =
     useState<StudentView | null>(null);
@@ -391,15 +394,7 @@ export default function ParentResultsDetail() {
 
   const backToResults =
     useCallback(() => {
-      const query = childId
-        ? `?childId=${encodeURIComponent(
-            childId
-          )}`
-        : "";
-
-      navigate(
-        `/app/parent/results${query}`
-      );
+      navigate(parentResultsUrl("legacy", childId));
     }, [navigate, childId]);
 
   /* =======================================================
@@ -408,6 +403,8 @@ export default function ParentResultsDetail() {
 
   const loadResult =
     useCallback(async () => {
+      const run = ++generation.current;
+      const current = () => generation.current === run;
       if (!id) {
         setError(
           "Évaluation introuvable."
@@ -428,7 +425,8 @@ export default function ParentResultsDetail() {
 
       if (
         !user ||
-        user.isDemo
+        user.isDemo ||
+        user.role !== "parent"
       ) {
         setError(
           "Le détail réel n’est pas disponible en mode démo."
@@ -492,6 +490,7 @@ export default function ParentResultsDetail() {
           );
         }
 
+        if (!current()) return;
         setStudent(
           response.student ?? null
         );
@@ -508,6 +507,7 @@ export default function ParentResultsDetail() {
           response.questions ?? []
         );
       } catch (err) {
+        if (!current()) return;
         console.error(
           "[ParentResultsDetail] loadResult error:",
           err
@@ -525,7 +525,7 @@ export default function ParentResultsDetail() {
           )
         );
       } finally {
-        setLoading(false);
+        if (current()) setLoading(false);
       }
     }, [
       id,
@@ -539,6 +539,7 @@ export default function ParentResultsDetail() {
     }
 
     void loadResult();
+    return () => { generation.current += 1; };
   }, [
     authLoading,
     loadResult,
@@ -1335,4 +1336,18 @@ export default function ParentResultsDetail() {
         )}
     </div>
   );
+}
+
+
+export default function ParentResultsDetail() {
+  const { id } = useParams<{ id: string }>();
+  const [params] = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+  const childId = params.get("childId") ?? params.get("child");
+  const source = params.get("source") === "official" ? "official" : "legacy";
+  const ownerKey = `${user?.id ?? "anonymous"}:${user?.role ?? ""}:${Boolean(user?.isDemo)}:${childId ?? ""}:${id ?? ""}`;
+  if (authLoading) return <div className="sn-card p-6 text-sm text-slate-600" role="status">Chargement du compte…</div>;
+  return source === "official"
+    ? <ParentOfficialResultDetail key={ownerKey} childId={childId} assessmentId={id} returnToAll={params.get("allChildren") === "1"} />
+    : <LegacyParentResultsDetail key={ownerKey} />;
 }

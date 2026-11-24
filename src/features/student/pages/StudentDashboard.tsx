@@ -17,6 +17,10 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import StudentOfficialDashboardSummary from "@/features/student/components/StudentOfficialDashboardSummary";
+import { getStudentOfficialDashboard } from "@/features/student/lib/studentOfficialDashboardApi";
+import { EMPTY_OFFICIAL_DASHBOARD, type StudentOfficialDashboard } from "@/features/student/lib/studentOfficialDashboardModel";
+import { combineStudentDashboards } from "@/features/student/lib/studentCombinedDashboardModel";
 
 type CourseRow = {
   id: string;
@@ -196,6 +200,48 @@ export default function StudentDashboard() {
 
   const [reloadToken, setReloadToken] =
     useState(0);
+  const [officialData, setOfficialData] =
+    useState<StudentOfficialDashboard>(EMPTY_OFFICIAL_DASHBOARD);
+  const [officialOwner, setOfficialOwner] = useState<string | null>(null);
+  const [officialLoading, setOfficialLoading] = useState(true);
+  const [officialError, setOfficialError] = useState<string | null>(null);
+  const [officialReloadToken, setOfficialReloadToken] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOfficial() {
+      if (authLoading) return;
+      if (!user || user.isDemo || user.role !== "student") {
+        if (!cancelled) {
+          setOfficialData(EMPTY_OFFICIAL_DASHBOARD);
+          setOfficialOwner(null);
+          setOfficialLoading(false);
+          setOfficialError(null);
+        }
+        return;
+      }
+      try {
+        setOfficialLoading(true);
+        setOfficialError(null);
+        const next = await getStudentOfficialDashboard();
+        if (!cancelled) {
+          setOfficialData(next);
+          setOfficialOwner(user.id);
+        }
+      } catch (cause) {
+        console.error("[StudentDashboard] official summary unavailable:", cause);
+        if (!cancelled) {
+          setOfficialData(EMPTY_OFFICIAL_DASHBOARD);
+          setOfficialOwner(user.id);
+          setOfficialError("Le suivi scolaire officiel est temporairement indisponible. Les indicateurs ci-dessous restent limités aux cours libres.");
+        }
+      } finally {
+        if (!cancelled) setOfficialLoading(false);
+      }
+    }
+    void loadOfficial();
+    return () => { cancelled = true; };
+  }, [authLoading, user, reloadToken, officialReloadToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -757,11 +803,22 @@ export default function StudentDashboard() {
       completionRate,
       assessmentCount:
         assessmentViews.length,
+      assessmentViews,
     };
   }, [data]);
 
+  const effectiveOfficial =
+    officialOwner === user?.id ? officialData : EMPTY_OFFICIAL_DASHBOARD;
+  const combined = useMemo(() =>
+    combineStudentDashboards(data.courses, dashboard.assessmentViews, effectiveOfficial),
+    [data.courses, dashboard.assessmentViews, effectiveOfficial]
+  );
+
   const isLoading =
-    authLoading || loading;
+    authLoading || loading || officialLoading || (
+      !!user && !user.isDemo && user.role === "student" &&
+      officialOwner !== user.id && !officialError
+    );
 
   if (isLoading) {
     return (
@@ -844,7 +901,7 @@ export default function StudentDashboard() {
         <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
-              🎓 Mon espace scolaire
+              🎓 Mon espace scolaire · Cours officiels et libres
             </div>
 
             <h1 className="text-2xl font-bold sm:text-3xl">
@@ -882,94 +939,69 @@ export default function StudentDashboard() {
                 }
                 className="rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
               >
-                📈 Voir ma progression
+                📈 Progression des cours libres
               </button>
             </div>
           </div>
 
           <div className="grid min-w-[260px] grid-cols-2 gap-3">
-            <HeroStat
-              label="Progression"
-              value={`${dashboard.overallProgress}%`}
-            />
+            <HeroStat label="Évaluations réalisées"
+              value={combined.assessmentCount > 0 ? String(combined.completionRate) + "%" : "—"} />
 
-            <HeroStat
-              label="Moyenne"
-              value={
-                dashboard.averageScore !==
-                null
-                  ? `${dashboard.averageScore}%`
-                  : "—"
-              }
-            />
+            <HeroStat label="Réussite publiée"
+              value={combined.averageScore === null ? "—" : String(combined.averageScore) + "%"} />
 
-            <HeroStat
-              label="Cours"
-              value={String(
-                data.courses.length,
-              )}
-            />
+            <HeroStat label="Cours" value={String(combined.courseCount)} />
 
-            <HeroStat
-              label="À faire"
-              value={String(
-                dashboard.pendingCount,
-              )}
-            />
+            <HeroStat label="À faire" value={String(combined.pendingCount)} />
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          icon="📈"
-          title="Progression générale"
-          value={`${dashboard.overallProgress}%`}
-          helper={`${data.courses.length} cours suivi${
-            data.courses.length > 1
-              ? "s"
-              : ""
-          }`}
-          tone="blue"
-        />
+        <KpiCard icon="📈" title="Avancement des évaluations"
+          value={combined.assessmentCount > 0 ? String(combined.completionRate) + "%" : "—"}
+          helper={String(combined.completedCount) + " / " + String(combined.assessmentCount) + " évaluations terminées"}
+          tone="blue" />
 
-        <KpiCard
-          icon="🏅"
-          title="Moyenne publiée"
-          value={
-            dashboard.averageScore !==
-            null
-              ? `${dashboard.averageScore}%`
-              : "—"
-          }
-          helper="Calculée sur les notes publiées"
-          tone="violet"
-        />
+        <KpiCard icon="🏅" title="Moyenne des résultats publiés"
+          value={combined.averageScore === null ? "—" : String(combined.averageScore) + "%"}
+          helper="Évaluations publiées V1 + V2 ; pas une moyenne trimestrielle"
+          tone="violet" />
 
-        <KpiCard
-          icon="✅"
-          title="Évaluations terminées"
-          value={String(
-            dashboard.completedCount,
-          )}
-          helper={`${dashboard.completionRate}% des évaluations`}
-          tone="green"
-        />
+        <KpiCard icon="✅" title="Évaluations terminées"
+          value={String(combined.completedCount)}
+          helper={String(combined.completionRate) + "% des évaluations V1 + V2"}
+          tone="green" />
 
-        <KpiCard
-          icon="⏳"
-          title="À faire"
-          value={String(
-            dashboard.pendingCount,
-          )}
-          helper={`${dashboard.assessmentCount} évaluation${
-            dashboard.assessmentCount >
-            1
-              ? "s"
-              : ""
-          } au total`}
-          tone="amber"
-        />
+        <KpiCard icon="⏳" title="À faire"
+          value={String(combined.pendingCount)}
+          helper={String(combined.assessmentCount) + " évaluations au total"}
+          tone="amber" />
+      </section>
+
+      <StudentOfficialDashboardSummary
+        data={effectiveOfficial}
+        loading={officialLoading}
+        error={officialError}
+        onRefresh={() => setOfficialReloadToken(current => current + 1)}
+      />
+
+      <section className="sn-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-semibold text-gray-900">Suivi des cours libres (V1)</h2>
+            <p className="mt-1 text-sm text-gray-500">Progression pédagogique des cours libres, séparée des évaluations officielles.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            {data.courses.length} cours libre(s)
+          </span>
+        </div>
+        <p className="mt-3 text-sm text-gray-700">
+          Progression pédagogique : {data.courses.length > 0 ? String(dashboard.overallProgress) + "%" : "aucun cours libre suivi"}.
+          {" "}Évaluations libres terminées : {dashboard.completedCount}.
+          {" "}Moyenne publiée V1 : {dashboard.averageScore === null ? "—" : String(dashboard.averageScore) + "%"}.
+        </p>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
@@ -977,25 +1009,21 @@ export default function StudentDashboard() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="font-semibold text-gray-900">
-                Progression par cours
+                Évaluations réalisées par cours
               </div>
 
               <div className="mt-1 text-sm text-gray-500">
-                Votre avancement actuel
-                dans les différents cours.
+                Pourcentage d’évaluations terminées par cours, V1 et V2. Ce n’est pas la progression des leçons.
               </div>
             </div>
 
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-              {
-                data.courses.length
-              }{" "}
-              cours
+              {combined.courseCount} cours
             </span>
           </div>
 
           <div className="mt-6 h-72">
-            {dashboard
+            {combined
               .courseProgressData
               .length > 0 ? (
               <ResponsiveContainer
@@ -1004,7 +1032,7 @@ export default function StudentDashboard() {
               >
                 <BarChart
                   data={
-                    dashboard.courseProgressData
+                    combined.courseProgressData
                   }
                   margin={{
                     top: 10,
@@ -1058,18 +1086,16 @@ export default function StudentDashboard() {
         <div className="sn-card p-5 sm:p-6">
           <div>
             <div className="font-semibold text-gray-900">
-              Répartition des
-              évaluations
+              Répartition des évaluations
             </div>
 
             <div className="mt-1 text-sm text-gray-500">
-              Quiz, devoirs et examens
-              publiés.
+              Quiz, devoirs et examens accessibles dans les parcours V1 et V2.
             </div>
           </div>
 
           <div className="mt-5 h-60">
-            {dashboard
+            {combined
               .assessmentMixData
               .length > 0 ? (
               <ResponsiveContainer
@@ -1079,7 +1105,7 @@ export default function StudentDashboard() {
                 <PieChart>
                   <Pie
                     data={
-                      dashboard.assessmentMixData
+                      combined.assessmentMixData
                     }
                     dataKey="value"
                     nameKey="name"
@@ -1087,7 +1113,7 @@ export default function StudentDashboard() {
                     outerRadius={88}
                     paddingAngle={4}
                   >
-                    {dashboard.assessmentMixData.map(
+                    {combined.assessmentMixData.map(
                       (entry) => (
                         <Cell
                           key={
@@ -1115,7 +1141,7 @@ export default function StudentDashboard() {
             <MiniType
               label="Quiz"
               value={
-                dashboard.quizCount
+                combined.quizCount
               }
               className="bg-blue-50 text-blue-700"
             />
@@ -1123,7 +1149,7 @@ export default function StudentDashboard() {
             <MiniType
               label="Devoirs"
               value={
-                dashboard.homeworkCount
+                combined.homeworkCount
               }
               className="bg-violet-50 text-violet-700"
             />
@@ -1131,7 +1157,7 @@ export default function StudentDashboard() {
             <MiniType
               label="Examens"
               value={
-                dashboard.examCount
+                combined.examCount
               }
               className="bg-red-50 text-red-700"
             />
@@ -1153,7 +1179,7 @@ export default function StudentDashboard() {
           </div>
 
           <div className="mt-6 h-72">
-            {dashboard
+            {combined
               .scoreTrendData.length >
             0 ? (
               <ResponsiveContainer
@@ -1162,7 +1188,7 @@ export default function StudentDashboard() {
               >
                 <LineChart
                   data={
-                    dashboard.scoreTrendData
+                    combined.scoreTrendData
                   }
                   margin={{
                     top: 10,
@@ -1234,7 +1260,7 @@ export default function StudentDashboard() {
 
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
               {
-                dashboard
+                combined
                   .upcomingAssessments
                   .length
               }{" "}
@@ -1243,7 +1269,7 @@ export default function StudentDashboard() {
           </div>
 
           <div className="mt-5 space-y-3">
-            {dashboard
+            {combined
               .upcomingAssessments
               .length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
@@ -1261,21 +1287,14 @@ export default function StudentDashboard() {
                 </div>
               </div>
             ) : (
-              dashboard.upcomingAssessments.map(
+              combined.upcomingAssessments.map(
                 (assessment) => (
                   <button
                     key={
                       assessment.id
                     }
                     type="button"
-                    onClick={() =>
-                      navigate(
-                        assessment.type ===
-                          "Devoir"
-                          ? "/app/student/homework"
-                          : "/app/student/assessments",
-                      )
-                    }
+                    onClick={() => navigate(assessment.url)}
                     className="w-full rounded-2xl border border-gray-100 bg-white p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/40"
                   >
                     <div className="flex items-start justify-between gap-3">

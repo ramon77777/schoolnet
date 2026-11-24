@@ -43,6 +43,7 @@ import TeacherClasses from "../features/teacher/pages/TeacherClasses";
 import TeacherAssessments from "../features/teacher/pages/TeacherAssessments";
 import TeacherAssessmentCreate from "../features/teacher/pages/TeacherAssessmentCreate";
 import TeacherAssessmentDetail from "../features/teacher/pages/TeacherAssessmentDetail";
+import TeacherOfficialCorrections from "@/features/teacher/pages/TeacherOfficialCorrections";
 import TeacherAssessmentEdit from "../features/teacher/pages/TeacherAssessmentEdit";
 import TeacherGrading from "../features/teacher/pages/TeacherGrading";
 import TeacherGradingDetail from "../features/teacher/pages/TeacherGradingDetail";
@@ -65,6 +66,7 @@ import StudentAssessmentResult from "../features/student/pages/StudentAssessment
 import StudentCourseDetail from "../features/student/pages/StudentCourseDetail";
 import StudentSchoolCourseDetail from "@/features/student/pages/StudentSchoolCourseDetail";
 import StudentSchoolAssessmentPreview from "@/features/student/pages/StudentSchoolAssessmentPreview";
+import StudentSchoolAssessmentTake from "@/features/student/pages/StudentSchoolAssessmentTake";
 import StudentAssessmentDetails from "../features/student/pages/StudentAssessmentDetails";
 import StudentHomeworkDetail from "../features/student/pages/StudentHomeworkDetail";
 import StudentDashboard from "@/features/student/pages/StudentDashboard";
@@ -164,6 +166,7 @@ export const router = createBrowserRouter([
               { path: "student/school-courses", element: <Navigate to="/app/student/courses?tab=official" replace /> },
               { path: "student/school-courses/:courseId", element: <StudentSchoolCourseDetail /> },
               { path: "student/school-courses/:courseId/assessments/:assessmentId", element: <StudentSchoolAssessmentPreview /> },
+              { path: "student/school-courses/:courseId/assessments/:assessmentId/take", element: <StudentSchoolAssessmentTake /> },
 
               { path: "student/live", element: <LiveSessionsPage /> },
               { path: "student/live/:sessionId", element: <LiveRoomPage /> },
@@ -358,6 +361,10 @@ export const router = createBrowserRouter([
               {
                 path: "teacher/assessments/:id/edit",
                 element: <TeacherAssessmentEdit />,
+              },
+              {
+                path: "teacher/assessments/:id/official-corrections",
+                element: <TeacherOfficialCorrections />,
               },
 
               { path: "teacher/grading", element: <TeacherGrading /> },

@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {readFileSync,readdirSync,existsSync} from "node:fs";
 import {mapSafeRichNode,parseSafeRichText} from
- "../src/components/editor/safeRichText.ts";
+ "../src/components/editor/safeRichTextParser.ts";
 
 const read=(p)=>readFileSync(p,"utf8");
 const page=read("src/features/student/pages/StudentSchoolAssessmentPreview.tsx");
-const parser=read("src/components/editor/safeRichText.ts");
+const parser=read("src/components/editor/safeRichTextParser.ts");
 const view=read("src/components/editor/SafeRichText.tsx");
 const editor=read("src/components/editor/RichTextEditor.tsx");
 const ci=read(".github/workflows/schoolnet-s4b3b1-preview-ci.yml");
@@ -22,6 +22,16 @@ function element(tag,children=[],attributes={}) {
 }
 const convert=(tree)=>mapSafeRichNode(tree);
 
+test("Les fichiers de rendu ont des noms non ambigus sur Windows",()=>{
+ const names=readdirSync("src/components/editor");
+ const lowered=names.map(name=>name.toLowerCase());
+ assert.equal(new Set(lowered).size,names.length,"Nom de fichier en conflit sans distinction de casse");
+ assert.ok(names.includes("SafeRichText.tsx"));
+ assert.ok(names.includes("safeRichTextParser.ts"));
+ assert.equal(existsSync("src/components/editor/safeRichText.ts"),false);
+ assert.match(view,/from "\.\/safeRichTextParser"/);
+ assert.doesNotMatch(view,/from "\.\/safeRichText"/);
+});
 test("TipTap : un paragraphe affiche le texte sans les balises litterales",()=>{
  const tree=convert(element("p",[textNode("Lisez bien les questions")]));
  assert.deepEqual(tree,[{
@@ -156,7 +166,7 @@ test("La CI teste le rendu en plus des contrats B1 et du build",()=>{
  assert.match(ci,/npm run qa:s4b3b1:richtext/);
  assert.match(ci,/npm run qa:s4b3b1/);
  assert.match(ci,/npm run build/);
- assert.match(ci,/src\/components\/editor\/safeRichText\.ts/);
+ assert.match(ci,/src\/components\/editor\/safeRichTextParser\.ts/);
  assert.match(ci,/src\/components\/editor\/SafeRichText\.tsx/);
  assert.doesNotMatch(ci,/supabase db push|vercel --prod|supabase db reset --linked/);
 });

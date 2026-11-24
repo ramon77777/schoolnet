@@ -9,7 +9,7 @@ on:
       - 'supabase/verification/s4b3b1_student_official_assessment_preview_rollback_manual.sql'
       - 'tests/s4b3b1-tenant-ci/**'
       - 'src/features/student/pages/StudentSchoolAssessmentPreview.tsx'
-      - 'src/components/editor/safeRichText.ts'
+      - 'src/components/editor/safeRichTextParser.ts'
       - 'src/components/editor/SafeRichText.tsx'
       - 'scripts/test-schoolnet-s4b3b1-richtext.mjs'
       - 'src/features/student/lib/studentSchoolAssessmentPreviewApi.ts'
