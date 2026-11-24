@@ -18,6 +18,9 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import StudentOfficialDashboardSummary from "@/features/student/components/StudentOfficialDashboardSummary";
+import { getStudentOfficialDashboard } from "@/features/student/lib/studentOfficialDashboardApi";
+import { EMPTY_OFFICIAL_DASHBOARD, type StudentOfficialDashboard } from "@/features/student/lib/studentOfficialDashboardModel";
+import { combineStudentDashboards } from "@/features/student/lib/studentCombinedDashboardModel";
 
 type CourseRow = {
   id: string;
@@ -197,6 +200,48 @@ export default function StudentDashboard() {
 
   const [reloadToken, setReloadToken] =
     useState(0);
+  const [officialData, setOfficialData] =
+    useState<StudentOfficialDashboard>(EMPTY_OFFICIAL_DASHBOARD);
+  const [officialOwner, setOfficialOwner] = useState<string | null>(null);
+  const [officialLoading, setOfficialLoading] = useState(true);
+  const [officialError, setOfficialError] = useState<string | null>(null);
+  const [officialReloadToken, setOfficialReloadToken] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOfficial() {
+      if (authLoading) return;
+      if (!user || user.isDemo || user.role !== "student") {
+        if (!cancelled) {
+          setOfficialData(EMPTY_OFFICIAL_DASHBOARD);
+          setOfficialOwner(null);
+          setOfficialLoading(false);
+          setOfficialError(null);
+        }
+        return;
+      }
+      try {
+        setOfficialLoading(true);
+        setOfficialError(null);
+        const next = await getStudentOfficialDashboard();
+        if (!cancelled) {
+          setOfficialData(next);
+          setOfficialOwner(user.id);
+        }
+      } catch (cause) {
+        console.error("[StudentDashboard] official summary unavailable:", cause);
+        if (!cancelled) {
+          setOfficialData(EMPTY_OFFICIAL_DASHBOARD);
+          setOfficialOwner(user.id);
+          setOfficialError("Le suivi scolaire officiel est temporairement indisponible. Les indicateurs ci-dessous restent limités aux cours libres.");
+        }
+      } finally {
+        if (!cancelled) setOfficialLoading(false);
+      }
+    }
+    void loadOfficial();
+    return () => { cancelled = true; };
+  }, [authLoading, user, reloadToken, officialReloadToken]);
 
   useEffect(() => {
     let cancelled = false;
@@ -758,11 +803,22 @@ export default function StudentDashboard() {
       completionRate,
       assessmentCount:
         assessmentViews.length,
+      assessmentViews,
     };
   }, [data]);
 
+  const effectiveOfficial =
+    officialOwner === user?.id ? officialData : EMPTY_OFFICIAL_DASHBOARD;
+  const combined = useMemo(() =>
+    combineStudentDashboards(data.courses, dashboard.assessmentViews, effectiveOfficial),
+    [data.courses, dashboard.assessmentViews, effectiveOfficial]
+  );
+
   const isLoading =
-    authLoading || loading;
+    authLoading || loading || officialLoading || (
+      !!user && !user.isDemo && user.role === "student" &&
+      officialOwner !== user.id && !officialError
+    );
 
   if (isLoading) {
     return (
@@ -836,8 +892,6 @@ export default function StudentDashboard() {
           Supabase.
         </div>
       )}
-
-      <StudentOfficialDashboardSummary />
 
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 text-white shadow-lg sm:p-8">
         <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10" />
@@ -973,6 +1027,30 @@ export default function StudentDashboard() {
           } au total`}
           tone="amber"
         />
+      </section>
+
+      <StudentOfficialDashboardSummary
+        data={effectiveOfficial}
+        loading={officialLoading}
+        error={officialError}
+        onRefresh={() => setOfficialReloadToken(current => current + 1)}
+      />
+
+      <section className="sn-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-semibold text-gray-900">Suivi des cours libres (V1)</h2>
+            <p className="mt-1 text-sm text-gray-500">Progression pédagogique des cours libres, séparée des évaluations officielles.</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            {data.courses.length} cours libre(s)
+          </span>
+        </div>
+        <p className="mt-3 text-sm text-gray-700">
+          Progression pédagogique : {data.courses.length > 0 ? String(dashboard.overallProgress) + "%" : "aucun cours libre suivi"}.
+          {" "}Évaluations libres terminées : {dashboard.completedCount}.
+          {" "}Moyenne publiée V1 : {dashboard.averageScore === null ? "—" : String(dashboard.averageScore) + "%"}.
+        </p>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
