@@ -122,6 +122,35 @@ BEGIN
 END $config_b$;
 RESET ROLE;
 
+-- Teacher B must positively read his OWN school B, but not school A.
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000004',true);
+SET LOCAL ROLE authenticated;
+DO $teacher_b$
+DECLARE v jsonb; b1 jsonb;
+BEGIN
+ v:=public.schoolnet_teacher_official_subject_averages(
+  '20000000-0000-4000-8000-000000000002',
+  current_setting('ci.c3b2.t1b')::uuid,
+  '50000000-0000-4000-8000-000000000002',
+  '40000000-0000-4000-8000-000000000001');
+ IF jsonb_array_length(v->'students')<>1 THEN
+  RAISE EXCEPTION 'C3B2_SCHOOL_B_WRONG_ROSTER'; END IF;
+ b1:=v->'students'->0;
+ IF b1->>'state'<>'ready' OR (b1->>'averageOn20')::numeric<>10
+  OR b1->>'studentId'<>'10000000-0000-4000-8000-000000000007'
+ THEN RAISE EXCEPTION 'C3B2_SCHOOL_B_WRONG_AVERAGE'; END IF;
+ BEGIN
+  PERFORM public.schoolnet_teacher_official_subject_averages(
+   '20000000-0000-4000-8000-000000000001',
+   current_setting('ci.c3b2.t1a')::uuid,
+   '50000000-0000-4000-8000-000000000001',
+   '40000000-0000-4000-8000-000000000001');
+  RAISE EXCEPTION 'C3B2_SCHOOL_B_TEACHER_READ_A';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ RAISE NOTICE 'C3B2_PASS_SCHOOL_B_ISOLATED_POSITIVE';
+END $teacher_b$;
+RESET ROLE;
+
 -- Teacher A sees ONLY A's authorized class/subject and PUBLISHED copies.
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
 SET LOCAL ROLE authenticated;
