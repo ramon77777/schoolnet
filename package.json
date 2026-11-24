@@ -31,7 +31,8 @@
     "qa:s4b3b3": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3b3-grading.mjs",
     "qa:s4b3b4": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3b4-dashboard.mjs",
     "qa:s4b3c1": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3c1-parent-results.mjs",
-    "qa:s4b3c2": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3c2-supervision.mjs"
+    "qa:s4b3c2": "node --experimental-strip-types --test scripts/test-schoolnet-s4b3c2-supervision.mjs",
+    "qa:s4c3a": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3a-periods.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",

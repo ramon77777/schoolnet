@@ -88,7 +88,7 @@ export function isSchoolGradeConfig(v:unknown):v is SchoolGradeConfig{
  return true;
 }
 export function validCoefficient(value:number):boolean{
- return Number.isFinite(value)&&value>=0.25&&value<=20&&Math.round(value*100)===value*100;
+ return Number.isFinite(value)&&value>=0.25&&value<=20&&Math.abs(Math.round(value*100)/100-value)<1e-8;
 }
 export function availablePeriods(c:SchoolGradeConfig,yearId:string){
  return c.periods.filter(p=>p.schoolYearId===yearId)

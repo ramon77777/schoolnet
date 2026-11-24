@@ -118,7 +118,20 @@ BEGIN
  INTO v_subject_settings
  FROM schoolnet_private.school_period_subject_coefficients s
  JOIN schoolnet_private.school_grading_periods p
-   ON p.id=s.period_id AND p.school_id=p_school_id;
+   ON p.id=s.period_id AND p.school_id=p_school_id
+ WHERE EXISTS(
+   SELECT 1 FROM public.classes cl
+   JOIN public.schoolnet_school_teacher_subject_assignments ta
+     ON ta.class_id=cl.id AND ta.school_id=p.school_id
+     AND ta.school_year_id=p.school_year_id AND ta.subject_id=s.subject_id
+     AND ta.status='active' AND ta.revoked_at IS NULL
+   JOIN public.schoolnet_school_memberships tm
+     ON tm.school_id=ta.school_id AND tm.user_id=ta.teacher_id
+     AND tm.member_role='teacher' AND tm.status='active'
+   JOIN public.academic_subjects sub ON sub.id=s.subject_id AND sub.is_active
+   WHERE cl.id=s.class_id AND cl.school_id=p.school_id
+     AND cl.school_year_id=p.school_year_id AND cl.learning_context='school'
+ );
 
  SELECT COALESCE(jsonb_agg(jsonb_build_object(
    'assessmentId',a.id,'title',a.title,'classId',l.class_id,
@@ -315,7 +328,7 @@ BEGIN
  SELECT old.period_id,p.is_locked INTO v_old_period,v_old_locked
  FROM schoolnet_private.school_official_assessment_coefficients old
  JOIN schoolnet_private.school_grading_periods p ON p.id=old.period_id
- WHERE old.assessment_id=p_assessment_id FOR UPDATE OF old;
+ WHERE old.assessment_id=p_assessment_id FOR UPDATE OF old,p;
  IF FOUND AND v_old_period<>p_period_id AND v_old_locked
  THEN RAISE EXCEPTION 'S4C3A_PREVIOUS_PERIOD_LOCKED' USING ERRCODE='42501'; END IF;
  INSERT INTO schoolnet_private.school_official_assessment_coefficients AS a(
