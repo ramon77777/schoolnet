@@ -92,6 +92,7 @@ jobs:
             -v ON_ERROR_STOP=1 -f tests/s4c3b-tenant-ci/fixtures/teacher-averages-a-b.sql \
             2>&1 | tee /tmp/schoolnet-c3b2-a-b.log
           for proof in \
+            C3B2_PASS_SCHOOL_B_ISOLATED_POSITIVE \
             C3B2_PASS_TEACHER_READ_PUBLISHED_ONLY \
             C3B2_PASS_UNCONFIGURED_PERIOD \
             C3B2_PASS_FOREIGN_SCHOOL_DENIED \
