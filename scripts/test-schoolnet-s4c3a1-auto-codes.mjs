@@ -42,7 +42,7 @@ test("C3-A.1: code en lecture seule dans UI, type transmis a la RPC",()=>{
  assert.match(ui,/previewNextPeriodCode\(periods,periodDraft\.kind\)/);
  assert.doesNotMatch(ui,/periodDraft\.code/);
  assert.match(api,/isSchoolPeriodKind\(input\.periodKind\)/);
- assert.match(api,/p_code:periodPrefix\(input\.periodKind\)/);
+ assert.match(api,/p_code:"AUTO:"\+periodPrefix\(input\.periodKind\)/);
  assert.doesNotMatch(api,/\.from\(|\.insert\(|\.update\(|\.delete\(/);
 });
 test("C3-A.1: SQL attribue le code sous verrou et conserve le code a l'edition",()=>{
