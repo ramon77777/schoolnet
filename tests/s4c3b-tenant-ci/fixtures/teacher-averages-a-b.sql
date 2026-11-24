@@ -98,8 +98,9 @@ BEGIN
    'a0000000-0000-4000-8000-000000000002',3,true);
  PERFORM public.schoolnet_school_set_assessment_coefficient(a_school,t1,
    'a0000000-0000-4000-8000-000000000004',9,false);
- IF (SELECT count(*) FROM schoolnet_private.school_grading_periods
-      WHERE school_id=a_school)<>2 THEN
+ PERFORM set_config('ci.c3b2.t1a',t1::text,true);
+ PERFORM set_config('ci.c3b2.t2a',t2::text,true);
+ IF jsonb_array_length(public.schoolnet_school_grading_configuration(a_school)->'periods')<>2 THEN
   RAISE EXCEPTION 'C3B2_PERIODS_MISSING'; END IF;
 END $config_a$;
 RESET ROLE;
@@ -117,6 +118,7 @@ BEGIN
   '40000000-0000-4000-8000-000000000001',1);
  PERFORM public.schoolnet_school_set_assessment_coefficient(b_school,t1,
    'a0000000-0000-4000-8000-000000000005',1,true);
+ PERFORM set_config('ci.c3b2.t1b',t1::text,true);
 END $config_b$;
 RESET ROLE;
 
@@ -131,10 +133,8 @@ DECLARE
  math uuid:='40000000-0000-4000-8000-000000000001';
  t1 uuid; t2 uuid;v jsonb; a1 jsonb;a2 jsonb;
 BEGIN
- SELECT id INTO t1 FROM schoolnet_private.school_grading_periods
- WHERE school_id=a_school AND code='T1';
- SELECT id INTO t2 FROM schoolnet_private.school_grading_periods
- WHERE school_id=a_school AND code='T2';
+ t1:=current_setting('ci.c3b2.t1a')::uuid;
+ t2:=current_setting('ci.c3b2.t2a')::uuid;
 
  v:=public.schoolnet_teacher_official_subject_averages(a_school,t1,cls,math);
  IF (v->>'teacherScoped')::boolean IS NOT TRUE
@@ -168,8 +168,7 @@ BEGIN
  LOOP EXIT; END LOOP;
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
-   b_school,(SELECT id FROM schoolnet_private.school_grading_periods
-     WHERE school_id=b_school AND code='T1'),
+   b_school,current_setting('ci.c3b2.t1b')::uuid,
    '50000000-0000-4000-8000-000000000002',math);
   RAISE EXCEPTION 'C3B2_FOREIGN_SCHOOL_VISIBLE';
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3B2_PASS_FOREIGN_SCHOOL_DENIED'; END;
@@ -180,8 +179,7 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3B2_PASS_UNASSIGNED_SUBJECT_DENIED'; END;
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(a_school,
-   (SELECT id FROM schoolnet_private.school_grading_periods
-    WHERE school_id=b_school AND code='T1'),cls,math);
+   current_setting('ci.c3b2.t1b')::uuid,cls,math);
   RAISE EXCEPTION 'C3B2_CROSS_PERIOD_ALLOWED';
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3B2_PASS_CROSS_PERIOD_DENIED'; END;
 END $teacher_a$;
@@ -202,8 +200,7 @@ SET LOCAL ROLE authenticated;
 DO $weighted$
 DECLARE t1 uuid;v jsonb; a1 jsonb; a2 jsonb;
 BEGIN
- SELECT id INTO t1 FROM schoolnet_private.school_grading_periods
-  WHERE school_id='20000000-0000-4000-8000-000000000001' AND code='T1';
+ t1:=current_setting('ci.c3b2.t1a')::uuid;
  v:=public.schoolnet_teacher_official_subject_averages(
  '20000000-0000-4000-8000-000000000001',t1,
  '50000000-0000-4000-8000-000000000001',
@@ -231,8 +228,7 @@ BEGIN
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
-   (SELECT id FROM schoolnet_private.school_grading_periods WHERE code='T1'
-     AND school_id='20000000-0000-4000-8000-000000000001'),
+   current_setting('ci.c3b2.t1a')::uuid,
    '50000000-0000-4000-8000-000000000001',
    '40000000-0000-4000-8000-000000000001');
   RAISE EXCEPTION 'C3B2_ADMIN_SAW_STUDENT_GRADES';
@@ -248,8 +244,7 @@ BEGIN
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
-   (SELECT id FROM schoolnet_private.school_grading_periods WHERE code='T1'
-    AND school_id='20000000-0000-4000-8000-000000000001'),
+   current_setting('ci.c3b2.t1a')::uuid,
    '50000000-0000-4000-8000-000000000001',
    '40000000-0000-4000-8000-000000000001');
   RAISE EXCEPTION 'C3B2_UNASSIGNED_TEACHER_READ';
@@ -268,8 +263,7 @@ DECLARE v jsonb;
 BEGIN
  v:=public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
-   (SELECT id FROM schoolnet_private.school_grading_periods WHERE code='T1'
-     AND school_id='20000000-0000-4000-8000-000000000001'),
+   current_setting('ci.c3b2.t1a')::uuid,
    '50000000-0000-4000-8000-000000000001',
    '40000000-0000-4000-8000-000000000001');
  IF jsonb_array_length(v->'students')<>1
@@ -291,8 +285,7 @@ BEGIN
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
-   (SELECT id FROM schoolnet_private.school_grading_periods WHERE code='T1'
-     AND school_id='20000000-0000-4000-8000-000000000001'),
+   current_setting('ci.c3b2.t1a')::uuid,
    '50000000-0000-4000-8000-000000000001',
    '40000000-0000-4000-8000-000000000001');
   RAISE EXCEPTION 'C3B2_REVOKED_TEACHER_ALLOWED';
@@ -305,8 +298,7 @@ BEGIN
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
-   (SELECT id FROM schoolnet_private.school_grading_periods WHERE code='T1'
-    AND school_id='20000000-0000-4000-8000-000000000001'),
+   current_setting('ci.c3b2.t1a')::uuid,
    '50000000-0000-4000-8000-000000000001',
    '40000000-0000-4000-8000-000000000001');
   RAISE EXCEPTION 'C3B2_ANON_ALLOWED';
