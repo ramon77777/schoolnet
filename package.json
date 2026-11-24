@@ -35,7 +35,8 @@
     "qa:s4c3a": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3a-periods.mjs",
     "qa:s4c3a1": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3a1-auto-codes.mjs",
     "qa:s4c3b1": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b1-official-averages.mjs",
-    "qa:s4c3b2": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b2-teacher-averages.mjs"
+    "qa:s4c3b2": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b2-teacher-averages.mjs",
+    "qa:s4c3b2ui": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b2-ui.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
