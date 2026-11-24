@@ -14,7 +14,7 @@ function record(v:unknown):v is Record<string,unknown>{
  return v!==null&&typeof v==="object"&&!Array.isArray(v);
 }
 function exact(v:Record<string,unknown>,ks:string[]){
- return Object.keys(v).length===ks.length&&ks.every(k=>Object.hasOwn(v,k));
+ return Object.keys(v).length===ks.length&&ks.every(k=>Object.prototype.hasOwnProperty.call(v,k));
 }
 const uuid=(v:unknown):v is string=>typeof v==="string"&&
  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(v);
