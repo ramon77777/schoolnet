@@ -122,6 +122,9 @@ BEGIN
 END $config_b$;
 RESET ROLE;
 
+-- Run C.3-B.2-UI metadata authorization tests in the SAME rollback transaction.
+\ir teacher-averages-options-a-b.sql
+
 -- Teacher B must positively read his OWN school B, but not school A.
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000004',true);
 SET LOCAL ROLE authenticated;
@@ -320,6 +323,19 @@ BEGIN
   RAISE EXCEPTION 'C3B2_REVOKED_TEACHER_ALLOWED';
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3B2_PASS_REVOKED_TEACHER_DENIED'; END;
 END $teacher_revoked$;
+RESET ROLE;
+-- A revoked teacher does not receive any assignment/period metadata.
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
+SET LOCAL ROLE authenticated;
+DO $revoked_options$
+DECLARE v jsonb;
+BEGIN
+ v:=public.schoolnet_teacher_official_average_options();
+ IF jsonb_array_length(v->'assignments')<>0
+ OR jsonb_array_length(v->'periods')<>0
+ THEN RAISE EXCEPTION 'C3B2UI_REVOKED_TEACHER_OPTIONS_VISIBLE'; END IF;
+ RAISE NOTICE 'C3B2UI_PASS_REVOKED_TEACHER_OPTIONS_HIDDEN';
+END $revoked_options$;
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $anon$
