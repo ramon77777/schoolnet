@@ -10,7 +10,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "feature/schoolnet-s4b3c1-parent-official-results-20261124": false
+      "feature/schoolnet-s4b3c1-parent-official-results-20261124": false,
+      "feature/schoolnet-s4b3c2-admin-supervision-20261124": false
     }
   }
 }
