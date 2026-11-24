@@ -1,0 +1,37 @@
+{
+  "module": "S4-B.3-C.2",
+  "project_id": "anttmbhaphkhmkoqsofd",
+  "project_name": "schoolnet_2.0",
+  "installed_migration": "20261124103242_schoolnet_s4b3c2_school_assessment_supervision",
+  "approved_sql_commit": "d0a0c4f42a4590e6004fb78baf6f6a8619ce0153",
+  "approved_sql_blob_sha": "45f1c8352a850e441c4df3a64c4d3b701950780a",
+  "functions": {
+    "private": "schoolnet_private.school_assessment_supervision(uuid)",
+    "public": "public.schoolnet_school_assessment_supervision(uuid)"
+  },
+  "access": {
+    "anon_exec_public": false,
+    "anon_exec_private": false,
+    "authenticated_exec_public": true,
+    "authenticated_exec_private": true,
+    "private_security_definer": true,
+    "public_security_definer": false,
+    "guard": "assert_s3c_access"
+  },
+  "verification": {
+    "without_authenticated_identity": "denied by SQL guard",
+    "assessments_before": 15,
+    "assessments_after": 15,
+    "submissions_before": 10,
+    "submissions_after": 10,
+    "notifications_before": 79,
+    "notifications_after": 79,
+    "official_assessment_links_before": 1,
+    "official_assessment_links_after": 1
+  },
+  "limitations": [
+    "No authenticated school-admin business session exercised on production",
+    "Security advisor contains pre-existing warnings unrelated to these new functions",
+    "GitHub PR remains draft; no Vercel publication"
+  ]
+}
