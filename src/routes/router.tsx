@@ -52,6 +52,7 @@ import TeacherGradingDetail from "../features/teacher/pages/TeacherGradingDetail
 import TeacherCourseDetail from "../features/teacher/pages/TeacherCourseDetail";
 import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 import TeacherAverages from "@/features/teacher/pages/TeacherAverages";
+import TeacherOfficialAverages from "@/features/teacher/pages/TeacherOfficialAverages";
 import TeacherReportCards from "@/features/teacher/pages/TeacherReportCards";
 import TeacherAttendance from "@/features/teacher/pages/TeacherAttendance";
 import TeacherTimetable from "@/features/teacher/pages/TeacherTimetable";
@@ -377,6 +378,10 @@ export const router = createBrowserRouter([
               {
                 path: "/app/teacher/averages",
                 element: <TeacherAverages />,
+              },
+              {
+                path: "teacher/official-averages",
+                element: <TeacherOfficialAverages />,
               },
               {
                 path: "teacher/report-cards",
