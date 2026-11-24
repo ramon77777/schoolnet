@@ -1,6 +1,7 @@
 import {supabase} from "@/lib/supabaseClient";
 import {isSchoolGradeConfig,validCoefficient,type SchoolGradeConfig}
  from "./schoolGradeConfigurationModel";
+import {isSchoolPeriodKind,periodPrefix,type SchoolPeriodKind} from "./schoolGradePeriodCodes";
 
 /** Only public RPC facades; no direct SELECT or write on grading tables. */
 export async function getSchoolGradeConfiguration(schoolId:string):Promise<SchoolGradeConfig>{
@@ -12,14 +13,15 @@ export async function getSchoolGradeConfiguration(schoolId:string):Promise<Schoo
  return data;
 }
 export type PeriodInput={schoolId:string;periodId:string|null;schoolYearId:string;
- code:string;name:string;startsOn:string;endsOn:string};
+ periodKind:SchoolPeriodKind;name:string;startsOn:string;endsOn:string};
 export async function saveSchoolGradePeriod(input:PeriodInput):Promise<string>{
- if(!input.schoolId||!input.schoolYearId||!input.code.trim()||!input.name.trim()
+ if(!input.schoolId||!input.schoolYearId||!isSchoolPeriodKind(input.periodKind)||!input.name.trim()
   ||!input.startsOn||!input.endsOn||input.startsOn>input.endsOn)
   throw new Error("Période invalide.");
  const {data,error}=await supabase.rpc("schoolnet_school_upsert_grading_period",{
   p_school_id:input.schoolId,p_period_id:input.periodId,p_school_year_id:input.schoolYearId,
-  p_code:input.code,p_name:input.name,p_starts_on:input.startsOn,p_ends_on:input.endsOn,
+  p_code:periodPrefix(input.periodKind),p_name:input.name.trim(),
+  p_starts_on:input.startsOn,p_ends_on:input.endsOn,
  });
  if(error)throw error;
  if(typeof data!=="string"||!data)throw new Error("Période non confirmée.");
