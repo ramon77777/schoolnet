@@ -9,6 +9,8 @@ on:
       - 'src/routes/router.tsx'
       - 'src/layouts/DashboardLayout.tsx'
       - 'supabase/proposals/s4c3a_official_periods_coefficients.sql'
+      - 'supabase/verification/s4c3a_official_periods_coefficients_rollback_manual.sql'
+      - 'tests/s4c3a-tenant-ci/fixtures/periods-a-b.sql'
       - 'scripts/test-schoolnet-s4c3a-periods.mjs'
       - 'package.json'
   workflow_dispatch:
