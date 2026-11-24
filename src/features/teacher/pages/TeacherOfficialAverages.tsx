@@ -274,7 +274,7 @@ export default function TeacherOfficialAverages(){
   )}
   {allowed&&picker?.assignment&&picker.period&&(
    <>
-    {(!activePreview||previewFor!==requestKey)&&(
+    {previewFor!==requestKey&&(
      <p role="status" className="sn-card p-5 text-sm text-slate-700">
       Lecture sécurisée des moyennes de la matière…
      </p>
