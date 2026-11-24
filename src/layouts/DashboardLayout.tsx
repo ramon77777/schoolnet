@@ -487,7 +487,14 @@ export default function DashboardLayout() {
               className={navItem}
               to="/app/teacher/averages"
             >
-              📊 Moyennes
+              📊 Moyennes · cours libres
+            </NavLink>
+
+            <NavLink
+              className={navItem}
+              to="/app/teacher/official-averages"
+            >
+              📈 Moyennes officielles
             </NavLink>
 
             <NavLink
