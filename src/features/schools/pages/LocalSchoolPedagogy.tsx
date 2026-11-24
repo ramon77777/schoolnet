@@ -122,7 +122,7 @@ export default function LocalSchoolPedagogy() {
               enseignants / matières de votre établissement.
             </p>
           </div>
-          <Link to="/app/school/dashboard" className="sn-btn-ghost">← Mon établissement</Link>
+          <div className="flex flex-wrap gap-2"><Link to="/app/school/assessments" className="sn-btn-primary">🧪 Évaluations officielles</Link><Link to="/app/school/dashboard" className="sn-btn-ghost">← Mon établissement</Link></div>
         </div>
         <p className="mt-3 text-xs text-indigo-800">
           Consultation uniquement : aucune modification des affectations ou des cours historiques.
