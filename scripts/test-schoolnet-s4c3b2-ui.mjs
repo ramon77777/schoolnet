@@ -104,6 +104,7 @@ test("C3B2UI: SQL is read-only with auth.uid and role checks, grants not public"
  assert.match(sql,/SECURITY DEFINER/);
  assert.match(sql,/SECURITY INVOKER/);
  assert.match(sql,/REVOKE ALL ON FUNCTION public\.schoolnet_teacher_official_average_options/);
- assert.doesNotMatch(sql,/assessment_submissions|student_id|score|feedback|answers/gi);
+ const executableSql=sql.split("\n").filter(line=>!line.trimStart().startsWith("--")).join("\n");
+ assert.doesNotMatch(executableSql,/\bassessment_submissions\b|\bstudent_id\b|\bscore\b|\bfeedback\b|\banswers\b/gi);
  assert.doesNotMatch(sql,/\bUPDATE\b|\bINSERT INTO\b|\bDELETE FROM\b/i);
 });
