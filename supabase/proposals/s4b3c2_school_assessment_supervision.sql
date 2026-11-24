@@ -50,7 +50,6 @@ BEGIN
  JOIN public.schoolnet_school_memberships tm
   ON tm.school_id=l.school_id AND tm.user_id=l.teacher_id
   AND tm.member_role='teacher' AND tm.status='active'
-  AND tm.revoked_at IS NULL
  JOIN public.academic_subjects sub
   ON sub.id=l.subject_id AND sub.is_active
  JOIN public.profiles pr ON pr.id=l.teacher_id AND pr.role::text='teacher'
@@ -79,7 +78,6 @@ BEGIN
     JOIN public.schoolnet_school_memberships sm
       ON sm.school_id=l.school_id AND sm.user_id=s.student_id
       AND sm.member_role='student' AND sm.status='active'
-      AND sm.revoked_at IS NULL
     WHERE l.course_id=va.course_id AND l.status='active' AND l.revoked_at IS NULL
       AND l.school_id=p_school_id AND l.class_id=va.class_id
       AND l.school_year_id=va.school_year_id
