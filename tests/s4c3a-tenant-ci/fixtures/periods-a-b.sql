@@ -85,7 +85,7 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3A_PASS_FOREIGN_WRITE_DENIED'; END;
 
  p1:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
-   't1',E'\t Trimestre 1 \t',DATE '2026-09-01',DATE '2026-12-20');
+   'AUTO:T',E'\t Trimestre 1 \t',DATE '2026-09-01',DATE '2026-12-20');
  p2:=public.schoolnet_school_upsert_grading_period(a_school,NULL,year_id,
    'T1','Trimestre 2',DATE '2026-12-21',DATE '2027-03-20');
  IF p1 IS NULL OR p1=p2 THEN RAISE EXCEPTION 'C3A_CREATE_FAILED'; END IF;
