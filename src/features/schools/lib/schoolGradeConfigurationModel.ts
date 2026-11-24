@@ -25,7 +25,7 @@ function keys(v:Record<string,unknown>,expected:string[]){
 }
 const s=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=300;
 const n=(v:unknown)=>typeof v==="number"&&Number.isFinite(v)&&v>=0.25&&v<=20;
-const iso=(v:unknown)=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v);
+const iso=(v:unknown):v is string=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(v);
 export function isSchoolGradeConfig(v:unknown):v is SchoolGradeConfig{
  if(!record(v)||!keys(v,["schoolId","years","periods","subjects","subjectSettings","assessments"])
   ||!s(v.schoolId)||!Array.isArray(v.years)||v.years.length>100

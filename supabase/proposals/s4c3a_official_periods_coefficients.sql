@@ -292,7 +292,7 @@ CREATE FUNCTION schoolnet_private.school_set_assessment_coefficient(
  p_coefficient numeric,p_include_in_average boolean)
 RETURNS boolean LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog
 AS $assessment$
-DECLARE v_year uuid;v_locked boolean;v_old_period uuid;v_old_locked boolean;
+DECLARE v_year uuid;v_locked boolean;v_old_period uuid;v_old_locked boolean;v_old_school uuid;
 BEGIN
  PERFORM schoolnet_private.assert_s3c_access(p_school_id,true);
  SELECT school_year_id,is_locked INTO v_year,v_locked
@@ -325,10 +325,12 @@ BEGIN
    WHERE al.assessment_id=p_assessment_id AND al.status='active' AND al.revoked_at IS NULL
  ) THEN RAISE EXCEPTION 'S4C3A_ASSESSMENT_OUTSIDE_SCHOOL' USING ERRCODE='42501'; END IF;
 
- SELECT old.period_id,p.is_locked INTO v_old_period,v_old_locked
+ SELECT old.period_id,p.is_locked,p.school_id INTO v_old_period,v_old_locked,v_old_school
  FROM schoolnet_private.school_official_assessment_coefficients old
  JOIN schoolnet_private.school_grading_periods p ON p.id=old.period_id
  WHERE old.assessment_id=p_assessment_id FOR UPDATE OF old,p;
+ IF FOUND AND v_old_school IS DISTINCT FROM p_school_id
+ THEN RAISE EXCEPTION 'S4C3A_PREVIOUS_PERIOD_OTHER_SCHOOL' USING ERRCODE='42501'; END IF;
  IF FOUND AND v_old_period<>p_period_id AND v_old_locked
  THEN RAISE EXCEPTION 'S4C3A_PREVIOUS_PERIOD_LOCKED' USING ERRCODE='42501'; END IF;
  INSERT INTO schoolnet_private.school_official_assessment_coefficients AS a(

@@ -85,7 +85,7 @@ export default function LocalSchoolGradeConfiguration(){
    console.error("[S4-C.3-A] school grading configuration unavailable",err);
   });
   return()=>{cancelled=true;};
- },[allowed,selectedSchool?.id,key]);
+ },[allowed,selectedSchool,key]);
 
  async function run(action:()=>Promise<unknown>,success:string){
   if(!current||!selectedSchool||busy)return;
