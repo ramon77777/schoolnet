@@ -166,7 +166,7 @@ BEGIN
  RAISE NOTICE 'C2_PASS_SCHOOL_B';
 END $school_b$;
 RESET ROLE;
-UPDATE public.schoolnet_school_teacher_subject_assignments SET status='revoked'
+UPDATE public.schoolnet_school_teacher_subject_assignments SET status='revoked',revoked_at=pg_catalog.now()
  WHERE id='60000000-0000-4000-8000-000000000001';
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
