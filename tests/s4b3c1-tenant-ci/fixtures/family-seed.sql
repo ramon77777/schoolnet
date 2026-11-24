@@ -1,0 +1,152 @@
+-- Donnees fictives C.1, Postgres local seulement. Appele dans une transaction puis ROLLBACK.
+-- Socle A/B repris de la fixture B.4 ; aucune identite ni valeur du projet heberge.
+SELECT set_config('request.jwt.claim.sub','',true);
+SELECT set_config('request.jwt.claim.role','authenticated',true);
+INSERT INTO public.profiles(id,role,full_name) VALUES
+ ('10000000-0000-4000-8000-000000000001','school_admin','Admin A'),
+ ('10000000-0000-4000-8000-000000000002','school_admin','Admin B'),
+ ('10000000-0000-4000-8000-000000000003','teacher','Enseignant A'),
+ ('10000000-0000-4000-8000-000000000004','teacher','Enseignant B'),
+ ('10000000-0000-4000-8000-000000000005','student','Eleve A'),
+ ('10000000-0000-4000-8000-000000000006','student','Eleve B'),
+ ('10000000-0000-4000-8000-000000000007','student','Eleve sans ecole'),
+ ('10000000-0000-4000-8000-000000000008','parent','Parent A');
+
+INSERT INTO public.schoolnet_schools(id,code,name,status) VALUES
+ ('20000000-0000-4000-8000-000000000001','QA-A','Ecole A','active'),
+ ('20000000-0000-4000-8000-000000000002','QA-B','Ecole B','active');
+INSERT INTO public.schoolnet_school_memberships(school_id,user_id,member_role,status) VALUES
+ ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','school_admin','active'),
+ ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','school_admin','active'),
+ ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000003','teacher','active'),
+ ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000004','teacher','active'),
+ ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000005','student','active'),
+ ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000006','student','active');
+INSERT INTO public.levels(id,name) VALUES (1,'6e');
+INSERT INTO public.school_years(id,name) VALUES ('30000000-0000-4000-8000-000000000001','2026-2027');
+INSERT INTO public.academic_subjects(id,name,code,is_active,sort_order) VALUES
+ ('40000000-0000-4000-8000-000000000001','Mathematiques','MATH',true,1);
+INSERT INTO public.classes(id,school_id,level_id,school_year_id,school_year,name,learning_context) VALUES
+ ('50000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',1,'30000000-0000-4000-8000-000000000001','2026-2027','6e A','school'),
+ ('50000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002',1,'30000000-0000-4000-8000-000000000001','2026-2027','6e B','school');
+INSERT INTO public.schoolnet_school_teacher_subject_assignments
+(id,school_id,class_id,school_year_id,teacher_id,subject_id,assigned_by) VALUES
+ ('60000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000003','40000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001'),
+ ('60000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','50000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000004','40000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000002');
+INSERT INTO public.schoolnet_school_student_class_assignments
+(id,school_id,class_id,school_year_id,student_id,assigned_by) VALUES
+ ('61000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000001'),
+ ('61000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','50000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000006','10000000-0000-4000-8000-000000000002');
+
+INSERT INTO public.courses(id,title,created_by,class_id,level_id,status) VALUES
+ ('70000000-0000-4000-8000-000000000001','Mathematiques A','10000000-0000-4000-8000-000000000003',NULL,1,'active'),
+ ('70000000-0000-4000-8000-000000000002','Mathematiques B','10000000-0000-4000-8000-000000000004',NULL,1,'active'),
+ ('70000000-0000-4000-8000-000000000003','Cours libre V1','10000000-0000-4000-8000-000000000003',NULL,1,'active');
+
+INSERT INTO schoolnet_private.school_course_links(
+ course_id,school_id,class_id,school_year_id,
+ teacher_assignment_id,teacher_id,subject_id,linked_by
+) VALUES
+ ('70000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000003','40000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000003'),
+ ('70000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','50000000-0000-4000-8000-000000000002','30000000-0000-4000-8000-000000000001','60000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000004','40000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000004');
+
+INSERT INTO public.course_sections(id,course_id,title,order_index) VALUES
+ ('80000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','Nombres',1),
+ ('80000000-0000-4000-8000-000000000002','70000000-0000-4000-8000-000000000001','Fractions',2),
+ ('80000000-0000-4000-8000-000000000003','70000000-0000-4000-8000-000000000002','Geometrie B',1);
+INSERT INTO public.resources(id,course_id,section_id,type,title,url,visibility,created_by) VALUES
+ ('90000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','pdf','PDF A','https://example.org/a.pdf','public_to_course','10000000-0000-4000-8000-000000000003'),
+ ('90000000-0000-4000-8000-000000000002','70000000-0000-4000-8000-000000000001',NULL,'link','Lien general','https://example.org/intro','public_to_course','10000000-0000-4000-8000-000000000003'),
+ ('90000000-0000-4000-8000-000000000003','70000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','pdf','Document enseignant secret','https://example.org/private.pdf','teacher_only','10000000-0000-4000-8000-000000000003'),
+ ('90000000-0000-4000-8000-000000000004','70000000-0000-4000-8000-000000000001',NULL,'link','URL dangereuse','javascript:alert(1)','public_to_course','10000000-0000-4000-8000-000000000003'),
+ ('90000000-0000-4000-8000-000000000005','70000000-0000-4000-8000-000000000002','80000000-0000-4000-8000-000000000003','pdf','Document B','https://example.org/b.pdf','public_to_course','10000000-0000-4000-8000-000000000004');
+-- Une inscription V1 volontairement sur un cours LIBRE, non rattache.
+INSERT INTO public.course_enrollments(course_id,student_id)
+VALUES ('70000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000005');
+INSERT INTO public.student_progress(course_id,student_id,progress_percent)
+VALUES ('70000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000005',30);
+
+-- Les evaluations preexistantes restent du domaine V1 tant que
+-- l'enseignant n'a pas explicitement cree le lien scolaire.
+INSERT INTO public.assessments(id,course_id,section_id,type,status,title,created_by,due_at) VALUES
+ ('a0000000-0000-4000-8000-000000000001','70000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','quiz','published','Quiz A publie','10000000-0000-4000-8000-000000000003','2026-11-25T09:00:00Z'),
+ ('a0000000-0000-4000-8000-000000000002','70000000-0000-4000-8000-000000000001',NULL,'assignment','draft','Devoir A brouillon','10000000-0000-4000-8000-000000000003',NULL),
+ ('a0000000-0000-4000-8000-000000000003','70000000-0000-4000-8000-000000000001',NULL,'exam','published','Examen A historique non lie','10000000-0000-4000-8000-000000000003',NULL),
+ ('a0000000-0000-4000-8000-000000000004','70000000-0000-4000-8000-000000000002',NULL,'quiz','published','Quiz B publie','10000000-0000-4000-8000-000000000004',NULL),
+ ('a0000000-0000-4000-8000-000000000005','70000000-0000-4000-8000-000000000003',NULL,'quiz','published','Quiz libre V1','10000000-0000-4000-8000-000000000003',NULL);
+
+
+-- Champs actuels V1 requis par le retour JSON B.1 (fixture minimale).
+UPDATE public.assessments
+ SET description='Lisez les questions sans enregistrer de reponse.',
+     time_limit_minutes=15,max_score=20,submission_mode='online'
+ WHERE id='a0000000-0000-4000-8000-000000000001'::uuid;
+
+INSERT INTO schoolnet_private.school_assessment_links
+(assessment_id,school_course_link_id,linked_by)
+SELECT a.id,l.id,a.created_by
+FROM public.assessments a JOIN schoolnet_private.school_course_links l
+ ON l.course_id=a.course_id AND l.teacher_id=a.created_by
+WHERE a.id IN (
+ 'a0000000-0000-4000-8000-000000000001'::uuid,
+ 'a0000000-0000-4000-8000-000000000002'::uuid,
+ 'a0000000-0000-4000-8000-000000000004'::uuid
+);
+
+INSERT INTO public.quiz_questions(id,assessment_id,question_type,prompt,order_index) VALUES
+ ('b0000000-0000-4000-8000-000000000001','a0000000-0000-4000-8000-000000000001','mcq','Combien font 2+2 ?',1),
+ ('b0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000001','short_text','Expliquez votre calcul.',2),
+ ('b0000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000004','true_false','B : 3 est impair.',1),
+ ('b0000000-0000-4000-8000-000000000004','a0000000-0000-4000-8000-000000000002','mcq','Brouillon secret',1),
+ ('b0000000-0000-4000-8000-000000000005','a0000000-0000-4000-8000-000000000005','mcq','V1 non rattache',1);
+INSERT INTO public.quiz_choices(id,question_id,choice_text,is_correct,order_index) VALUES
+ ('d0000000-0000-4000-8000-000000000001','b0000000-0000-4000-8000-000000000001','3',false,1),
+ ('d0000000-0000-4000-8000-000000000002','b0000000-0000-4000-8000-000000000001','4',true,2),
+ ('d0000000-0000-4000-8000-000000000003','b0000000-0000-4000-8000-000000000003','Vrai',true,1),
+ ('d0000000-0000-4000-8000-000000000004','b0000000-0000-4000-8000-000000000003','Faux',false,2),
+ ('d0000000-0000-4000-8000-000000000005','b0000000-0000-4000-8000-000000000004','secret',true,1);
+
+-- Injection d'une inscription V1 A pour l'eleve B : ne doit PAS ouvrir B.1.
+INSERT INTO public.course_enrollments(course_id,student_id)
+VALUES('70000000-0000-4000-8000-000000000001',
+       '10000000-0000-4000-8000-000000000006');
+
+
+-- B.3 : rendre les dates des echantillons compatibles avec une CI future.
+UPDATE public.assessments SET due_at=clock_timestamp()+interval '7 days',
+    max_score=20,submission_mode='online'
+WHERE id IN ('a0000000-0000-4000-8000-000000000001'::uuid,
+             'a0000000-0000-4000-8000-000000000004'::uuid);
+
+
+INSERT INTO public.profiles(id,role,full_name,child_ids) VALUES
+ ('10000000-0000-4000-8000-000000000009','parent','Parent B','{}'),
+ ('10000000-0000-4000-8000-000000000010','parent','Parent de fratrie','{}'),
+ ('10000000-0000-4000-8000-000000000011','parent','Parent avec cache seul',ARRAY['10000000-0000-4000-8000-000000000005'::uuid]);
+-- L'enfant A est lie meme si le cache profiles.child_ids du parent A est vide.
+INSERT INTO public.parent_links(parent_id,student_id) VALUES
+ ('10000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000005'),
+ ('10000000-0000-4000-8000-000000000009','10000000-0000-4000-8000-000000000006'),
+ ('10000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000005'),
+ ('10000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000006');
+UPDATE public.assessments SET max_score=20 WHERE id IN
+ ('a0000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000005');
+INSERT INTO public.assessment_submissions
+(id,assessment_id,student_id,status,score,feedback,submitted_at,published_at,freeform_answer)
+VALUES
+ ('e1000000-0000-4000-8000-000000000001','a0000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000005','published',20,'Tres bonne demarche.',now()-interval '2 days',now()-interval '1 day','Reponse privee A'),
+ ('e1000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000006','published',15,'Bon travail B.',now()-interval '2 days',now()-interval '1 day','Reponse privee B'),
+ ('e1000000-0000-4000-8000-000000000003','a0000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000005','published',12,'Resultat libre conserve.',now()-interval '2 days',now()-interval '1 day','Reponse libre V1'),
+ ('e1000000-0000-4000-8000-000000000004','a0000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000005','graded',18,'Correction encore confidentielle.',now()-interval '1 day',NULL,NULL);
+INSERT INTO public.homework_submissions
+(id,homework_id,student_id,status,score,published_at,feedback)
+VALUES
+ ('e2000000-0000-4000-8000-000000000001','a0000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000005','published',20,now(),'Copie officielle historique a masquer'),
+ ('e2000000-0000-4000-8000-000000000002','a0000000-0000-4000-8000-000000000005','10000000-0000-4000-8000-000000000005','published',12,now(),'Devoir V1 conserve');
+INSERT INTO public.submission_answers(submission_id,question_id,answer_text,choice_id,is_correct) VALUES
+ ('e1000000-0000-4000-8000-000000000001','b0000000-0000-4000-8000-000000000001','4','d0000000-0000-4000-8000-000000000002',true),
+ ('e1000000-0000-4000-8000-000000000003','b0000000-0000-4000-8000-000000000005','Reponse libre',NULL,true);
+INSERT INTO public.submission_question_grades(submission_id,question_id,points_awarded,max_points,feedback) VALUES
+ ('e1000000-0000-4000-8000-000000000001','b0000000-0000-4000-8000-000000000001',20,20,'Correction detaillee officielle privee'),
+ ('e1000000-0000-4000-8000-000000000003','b0000000-0000-4000-8000-000000000005',12,20,'Correction V1 conservee');
+SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000008',true);

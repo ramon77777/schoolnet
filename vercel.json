@@ -7,5 +7,10 @@
       "src": "/.*",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "feature/schoolnet-s4b3c1-parent-official-results-20261124": false
+    }
+  }
 }

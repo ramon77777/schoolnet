@@ -1,0 +1,10 @@
+# SCHOOLNET C.1 — base jetable, meme version majeure que le projet audite (17.6).
+project_id = "schoolnet_s4b3c1_parent_tenant_ci"
+
+[db]
+major_version = 17
+port = 54342
+shadow_port = 54343
+
+[db.seed]
+enabled = false

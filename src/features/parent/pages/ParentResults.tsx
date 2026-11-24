@@ -2,12 +2,16 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import ParentOfficialResults from "../components/ParentOfficialResults";
+import { linkedStudentIds, type ParentLinkRow } from "../lib/parentChildViews";
+import { isParentOfficialUuid, parentResultsUrl } from "../lib/parentOfficialResultsModel";
 
 type AssessmentType =
   | "quiz"
@@ -30,10 +34,6 @@ type ResultStatus =
   | "submitted"
   | "graded"
   | "published";
-
-type ParentProfileRow = {
-  child_ids: string[] | null;
-};
 
 type ChildProfileRow = {
   id: string;
@@ -397,7 +397,7 @@ function getResultStatus(
   return "not_submitted";
 }
 
-export default function ParentResults() {
+function LegacyParentResults() {
   const {
     user,
     loading: authLoading,
@@ -409,10 +409,19 @@ export default function ParentResults() {
   const [rows, setRows] =
     useState<ResultRow[]>([]);
 
-  const [
-    selectedChild,
-    setSelectedChild,
-  ] = useState<string>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const childParam = searchParams.get("childId");
+  const selectedChild = isParentOfficialUuid(childParam) ? childParam : "all";
+  const setSelectedChild = useCallback((childId: string) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set("source", "legacy");
+      if (childId === "all") next.delete("childId");
+      else next.set("childId", childId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const generation = useRef(0);
 
   const [filter, setFilter] =
     useState<TypeFilter>("all");
@@ -433,7 +442,9 @@ export default function ParentResults() {
 
   const loadResults =
     useCallback(async () => {
-      if (!user || user.isDemo) {
+      const run = ++generation.current;
+      const current = () => generation.current === run;
+      if (!user || user.isDemo || user.role !== "parent") {
         setChildren([]);
         setRows([]);
         setError(null);
@@ -445,47 +456,14 @@ export default function ParentResults() {
         setLoading(true);
         setError(null);
 
-        /*
-         * 1. Enfants liés au parent
-         * via profiles.child_ids.
-         */
-
-        const {
-          data: parentProfileData,
-          error: parentProfileError,
-        } = await supabase
-          .from("profiles")
-          .select("child_ids")
-          .eq("id", user.id)
-          .eq("role", "parent")
-          .maybeSingle();
-
-        if (parentProfileError) {
-          throw parentProfileError;
-        }
-
-        const parentProfile =
-          parentProfileData as
-            | ParentProfileRow
-            | null;
-
-        const childIds =
-          Array.from(
-            new Set(
-              (
-                parentProfile?.child_ids ??
-                []
-              ).filter(
-                (
-                  childId,
-                ): childId is string =>
-                  typeof childId ===
-                    "string" &&
-                  childId.trim()
-                    .length > 0,
-              ),
-            ),
-          );
+        // Only canonical family links grant access; profile child_ids is not authority.
+        const { data: linkData, error: linkError } = await supabase
+          .from("parent_links")
+          .select("student_id")
+          .eq("parent_id", user.id);
+        if (linkError) throw linkError;
+        if (!current()) return;
+        const childIds = linkedStudentIds((linkData ?? []) as ParentLinkRow[]);
 
         if (
           childIds.length === 0
@@ -572,9 +550,8 @@ export default function ParentResults() {
                 child !== null,
             );
 
-        setChildren(
-          childrenOptions,
-        );
+        if (!current()) return;
+        setChildren(childrenOptions);
 
         /*
          * 3. Inscriptions aux cours.
@@ -615,6 +592,7 @@ export default function ParentResults() {
             ),
           );
 
+        if (!current()) return;
         if (
           courseIds.length === 0
         ) {
@@ -1013,8 +991,9 @@ export default function ParentResults() {
           }
         }
 
-        setRows(finalRows);
+        if (current()) setRows(finalRows);
       } catch (err) {
+        if (!current()) return;
         console.error(
           "[ParentResults] loadResults error:",
           err,
@@ -1027,7 +1006,7 @@ export default function ParentResults() {
         setChildren([]);
         setRows([]);
       } finally {
-        setLoading(false);
+        if (current()) setLoading(false);
       }
     }, [user]);
 
@@ -1037,12 +1016,14 @@ export default function ParentResults() {
     }
 
     void loadResults();
+    return () => { generation.current += 1; };
   }, [
     authLoading,
     loadResults,
   ]);
 
   useEffect(() => {
+    if (loading || authLoading) return;
     if (
       selectedChild === "all"
     ) {
@@ -1062,6 +1043,9 @@ export default function ParentResults() {
   }, [
     children,
     selectedChild,
+    loading,
+    authLoading,
+    setSelectedChild,
   ]);
 
   /*
@@ -1277,7 +1261,7 @@ export default function ParentResults() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xl font-semibold">
-            Résultats
+            Résultats des cours libres
           </div>
 
           <div className="mt-1 text-sm text-gray-500">
@@ -1667,7 +1651,7 @@ export default function ParentResults() {
                           </div>
 
                           <Link
-                            to={`/app/parent/results/${row.assessmentId}?childId=${row.childId}`}
+                            to={`/app/parent/results/${row.assessmentId}?source=legacy&childId=${encodeURIComponent(row.childId)}`}
                             className={
                               published
                                 ? "sn-btn-primary"
@@ -1848,4 +1832,24 @@ function Kpi({
       </div>
     </div>
   );
+}
+
+export default function ParentResults() {
+  const [params] = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+  const source = params.get("source") === "legacy" ? "legacy" : "official";
+  const childId = params.get("childId");
+  const ownerKey = `${user?.id ?? "anonymous"}:${user?.role ?? ""}:${Boolean(user?.isDemo)}`;
+
+  return <div className="min-w-0 space-y-5">
+    <nav className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2" aria-label="Vues des résultats">
+      <Link to={parentResultsUrl("official", childId)} aria-current={source === "official" ? "page" : undefined}
+        className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${source === "official" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}>Résultats officiels</Link>
+      <Link to={parentResultsUrl("legacy", childId)} aria-current={source === "legacy" ? "page" : undefined}
+        className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${source === "legacy" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}>Cours libres</Link>
+    </nav>
+    {authLoading ? <div className="sn-card p-6 text-sm text-slate-600" role="status">Chargement du compte…</div>
+      : source === "official" ? <ParentOfficialResults key={ownerKey} />
+      : <LegacyParentResults key={ownerKey} />}
+  </div>;
 }

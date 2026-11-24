@@ -1,0 +1,295 @@
+name: SCHOOLNET S4-B.3-C.1 - resultats officiels parents
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4b3c1-parent-results-ci.yml'
+      - 'src/features/parent/**'
+      - 'supabase/proposals/s4b3c1_parent_official_results.sql'
+      - 'supabase/verification/s4b3c1*'
+      - 'tests/s4b3c1-tenant-ci/**'
+      - 'tests/s4b3c1-ui/**'
+      - 'scripts/test-schoolnet-s4b3c1-parent-results.mjs'
+      - 'docs/releases/SCHOOLNET_S4B3C1_PARENT_OFFICIAL_RESULTS_2026-11-24.md'
+      - 'src/routes/router.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vercel.json'
+      - 'supabase/proposals/s4b*.sql'
+      - 'tests/s4b*-tenant-ci/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4b3c1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    name: S4-B.3-C.1 - contrats parents, regressions, lint et build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer les dependances verrouillees
+        run: npm ci --no-audit --no-fund
+      - name: QA C.1, parents V1, B.3, B.2, B.1 et B.0
+        run: |
+          npm run qa:s4b3c1
+          node --experimental-strip-types --test scripts/test-schoolnet-lot5c-parent-children.mjs
+          npm run qa:s4b3b4
+          npm run qa:s4b3b3
+          npm run qa:s4b3b2
+          npm run qa:s4b3b1:richtext
+          npm run qa:s4b3b1
+          npm run qa:s4b3b0
+      - name: Non-regression V2
+        run: |
+          npm run qa:s4b3a
+          npm run qa:s4b3n
+          npm run qa:s4b2
+          npm run qa:s4b2-ui
+          npm run qa:s4b2-r
+      - name: ESLint
+        run: npm run lint
+      - name: Compiler TypeScript Vite
+        run: npm run build
+  parent-ui:
+    name: S4-B.3-C.1 - parcours parent et mobile sur donnees fictives
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Installer le projet et Chromium pour ce test isole
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm install --prefix "$RUNNER_TEMP/c1-playwright" --no-audit --no-fund --ignore-scripts --no-package-lock playwright@1.62.1
+          node "$RUNNER_TEMP/c1-playwright/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Tester navigation, appreciation texte, fratrie et changement de compte
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:59999
+          VITE_SUPABASE_ANON_KEY: c1-fixture-only
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/c1-ui"
+          npm run dev -- --host 127.0.0.1 --port 5178 --strictPort > "$RUNNER_TEMP/c1-ui/vite.log" 2>&1 &
+          C1_VITE_PID=$!
+          trap 'kill "$C1_VITE_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:5178/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:5178/ > /dev/null
+          SCHOOLNET_PLAYWRIGHT_MODULE="$RUNNER_TEMP/c1-playwright/node_modules/playwright/index.mjs" \
+          SCHOOLNET_UI_ARTIFACT_DIR="$RUNNER_TEMP/c1-ui" \
+          node tests/s4b3c1-ui/parent-results.mjs | tee "$RUNNER_TEMP/c1-ui/results.log"
+      - name: Conserver les captures des familles fictives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s4b3c1-parent-ui
+          path: ${{ runner.temp }}/c1-ui/
+          if-no-files-found: error
+          retention-days: 7
+  tenant-isolation:
+    name: S4-B.3-C.1 - familles A/B, cloisonnement V1 et rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Demarrer Supabase local jetable, jamais Supabase principal
+        working-directory: tests/s4b3c1-tenant-ci
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Reconstruire schema minimal V1 et V2
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/legacy-minimal.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s3c_school_class_assignments.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4a_school_pedagogy_overview.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b1-tenant-ci/fixtures/course-core.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b1_school_course_bridge.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b2-tenant-ci/fixtures/course-content.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2_student_school_courses.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b2r_teacher_course_class_summary.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3-tenant-ci/fixtures/assessment-core.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3b0-tenant-ci/fixtures/submission-core.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3n-tenant-ci/fixtures/notification-core.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3a_school_assessment_links.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3n_school_assessment_notifications.sql
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3n_legacy_assessment_notify_permission_hardening.sql
+      - name: Tester le SQL B.0 sur postgres jetable
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b0_official_assessment_security_foundation.sql | tee /tmp/b0-install.log
+          grep -Fq 'S4B3B0_SECURITY_FOUNDATION_PASS' /tmp/b0-install.log
+      - name: Installer B.1 uniquement dans le Postgres local
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b1_student_official_assessment_preview.sql | tee /tmp/b1-install.log
+          grep -Fq 'S4B3B1_PREVIEW_SQL_PASS' /tmp/b1-install.log
+      - name: Simuler les deux triggers V1 en Postgres jetable
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3b2-tenant-ci/fixtures/legacy-attempt-triggers.sql
+      - name: Installer la proposition B.2 UNIQUEMENT dans Postgres local
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b2_official_assessment_attempts.sql | tee /tmp/b2-install.log
+          grep -Fq 'S4B3B2_OFFICIAL_ATTEMPTS_SQL_PASS' /tmp/b2-install.log
+      - name: Tester acces des classes A/B, sans fuite de corrections
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3b1-tenant-ci/fixtures/preview-a-b.sql | tee /tmp/b1-tests.log
+          grep -Fq 'S4B3B1_A_B_SAFE_PREVIEW_PASS' /tmp/b1-tests.log
+      - name: Tester remise atomique, acces A/B, doublons et compatibilite V1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3b2-tenant-ci/fixtures/attempts-a-b.sql | tee /tmp/b2-tests.log
+          grep -Fq 'S4B3B2_A_B_SECURE_ATTEMPTS_PASS' /tmp/b2-tests.log
+      - name: Simuler notification historique de correction V1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3b3-tenant-ci/fixtures/legacy-correction-trigger.sql
+      - name: Installer B.3 UNIQUEMENT en Postgres local jetable
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b3_official_teacher_grading.sql | tee /tmp/b3-install.log
+          grep -Fq 'S4B3B3_OFFICIAL_TEACHER_GRADING_PASS' /tmp/b3-install.log
+      - name: Installer la notification de copie officielle en Postgres LOCAL uniquement
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql | tee /tmp/b3n-install.log
+          grep -Fq 'S4B3B3N_SUBMISSION_NOTIFY_PASS' /tmp/b3n-install.log
+      - name: Installer B.4 dans Postgres local jetable uniquement
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3b4_student_official_dashboard.sql | tee /tmp/b4-install.log
+          grep -Fq 'S4B3B4_STUDENT_OFFICIAL_DASHBOARD_PASS' /tmp/b4-install.log
+      - name: Tester corrections A/B, notes confidentielles et publication unique
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3b4-tenant-ci/fixtures/dashboard-a-b.sql | tee /tmp/b3-tests.log
+          grep -Fq 'S4B3B3_OFFICIAL_TEACHER_A_B_PASS' /tmp/b3-tests.log
+      - name: Reproduire les RPC parent V1 auditees, uniquement sur Postgres jetable
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f tests/s4b3c1-tenant-ci/fixtures/legacy-parent.sql
+      - name: Installer C.1 et cloisonner les anciens acces parent
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4b3c1_parent_official_results.sql | tee /tmp/c1-install.log
+          grep -Fq 'S4B3C1_PARENT_OFFICIAL_RESULTS_PASS' /tmp/c1-install.log
+      - name: Tester familles A/B, publication et refus des anciens chemins
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3c1-tenant-ci/fixtures/families-a-b.sql | tee /tmp/c1-tests.log
+          grep -Fq 'S4B3C1_PARENT_RESULTS_A_B_PASS' /tmp/c1-tests.log
+      - name: Retirer le nouveau parcours, conserver le cloisonnement V1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3c1_parent_official_results_rollback_manual.sql | tee /tmp/c1-rollback.log
+          grep -Fq 'S4B3C1_PARENT_OFFICIAL_RESULTS_ROLLBACK_PASS' /tmp/c1-rollback.log
+      - name: Verifier les refus officiels V1 apres retrait de C.1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/s4b3c1-tenant-ci/fixtures/rollback-a-b.sql | tee /tmp/c1-rollback-tests.log
+          grep -Fq 'S4B3C1_ROLLBACK_V1_GUARDS_PASS' /tmp/c1-rollback-tests.log
+      - name: Verifier restauration historique et refus de derive C.1
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54342/postgres
+        run: |
+          set -euo pipefail
+          bash tests/s4b3c1-tenant-ci/verify-safe-install-and-legacy-restore.sh | tee /tmp/c1-safe-restore.log
+          grep -Fq 'S4B3C1_SAFE_INSTALL_AND_LEGACY_RESTORE_PASS' /tmp/c1-safe-restore.log
+      - name: Verifier le retour arriere B.4 sur Postgres local uniquement
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3b4_student_official_dashboard_rollback_manual.sql | tee /tmp/b4-rollback.log
+          grep -Fq 'S4B3B4_STUDENT_OFFICIAL_DASHBOARD_ROLLBACK_PASS' /tmp/b4-rollback.log
+      - name: Restaurer le notifier historique B.2 apres les tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3b3n_official_teacher_submission_notifications_rollback_manual.sql | tee /tmp/b3n-rollback.log
+          grep -Fq 'S4B3B3N_SUBMISSION_NOTIFY_ROLLBACK_PASS' /tmp/b3n-rollback.log
+      - name: Valider rollback B.3, sans affecter B.2
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3b3_official_teacher_grading_rollback_manual.sql | tee /tmp/b3-rollback.log
+          grep -Fq 'S4B3B3_OFFICIAL_GRADING_ROLLBACK_PASS' /tmp/b3-rollback.log
+      - name: Tester rollback B.2 sans perte des protections B.1/B.0
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3b2_official_assessment_attempts_rollback_manual.sql | tee /tmp/b2-rollback.log
+          grep -Fq 'S4B3B2_ROLLBACK_PASS' /tmp/b2-rollback.log
+      - name: Tester le rollback B.1 sans retirer B.0
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f supabase/verification/s4b3b1_student_official_assessment_preview_rollback_manual.sql | tee /tmp/b1-rollback.log
+          grep -Fq 'S4B3B1_PREVIEW_ROLLBACK_PASS' /tmp/b1-rollback.log
+      - name: Nettoyer environnement local
+        if: always()
+        working-directory: tests/s4b3c1-tenant-ci
+        run: supabase stop --no-backup || true
