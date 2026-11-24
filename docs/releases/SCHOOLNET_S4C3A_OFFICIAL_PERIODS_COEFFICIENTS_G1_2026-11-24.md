@@ -28,3 +28,6 @@ A positif et B refusé (lecture/écriture par ID falsifié), anonymat refusé, r
 
 ## Workflow
 G1 validé → G2/G3 SQL et tests isolés → G4 UI avec états vide/erreur/attente → G5 CI et recette Windows dans `schoolnet-tests` → GO SQL principal distinct → GO fusion/main/Vercel distinct → contrôle prod G8.
+
+## Vérification G2 prévue
+La CI nouvelle construit une base Supabase **PostgreSQL jetable**, applique uniquement le SQL propositionnel, exécute une matrice A/B fictive dans une transaction `ROLLBACK`, puis retire ses propres fonctions/tables avec un rollback gardé. Aucun lien ni identifiant du projet hébergé n'est transmis à cette CI. Les résultats réels de cette CI priment sur les tests de contrat statiques.

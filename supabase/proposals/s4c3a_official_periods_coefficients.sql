@@ -27,9 +27,9 @@ CREATE TABLE schoolnet_private.school_grading_periods (
  ends_on date NOT NULL,
  is_locked boolean NOT NULL DEFAULT false,
  locked_at timestamptz,
- locked_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
- created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
- updated_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+ locked_by uuid REFERENCES public.profiles(id) ON DELETE RESTRICT,
+ created_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
+ updated_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
  created_at timestamptz NOT NULL DEFAULT now(),
  updated_at timestamptz NOT NULL DEFAULT now(),
  CONSTRAINT s4c3a_period_dates CHECK (starts_on<=ends_on),
@@ -46,7 +46,7 @@ CREATE TABLE schoolnet_private.school_period_subject_coefficients (
  class_id uuid NOT NULL REFERENCES public.classes(id) ON DELETE RESTRICT,
  subject_id uuid NOT NULL REFERENCES public.academic_subjects(id) ON DELETE RESTRICT,
  coefficient numeric(6,2) NOT NULL CHECK (coefficient>=0.25 AND coefficient<=20),
- updated_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+ updated_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(period_id,class_id,subject_id)
 );
@@ -55,7 +55,7 @@ CREATE TABLE schoolnet_private.school_official_assessment_coefficients (
  period_id uuid NOT NULL REFERENCES schoolnet_private.school_grading_periods(id) ON DELETE RESTRICT,
  coefficient numeric(6,2) NOT NULL CHECK(coefficient>=0.25 AND coefficient<=20),
  include_in_average boolean NOT NULL DEFAULT false,
- updated_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+ updated_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
  updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX s4c3a_assessment_period ON schoolnet_private.school_official_assessment_coefficients(period_id);
