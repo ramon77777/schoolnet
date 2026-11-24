@@ -8,6 +8,7 @@ on:
       - 'supabase/verification/s4b3b4_student_official_dashboard_rollback_manual.sql'
       - 'src/features/student/components/StudentOfficialDashboardSummary.tsx'
       - 'src/features/student/lib/studentOfficialDashboardModel.ts'
+      - 'src/features/student/lib/studentCombinedDashboardModel.ts'
       - 'src/features/student/lib/studentOfficialDashboardApi.ts'
       - 'src/features/student/pages/StudentDashboard.tsx'
       - 'scripts/test-schoolnet-s4b3b4-dashboard.mjs'
