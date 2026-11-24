@@ -1,5 +1,13 @@
 # SCHOOLNET V2 — S4-B.3-B.2 · Tentatives et remises officielles sécurisées
 
+> **Point de situation — 24 novembre 2026**
+>
+> **Supabase principal :** la migration B.2 `20261123105413` (`schoolnet_s4b3b2_official_assessment_attempts`) est installée et vérifiée. Son SQL correspond exactement à `supabase/proposals/s4b3b2_official_assessment_attempts.sql`.
+>
+> **Autorisation actuelle :** l’utilisateur a autorisé la fusion dans `main` et la publication sur le site officiel SCHOOLNET. L’intégration cumulative des PR #27 à #30 est suivie dans la [PR #30](https://github.com/ramon77777/schoolnet/pull/30). L’achèvement du déploiement reste à constater.
+>
+> Les mentions antérieures « non installé », « non autorisé » ou équivalentes ci-dessous décrivent l’étape de préparation ; elles sont conservées comme historique.
+
 **Date :** 23 novembre 2026  
 **Branche de développement :** `feature/schoolnet-s4b3b2-secure-assessment-submissions-20261123`  
 **Base :** correctif Windows `3fcc32229bffe7cfa12dabbfaeb9bf31fb964a9e`  

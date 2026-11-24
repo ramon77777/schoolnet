@@ -1,5 +1,13 @@
 # SCHOOLNET V2 — S4-B.3-B.3 : suivi et corrections des évaluations officielles
 
+> **Point de situation — 24 novembre 2026**
+>
+> **Supabase principal :** les migrations B.3 `20261123125725` (`schoolnet_s4b3b3_official_teacher_grading`) et B.3-N `20261123143017` (`schoolnet_s4b3b3n_official_teacher_submission_notifications`) sont installées et vérifiées. Leurs SQL correspondent exactement à `supabase/proposals/s4b3b3_official_teacher_grading.sql` et `supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql`, respectivement.
+>
+> **Autorisation actuelle :** l’utilisateur a autorisé la fusion dans `main` et la publication sur le site officiel SCHOOLNET. L’intégration cumulative des PR #27 à #30 est suivie dans la [PR #30](https://github.com/ramon77777/schoolnet/pull/30). L’achèvement du déploiement reste à constater.
+>
+> Les mentions antérieures « non installé », « non autorisé » ou équivalentes ci-dessous décrivent l’étape de préparation ; elles sont conservées comme historique.
+
 **Date de préparation :** 23 novembre 2026  
 **Branche :** `feature/schoolnet-s4b3b3-official-teacher-corrections-20261123`  
 **Base :** PR n°27 (S4-B.3-B.2) — non fusionnée dans `main`.  

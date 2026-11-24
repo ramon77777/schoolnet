@@ -2,7 +2,7 @@
 
 **Date :** 24 novembre 2026.
 
-**Périmètre :** G1 validé par l’utilisateur ; développement sur branche dédiée et livraison en pull request brouillon. L’installation SQL C.1 sur `schoolnet_2.0` a ensuite reçu un GO distinct et a réussi le 24 novembre 2026.
+**Périmètre :** G1 validé par l’utilisateur ; développement sur branche dédiée et livraison initiale en pull request brouillon. L’installation SQL C.1 sur `schoolnet_2.0` a ensuite reçu un GO distinct et a réussi le 24 novembre 2026. Le même jour, l’utilisateur a autorisé le rattachement du parent de recette, puis la fusion dans `main` et la publication officielle des modules validés.
 
 **Branche :** `feature/schoolnet-s4b3c1-parent-official-results-20261124`.
 
@@ -10,7 +10,7 @@
 
 **Source SQL approuvée et installée :** commit `289a8aa05be1d1d69fecbaea0e21f414983d322d`.
 
-**État de livraison :** SQL principal installé et postflight réussi ; [PR #30](https://github.com/ramon77777/schoolnet/pull/30) en brouillon ; recette avec un parent réel encore à effectuer. Fusion dans `main` et publication Vercel non autorisées.
+**État de livraison :** SQL principal installé et postflight réussi ; recette parent réelle limitée à la liste et au détail observée sur `localhost` ; 11 contrôles CI réussis au commit `444c177`. La fusion dans `main` et la publication officielle sont autorisées. Leur exécution reste à consigner dans la [PR #30](https://github.com/ramon77777/schoolnet/pull/30) ; cette note ne les déclare pas déjà réalisées.
 
 ## 1. Résultat livré et dépendances
 
@@ -20,7 +20,7 @@ Chaque résultat présente l’enfant, l’établissement, la classe, l’année
 
 La sélection d’un enfant et « Tous mes enfants » sont conservées au retour du détail. La liste propose recherche, type d’évaluation et pagination. Les états distinguent absence de lien familial, absence de résultat publié, résultat indisponible, chargement et erreur. Une erreur du volet officiel laisse la vue Cours libres accessible.
 
-Cette branche dépend de B.4 / PR #29, elle-même dépendante de B.3 / PR #28 et B.2 / PR #27. Ces branches étant encore en brouillon lors de la préparation, la comparaison avec `main` contient aussi leurs changements. La revue propre à C.1 doit comparer le commit de base ci-dessus à la tête de cette branche. La PR C.1 ne doit pas être fusionnée indépendamment de ces dépendances.
+Cette branche dépend de B.4 / PR #29, elle-même dépendante de B.3 / PR #28 et B.2 / PR #27. La comparaison avec `main` contient aussi leurs changements. La revue propre à C.1 compare le commit de base ci-dessus à la tête de cette branche. L’intégration autorisée via la PR #30 est cumulative : elle doit conserver ces dépendances et leur historique.
 
 ## 2. Autorisations et état réel de la livraison
 
@@ -28,9 +28,9 @@ La validation G1 a autorisé le code, les tests isolés, la branche et la PR bro
 
 L’opération porte sur les fonctions et leurs permissions. Elle ne crée aucun compte ni lien familial et n’écrit aucune note, copie ou notification métier. Le postflight réel a utilisé des claims vides et des arguments `NULL` pour ses essais de refus, sans prendre l’identité d’un parent ou d’un enfant réel.
 
-**La recette fonctionnelle avec un parent connecté à la base principale n’est pas encore effectuée.** Le choix de ce parent et son éventuel rattachement restent à valider séparément. Lors de l’audit familial antérieur à cette installation, le compte élève de recette B.4 n’avait aucun `parent_links` ; ce constat n’a pas été réaudité pendant le postflight et ne constitue pas une nouvelle vérification des liens. Les recettes positives déjà réalisées utilisent des familles fictives isolées.
+Après l’installation technique, l’utilisateur a désigné un parent existant et autorisé son rattachement au compte élève de recette. Le lien a été créé et vérifié dans `parent_links`, `profiles.child_ids` a été synchronisé et le lien familial antérieur a été conservé. Cette opération familiale distincte ne fait pas partie de la migration SQL C.1. La recette réelle observée ensuite est détaillée en section 8, sans donnée permettant d’identifier les comptes.
 
-La fusion dans `main` et la publication Vercel restent soumises à leurs GO distincts ; aucune de ces deux opérations n’est autorisée par le GO SQL.
+Le 24 novembre 2026, l’utilisateur a ensuite autorisé explicitement la fusion dans `main` et la publication officielle des modules validés. Cette nouvelle autorisation complète le GO SQL ; elle couvre la livraison cumulative décrite en section 9.
 
 La propriété `git.deploymentEnabled` de `vercel.json` désactive le déploiement automatique pour le nom exact de la branche C.1. Elle ne change pas les règles des autres branches.
 
@@ -140,7 +140,7 @@ La commande `npm run qa:s4b3c1` vérifie le contrat strict, les dates/notes, les
 
 Les **209 tests Node** de C.1 et des régressions sélectionnées ont passé lors de la préparation du commit approuvé. Ce commit `289a8aa` a également obtenu une CI verte, incluant les trois jobs décrits ci-dessous et **12 tests navigateur**. `npm run lint` passe sans erreur, avec quatre avertissements préexistants hors du lot. `npm run build` passe, avec l’avertissement de taille du bundle déjà présent.
 
-La préparation du commit de traçabilité ajoute l’archive d’installation et un test de parité, octet par octet, entre la proposition approuvée et l’archive de migration. La suite C.1 comporte ainsi **17 tests**, pour **210 tests Node** dans l’ensemble sélectionné. Ces **210 tests ont été réexécutés localement après archivage et ont tous passé**. Les 12 tests navigateur sont inchangés. La CI du prochain commit de synchronisation doit être relancée et identifiée séparément ; la réussite de la CI du commit `289a8aa` ne vaut pas preuve d’exécution de ce test supplémentaire en CI.
+Le commit de traçabilité `444c17791f15a2cd437e4bfe1d9fa2a60da5dad8` ajoute l’archive d’installation et un test de parité, octet par octet, entre la proposition approuvée et l’archive de migration. La suite C.1 comporte ainsi **17 tests**, pour **210 tests Node** dans l’ensemble sélectionné. Ces **210 tests ont été réexécutés localement après archivage et ont tous passé**. Les 12 tests navigateur sont inchangés. Le 24 novembre 2026, les **11 contrôles CI rattachés à ce commit `444c177` ont été vérifiés avec le statut `success`**. Ce constat identifie précisément la version contrôlée ; les résultats du commit de documentation et du commit final d’intégration devront être rattachés à leurs propres SHA.
 
 Les fixtures `tests/s4b3c1-tenant-ci/fixtures/` reconstituent les anciennes RPC exactes puis des familles A/B/fratrie entièrement fictives. Elles vérifient notamment :
 
@@ -163,12 +163,25 @@ Le workflow `.github/workflows/schoolnet-s4b3c1-parent-results-ci.yml` comporte 
 
 Les tests navigateur ont été transférés vers ce job car le bac à sable local interdit les sockets nécessaires à Chromium. Ils ne constituent pas une recette réelle d’un parent connecté à Supabase principal. Les résultats de chaque job et leur commit sont consultables depuis la pull request.
 
-## 8. Prochaine recette : parent réel, après installation technique validée
+## 8. Recette parent réelle observée le 24 novembre 2026
 
-Le GO SQL a été donné et l’installation technique est validée. La prochaine étape est le choix explicite du parent de test, avec un lien familial existant et autorisé. Si un lien doit être créé pour cette recette, son parent et son enfant doivent être identifiés et autorisés séparément ; aucun lien n’est créé automatiquement à la suite de l’installation.
+Le parent existant a été désigné par l’utilisateur et son lien avec le compte élève de recette a été autorisé, créé puis vérifié. La synchronisation de `profiles.child_ids` conserve sa fonction de donnée de compatibilité ; l’autorité d’accès reste `parent_links`. Le lien familial antérieur a été conservé.
 
-Pour récupérer le code dans le checkout Windows de test, conserver d’abord les modifications locales éventuelles, puis créer une branche locale dédiée suivant la branche distante C.1. Ne pas écraser la branche locale B.4. Relancer le serveur Vite après changement de branche.
+Les captures partagées à **09:35 et 09:36**, sur `localhost`, montrent une session Parent normale et les observations suivantes :
 
-La recette utilisateur devra vérifier la note publiée de l’enfant autorisé, son contexte scolaire, l’appréciation, le retour vers l’enfant choisi et la vue Cours libres. Un second compte ou enfant réellement autorisé sera nécessaire pour une recette familiale réelle plus large ; les tests fictifs ne doivent pas être présentés comme cette preuve.
+| Écran observé | Résultat de la recette réelle |
+|---|---|
+| Liste des résultats officiels | Un résultat publié, noté **20/20**, pour l’enfant autorisé. |
+| Détail du résultat | La même note et le même contexte scolaire, accompagnés de l’appréciation globale. |
+
+Cette recette réelle valide la consultation de la liste et de ce détail depuis le compte parent désigné. Le retour, les filtres, la vue Cours libres et les autres configurations familiales n’ont pas été revendiqués comme testés sur ce compte réel. La couverture plus large des **12 scénarios navigateur** repose sur les familles fictives de CI et reste une preuve distincte. Les captures, identités et identifiants privés ne sont pas reproduits dans cette note.
+
+## 9. Intégration cumulative et publication officielle autorisées
+
+L’autorisation du 24 novembre 2026 porte sur la fusion dans `main` et la publication officielle des modules validés. La PR #30 regroupe les travaux des PR #27, #28, #29 et #30. Au commit `444c177`, sa branche comprend **29 commits supplémentaires par rapport à la base `main` utilisée pour la préparation**, dont le correctif B.1 des imports sur Windows. Cet historique doit être conservé lors de l’intégration cumulative.
+
+La livraison vise le projet Vercel existant **`schoolnet`**, à l’adresse officielle [schoolnet-snowy.vercel.app](https://schoolnet-snowy.vercel.app). La PR #30 doit porter la trace de la fusion et de la publication : commit intégré, contrôles CI correspondants, déploiement retenu et vérification de l’adresse officielle. L’autorisation est acquise ; ces opérations ne sont pas présentées comme déjà exécutées dans cette note de préparation.
+
+La présente mise à jour est documentaire : elle n’altère aucun code, comportement d’exécution ni SQL. Elle consigne la recette limitée et l’autorisation nouvelle sans réinstaller la migration déjà appliquée.
 
 La supervision administrative, les bulletins, les moyennes trimestrielles, les fichiers, les corrections détaillées et les notifications parent restent hors de C.1.

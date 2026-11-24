@@ -1,4 +1,13 @@
 # SCHOOLNET V2 — S4-B.3-B.4 : tableau de bord apprenant (cours officiels)
+
+> **Point de situation — 24 novembre 2026**
+>
+> **Supabase principal :** la migration B.4 `20261124075811` (`schoolnet_s4b3b4_student_official_dashboard`) est installée et vérifiée. Son SQL correspond exactement à `supabase/proposals/s4b3b4_student_official_dashboard.sql`.
+>
+> **Autorisation actuelle :** l’utilisateur a autorisé la fusion dans `main` et la publication sur le site officiel SCHOOLNET. L’intégration cumulative des PR #27 à #30 est suivie dans la [PR #30](https://github.com/ramon77777/schoolnet/pull/30). L’achèvement du déploiement reste à constater.
+>
+> Les mentions antérieures « non installé », « non autorisé » ou équivalentes ci-dessous décrivent l’étape de préparation ; elles sont conservées comme historique.
+
 **Branche :** feature/schoolnet-s4b3b4-official-student-dashboard-20261123
 **Dependance :** PR #28 en brouillon, commit 6a5b8c05.
 **Securite :** aucun changement sur Supabase principal sans autorisation distincte ; pas de fusion main ni de deploiement Vercel.
