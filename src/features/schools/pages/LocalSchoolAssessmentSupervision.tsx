@@ -80,7 +80,7 @@ export default function LocalSchoolAssessmentSupervision(){
     setError("Suivi indisponible, accès révoqué ou fonction C.2 non encore activée. Aucun total ne peut être affiché.");
    });
   return ()=>{cancelled=true;};
- },[canRead,selected?.id,key]);
+ },[canRead,selected,key]);
 
  const current=canRead&&payloadFor===key&&state==="ready"&&payload?.schoolId===selected?.id
   ?payload:null;
