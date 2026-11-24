@@ -68,7 +68,7 @@ jobs:
             psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f "$file" >/dev/null
           done
           psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "ALTER TABLE public.school_years ADD COLUMN starts_on date NOT NULL DEFAULT DATE '2026-09-01', ADD COLUMN ends_on date NOT NULL DEFAULT DATE '2027-07-31';"
+            -c "ALTER TABLE public.schoolnet_school_memberships ADD COLUMN revoked_at timestamptz; ALTER TABLE public.school_years ADD COLUMN starts_on date NOT NULL DEFAULT DATE '2026-09-01', ADD COLUMN ends_on date NOT NULL DEFAULT DATE '2027-07-31';"
       - name: Install C3-A, auto-codes and C3-B.2 on local PG only
         env:
           PGPASSWORD: postgres
