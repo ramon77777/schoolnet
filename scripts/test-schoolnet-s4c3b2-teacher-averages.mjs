@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {isTeacherOfficialSubjectAverages}
  from "../src/features/teacher/lib/teacherOfficialAveragesModel.ts";
+import {isTeacherOfficialAveragesCatalog,isTeacherOfficialAveragesActivationPending}
+ from "../src/features/teacher/lib/teacherOfficialAveragesCatalogModel.ts";
 
 const x="10000000-0000-4000-8000-000000000001";
 const y="20000000-0000-4000-8000-000000000002";
@@ -80,4 +82,68 @@ test("C3-B.2: frontend calls only guarded RPC, not grade tables",()=>{
  assert.match(api,/supabase\.rpc\("schoolnet_teacher_official_subject_averages"/);
  assert.doesNotMatch(api,/supabase\.from\(/);
  assert.doesNotMatch(api,/assessment_submissions|student_period_averages/);
+});
+
+
+test("C3-B.2 UI: catalogue d'affectations valide, sans notes individuelles",()=>{
+ const period={id:z,code:"T1",name:"Premier trimestre",
+  startsOn:"2026-09-15",endsOn:"2026-12-18",isLocked:false};
+ const a={assignmentId:student,schoolId:x,schoolName:"College A",
+  schoolYearId:y,schoolYearName:"2026-2027",classId:c,className:"6e A",
+  subjectId:subject,subjectName:"Mathématiques",periods:[period]};
+ const catalogue={assignments:[a]};
+ assert.equal(isTeacherOfficialAveragesCatalog(catalogue),true);
+ assert.equal(isTeacherOfficialAveragesCatalog({assignments:[]}),true);
+ assert.equal(isTeacherOfficialAveragesCatalog({...catalogue,students:[data.students[0]]}),false);
+ assert.equal(isTeacherOfficialAveragesCatalog({assignments:[{...a,score:20}]}),false);
+ assert.equal(isTeacherOfficialAveragesCatalog({assignments:[a,a]}),false);
+ assert.equal(isTeacherOfficialAveragesCatalog({assignments:[{...a,periods:[period,period]}]}),false);
+ assert.equal(isTeacherOfficialAveragesCatalog({assignments:[{...a,periods:[{...period,endsOn:"2026-08-01"}]}]}),false);
+ assert.equal(isTeacherOfficialAveragesActivationPending({
+  code:"PGRST202",message:"schema cache"}),true);
+ assert.equal(isTeacherOfficialAveragesActivationPending({
+  code:"42501",message:"permission denied"}),false);
+});
+
+test("C3-B.2 UI: catalogue SQL strict, RPC lecture seule et permissions",()=>{
+ const sql=readFileSync(new URL(
+  "../supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql",
+  import.meta.url),"utf8");
+ assert.match(sql,/auth\.uid\(\)/);
+ assert.match(sql,/public\.get_my_role\(\)/);
+ assert.match(sql,/assignment\.teacher_id=v_uid/);
+ assert.match(sql,/assignment\.revoked_at IS NULL/);
+ assert.match(sql,/membership\.user_id=v_uid/);
+ assert.match(sql,/membership\.revoked_at IS NULL/);
+ assert.match(sql,/assignment\.school_year_id/);
+ assert.match(sql,/period\.school_year_id=eligible\.year_id/);
+ assert.match(sql,/SECURITY DEFINER SET search_path=pg_catalog/);
+ assert.match(sql,/SECURITY INVOKER SET search_path=pg_catalog/);
+ assert.match(sql,/REVOKE ALL ON FUNCTION public\.schoolnet_teacher_official_averages_catalog/);
+ assert.doesNotMatch(sql,/assessment_submissions|student_period_averages|submission_answers|score|feedback/i);
+ const api=readFileSync(new URL(
+  "../src/features/teacher/lib/teacherOfficialAveragesCatalogApi.ts",
+  import.meta.url),"utf8");
+ assert.match(api,/supabase\.rpc\("schoolnet_teacher_official_averages_catalog"\)/);
+ assert.doesNotMatch(api,/supabase\.from\(/);
+});
+
+test("C3-B.2 UI: route enseignant indépendante de la V1 et affichage sans publication",()=>{
+ const routes=readFileSync(new URL("../src/routes/router.tsx",import.meta.url),"utf8");
+ const sidebar=readFileSync(new URL("../src/layouts/DashboardLayout.tsx",import.meta.url),"utf8");
+ const page=readFileSync(new URL(
+  "../src/features/teacher/pages/TeacherOfficialAverages.tsx",import.meta.url),"utf8");
+ assert.match(routes,/teacher\/official-averages/);
+ assert.match(routes,/TeacherOfficialAverages/);
+ assert.match(sidebar,/to="\/app\/teacher\/official-averages"/);
+ assert.match(sidebar,/to="\/app\/teacher\/averages"/);
+ assert.match(page,/user\.role==="teacher"/);
+ assert.match(page,/!user\.isDemo/);
+ assert.match(page,/getTeacherOfficialAveragesCatalog\(/);
+ assert.match(page,/getTeacherOfficialSubjectAverages\(/);
+ assert.match(page,/Prévisualisation uniquement/);
+ assert.match(page,/row\.state==="ready"/);
+ assert.match(page,/Activ ation SQL en attente/.replace(" ","")); // user-facing unavailable state
+ assert.doesNotMatch(page,/supabase\.from\(|supabase\.auth|\.insert\(|\.update\(|\.delete\(/);
+ assert.doesNotMatch(page,/Exporter les notes|Publier les moyennes|Envoyer aux parents/);
 });
