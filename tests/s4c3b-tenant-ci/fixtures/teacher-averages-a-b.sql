@@ -126,8 +126,14 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000004',true);
 SET LOCAL ROLE authenticated;
 DO $teacher_b$
-DECLARE v jsonb; b1 jsonb;
+DECLARE v jsonb; b1 jsonb;catalog jsonb;
 BEGIN
+ catalog:=public.schoolnet_teacher_official_averages_catalog();
+ IF jsonb_array_length(catalog->'assignments')<>1
+ OR catalog->'assignments'->0->>'schoolId'<>'20000000-0000-4000-8000-000000000002'
+ OR jsonb_array_length(catalog->'assignments'->0->'periods')<>1
+ THEN RAISE EXCEPTION 'C3B2_CATALOG_B_SCOPE'; END IF;
+ RAISE NOTICE 'C3B2_PASS_CATALOG_B_OWN_SCHOOL_ONLY';
  v:=public.schoolnet_teacher_official_subject_averages(
   '20000000-0000-4000-8000-000000000002',
   current_setting('ci.c3b2.t1b')::uuid,
@@ -164,6 +170,17 @@ DECLARE
 BEGIN
  t1:=current_setting('ci.c3b2.t1a')::uuid;
  t2:=current_setting('ci.c3b2.t2a')::uuid;
+ v:=public.schoolnet_teacher_official_averages_catalog();
+ IF jsonb_array_length(v->'assignments')<>1
+ OR v->'assignments'->0->>'schoolId'<>a_school::text
+ OR v->'assignments'->0->>'classId'<>cls::text
+ OR v->'assignments'->0->>'subjectId'<>math::text
+ OR jsonb_array_length(v->'assignments'->0->'periods')<>2
+ OR v::text LIKE '%Eleve A1%' OR v::text LIKE '%Eleve B1%'
+ OR EXISTS(SELECT 1 FROM jsonb_array_elements(v->'assignments') x
+  WHERE x ?| ARRAY['score','studentId','studentName','coefficient','feedback','rank'])
+ THEN RAISE EXCEPTION 'C3B2_CATALOG_A_SCOPE_OR_PRIVACY'; END IF;
+ RAISE NOTICE 'C3B2_PASS_CATALOG_A_OWN_ASSIGNMENTS_AND_PERIODS';
 
  v:=public.schoolnet_teacher_official_subject_averages(a_school,t1,cls,math);
  IF (v->>'teacherScoped')::boolean IS NOT TRUE
@@ -255,6 +272,10 @@ SET LOCAL ROLE authenticated;
 DO $admin_denied$
 BEGIN
  BEGIN
+  PERFORM public.schoolnet_teacher_official_averages_catalog();
+  RAISE EXCEPTION 'C3B2_CATALOG_ADMIN_ALLOWED';
+ EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3B2_PASS_CATALOG_ADMIN_DENIED'; END;
+ BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
    current_setting('ci.c3b2.t1a')::uuid,
@@ -269,7 +290,12 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000008',true);
 SET LOCAL ROLE authenticated;
 DO $unassigned$
+DECLARE v jsonb;
 BEGIN
+ v:=public.schoolnet_teacher_official_averages_catalog();
+ IF jsonb_array_length(v->'assignments')<>0
+ THEN RAISE EXCEPTION 'C3B2_CATALOG_UNASSIGNED_LEAK'; END IF;
+ RAISE NOTICE 'C3B2_PASS_CATALOG_UNASSIGNED_EMPTY';
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
@@ -310,7 +336,12 @@ UPDATE public.schoolnet_school_memberships SET status='revoked',revoked_at=now()
 SELECT set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',true);
 SET LOCAL ROLE authenticated;
 DO $teacher_revoked$
+DECLARE v jsonb;
 BEGIN
+ v:=public.schoolnet_teacher_official_averages_catalog();
+ IF jsonb_array_length(v->'assignments')<>0
+ THEN RAISE EXCEPTION 'C3B2_CATALOG_REVOKED_VISIBLE'; END IF;
+ RAISE NOTICE 'C3B2_PASS_CATALOG_REVOKED_EMPTY';
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
@@ -324,6 +355,10 @@ RESET ROLE;
 SET LOCAL ROLE anon;
 DO $anon$
 BEGIN
+ BEGIN
+  PERFORM public.schoolnet_teacher_official_averages_catalog();
+  RAISE EXCEPTION 'C3B2_CATALOG_ANON_ALLOWED';
+ EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'C3B2_PASS_CATALOG_ANON_DENIED'; END;
  BEGIN
   PERFORM public.schoolnet_teacher_official_subject_averages(
    '20000000-0000-4000-8000-000000000001',
