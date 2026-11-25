@@ -50,8 +50,9 @@ export function isTeacherCoefficientSettings(v:unknown):v is TeacherCoefficientS
    periods.has(String(p.id)))return false;
   periods.set(String(p.id),String(p.schoolYearId));
  }
+ const assignments:TeacherCoefficientAssignment[]=v.assignments;
  const hasScope=(classId:unknown,subjectId:unknown,yearId:unknown)=>
-  v.assignments.some((a:TeacherCoefficientAssignment)=>a.classId===classId&&a.subjectId===subjectId&&a.schoolYearId===yearId);
+  assignments.some((a:TeacherCoefficientAssignment)=>a.classId===classId&&a.subjectId===subjectId&&a.schoolYearId===yearId);
  for(const c of v.subjectSettings){
   if(!obj(c)||!keys(c,["periodId","classId","subjectId","coefficient"])||
    !coefficient(c.coefficient)||!periods.has(String(c.periodId))||
