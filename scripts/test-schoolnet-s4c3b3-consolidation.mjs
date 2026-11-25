@@ -22,9 +22,9 @@ test("C3-B.3: pagination and ordering are stable",()=>{
 });
 
 test("C3-B.3: filtering, accent-insensitive casing and page clamping",()=>{
- const result=paginateOfficialAverageRows(students," élève 01 ","ready",999);
+ const result=paginateOfficialAverageRows(students," élève 0 ","ready",999);
  assert.equal(result.currentPage,1);
- assert.equal(result.total,4);
+ assert.equal(result.total,3);
  assert.equal(result.rows.every(r=>r.state==="ready"),true);
  assert.equal(paginateOfficialAverageRows(students,"not found","all",2).total,0);
  assert.equal(paginateOfficialAverageRows(students,"","all",0).currentPage,1);
