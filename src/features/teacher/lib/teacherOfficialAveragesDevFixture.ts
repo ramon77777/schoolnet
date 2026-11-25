@@ -1,5 +1,5 @@
 import type {TeacherOfficialAveragesCatalog} from "./teacherOfficialAveragesCatalogModel";
-import type {TeacherOfficialSubjectAverages} from "./teacherOfficialAveragesModel";
+import type {TeacherOfficialSubjectAverages,TeacherOfficialSubjectRow} from "./teacherOfficialAveragesModel";
 
 /** Only for local Vite visual testing. Does not read or write school records. */
 export function isTeacherOfficialAveragesDevFixtureEnabled():boolean{
@@ -42,7 +42,7 @@ export function makeTeacherOfficialAveragesDemoPreview(input:{
  const secondPeriod=input.periodId===periods[1].id;
  const size=assignment.classId===classA?47:assignment.classId===classB?22:18;
  const students=Array.from({length:size},(_,i)=>{
-  const state=secondPeriod||i%4===3?"not_configured":i%4===2?"incomplete":"ready";
+  const state:TeacherOfficialSubjectRow["state"]=secondPeriod||i%4===3?"not_configured":i%4===2?"incomplete":"ready";
   const averageOn20=state==="ready"?(i===0?12.5:i===1?0:Number((8+(i%10)*1.1).toFixed(2))):null;
   return {studentId:"80000000-0000-4000-8000-"+String(i+1).padStart(12,"0"),
    studentName:"Élève fictif "+String(i+1).padStart(2,"0"),
