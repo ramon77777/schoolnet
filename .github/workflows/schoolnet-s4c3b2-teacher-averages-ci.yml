@@ -6,6 +6,15 @@ on:
       - 'src/features/teacher/lib/teacherOfficialAverages*'
       - 'scripts/test-schoolnet-s4c3b3-consolidation.mjs'
       - 'scripts/test-schoolnet-s4c3b4-local-fixtures.mjs'
+      - 'scripts/test-schoolnet-s4c3b6-1-averages-hub.mjs'
+      - 'scripts/test-schoolnet-s4c3b6-2-coefficients.mjs'
+      - 'supabase/proposals/s4c3b6_teacher_coefficients_delegation.sql'
+      - 'tests/s4c3b6-tenant-ci/fixtures/teacher-coefficients-a-b.sql'
+      - 'src/features/teacher/pages/TeacherCoefficients.tsx'
+      - 'src/features/teacher/lib/teacherCoefficient*'
+      - 'src/features/schools/components/SchoolTeacherCoefficientDelegations.tsx'
+      - 'src/features/teacher/pages/TeacherAveragesHub.tsx'
+      - 'src/features/teacher/lib/teacherAveragesHubModel.ts'
       - 'src/features/teacher/pages/TeacherOfficialAverages.tsx'
       - 'src/routes/router.tsx'
       - 'src/layouts/DashboardLayout.tsx'
@@ -37,6 +46,8 @@ jobs:
       - run: npm run qa:s4c3b2
       - run: npm run qa:s4c3b3
       - run: npm run qa:s4c3b4
+      - run: npm run qa:s4c3b6-1
+      - run: npm run qa:s4c3b6-2
       - run: npm run qa:s4c3a
       - run: npm run qa:s4c3a1
       - run: npm run lint
@@ -87,7 +98,8 @@ jobs:
             supabase/proposals/s4c3a_official_periods_coefficients.sql \
             supabase/proposals/s4c3a1_automatic_period_codes.sql \
             supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
-            supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql
+            supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql \
+            supabase/proposals/s4c3b6_teacher_coefficients_delegation.sql
           do
             psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f "$file" >/dev/null
           done
@@ -123,6 +135,33 @@ jobs:
             S4C3B2_A_B_FIXTURE_ROLLED_BACK
           do
             grep -Fq "$proof" /tmp/schoolnet-c3b2-a-b.log
+          done
+      - name: Run B6.2 teacher/admin coefficient delegation A/B fixture, rollback afterward
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -f tests/s4c3b6-tenant-ci/fixtures/teacher-coefficients-a-b.sql \
+            2>&1 | tee /tmp/schoolnet-c3b6-a-b.log
+          for proof in \
+            S4C3B6_PASS_ADMIN_INITIAL_NO_DELEGATION \
+            S4C3B6_PASS_CROSS_ADMIN_DENIED \
+            S4C3B6_PASS_TEACHER_SCOPED_READ \
+            S4C3B6_PASS_SUBJECT_REQUIRES_DELEGATION \
+            S4C3B6_PASS_V1_AND_FOREIGN_AND_INVALID_DENIED \
+            S4C3B6_PASS_OWN_ASSESSMENT_AUDITED \
+            S4C3B6_PASS_ADMIN_DELEGATION_GRANTED \
+            S4C3B6_PASS_DELEGATED_SUBJECT_WRITE_AUDITED \
+            S4C3B6_PASS_ADMIN_DELEGATION_REVOKED \
+            S4C3B6_PASS_IMMEDIATE_DELEGATION_REVOCATION \
+            S4C3B6_PASS_LOCKED_PERIOD_DENIED \
+            S4C3B6_PASS_MEMBERSHIP_REVOCATION \
+            S4C3B6_PASS_ANON_DENIED \
+            S4C3B6_PASS_AUDIT_AND_V1_UNCHANGED \
+            S4C3B6_A_B_FIXTURE_ROLLED_BACK
+          do
+            grep -Fq "$proof" /tmp/schoolnet-c3b6-a-b.log
           done
       - name: Verify targeted rollback on ephemeral PG only
         env:

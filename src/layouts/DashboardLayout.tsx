@@ -484,13 +484,16 @@ export default function DashboardLayout() {
             </NavLink>
 
             <NavLink
-              className={navItem}
+              className={({isActive})=>navItem({
+                isActive:isActive||pathname==="/app/teacher/official-averages",
+              })}
               to="/app/teacher/averages"
             >
               📊 Moyennes
             </NavLink>
-            <NavLink className={navItem} to="/app/teacher/official-averages">
-              📐 Moyennes officielles
+
+            <NavLink className={navItem} to="/app/teacher/coefficients">
+              🧮 Mes coefficients
             </NavLink>
 
             <NavLink
@@ -704,7 +707,7 @@ export default function DashboardLayout() {
         </button>
       </nav>
     );
-  }, [user, onLogout, unreadCount, pendingPublicRequests]);
+  }, [user, onLogout, unreadCount, pendingPublicRequests, pathname]);
 
   // ✅ Loading UI (évite les redirections pendant loading)
   if (loading) {

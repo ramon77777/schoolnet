@@ -43,7 +43,7 @@ const statusMeta:Record<TeacherOfficialSubjectRow["state"],{label:string;classNa
 /** C3-B.2 — No student records are fetched by the browser except via the guarded RPC.
  * This page is a teacher-only preview; it never creates or publishes a grade.
  */
-export default function TeacherOfficialAverages(){
+export default function TeacherOfficialAverages({embedded=false}:{embedded?:boolean}={}){
  const {user,loading:authLoading}=useAuth();
  const allowed=!authLoading&&!!user?.id&&!user.isDemo&&user.role==="teacher";
  const userId=allowed?(user?.id??""):"";
@@ -152,9 +152,12 @@ export default function TeacherOfficialAverages(){
       incluses par votre établissement entrent dans le calcul.
      </p>
     </div>
-    <Link className="sn-btn-ghost" to="/app/teacher/averages">
-     ← Moyennes des cours libres
-    </Link>
+    <div className="flex flex-wrap items-center gap-2">
+     <Link className="sn-btn-ghost" to="/app/teacher/coefficients">🧮 Mes coefficients</Link>
+    {!embedded&&<Link className="sn-btn-ghost" to="/app/teacher/averages">
+     ← Mes moyennes
+    </Link>}
+    </div>
    </div>
   </header>
 
