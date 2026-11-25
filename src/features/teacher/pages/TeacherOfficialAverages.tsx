@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useState} from "react";
 import {Link} from "react-router-dom";
 import {useAuth} from "@/lib/auth/AuthProvider";
 import {getTeacherOfficialAveragesCatalog} from "@/features/teacher/lib/teacherOfficialAveragesCatalogApi";
@@ -45,7 +45,7 @@ const statusMeta:Record<TeacherOfficialSubjectRow["state"],{label:string;classNa
 export default function TeacherOfficialAverages(){
  const {user,loading:authLoading}=useAuth();
  const allowed=!authLoading&&!!user?.id&&!user.isDemo&&user.role==="teacher";
- const userId=allowed?user.id:"";
+ const userId=allowed?(user?.id??""):"";
  const [catalog,setCatalog]=useState<TeacherOfficialAveragesCatalog|null>(null);
  const [catalogFor,setCatalogFor]=useState("");
  const [catalogState,setCatalogState]=useState<LoadingState>("idle");
@@ -77,7 +77,7 @@ export default function TeacherOfficialAverages(){
 
  const currentCatalog=allowed&&catalogFor===userId&&catalogState==="ready"?catalog:null;
  const assignments=currentCatalog?.assignments??[];
- const schools=useMemo(()=>options(assignments,"schoolId","schoolName"),[assignments]);
+ const schools=options(assignments,"schoolId","schoolName");
  const activeSchoolId=choose(schoolId,schools);
  const schoolAssignments=assignments.filter(a=>a.schoolId===activeSchoolId);
  const years=options(schoolAssignments,"schoolYearId","schoolYearName");
@@ -89,8 +89,8 @@ export default function TeacherOfficialAverages(){
  const subjects=options(classAssignments,"subjectId","subjectName");
  const activeSubjectId=choose(subjectId,subjects);
  const selectedAssignment=classAssignments.find(a=>a.subjectId===activeSubjectId)??null;
- const periods=useMemo(()=>[...(selectedAssignment?.periods??[])]
-  .sort((a,b)=>a.startsOn.localeCompare(b.startsOn)),[selectedAssignment]);
+ const periods=[...(selectedAssignment?.periods??[])]
+  .sort((a,b)=>a.startsOn.localeCompare(b.startsOn));
  const activePeriodId=choose(periodId,periods.map(p=>({id:p.id,label:p.name})));
  const period=periods.find(p=>p.id===activePeriodId)??null;
  const key=allowed&&selectedAssignment&&period&&currentCatalog?
@@ -116,13 +116,10 @@ export default function TeacherOfficialAverages(){
  },[allowed,selectedAssignment,period,key]);
 
  const currentPreview=allowed&&previewState==="ready"&&previewFor===key?preview:null;
- const filteredRows=useMemo(()=>{
-  if(!currentPreview)return [];
-  const normalized=search.trim().toLocaleLowerCase("fr");
-  return currentPreview.students.filter(row=>
-   !normalized||row.studentName.toLocaleLowerCase("fr").includes(normalized))
-   .sort((a,b)=>a.studentName.localeCompare(b.studentName,"fr",{numeric:true}));
- },[currentPreview,search]);
+ const normalized=search.trim().toLocaleLowerCase("fr");
+ const filteredRows=(currentPreview?.students??[]).filter(row=>
+  !normalized||row.studentName.toLocaleLowerCase("fr").includes(normalized))
+  .sort((a,b)=>a.studentName.localeCompare(b.studentName,"fr",{numeric:true}));
  const ready=currentPreview?.students.filter(row=>row.state==="ready").length??0;
  const incomplete=currentPreview?.students.filter(row=>row.state==="incomplete").length??0;
  const unconfigured=currentPreview?.students.filter(row=>row.state==="not_configured").length??0;
