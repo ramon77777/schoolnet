@@ -55,7 +55,14 @@ test("B6.2: frontend uses scoped RPC only, never direct grade tables",()=>{
  assert.match(admin,/user\.role==="school_admin"/);
  assert.match(admin,/getSchoolTeacherCoefficientDelegations/);
  assert.match(read("src/routes/router.tsx"),/teacher\/coefficients/);
- assert.match(read("src/layouts/DashboardLayout.tsx"),/Mes coefficients/);
+ const layout=read("src/layouts/DashboardLayout.tsx");
+ const studentStart=layout.indexOf('user.role === "student"');
+ const parentStart=layout.indexOf('user.role === "parent"');
+ const teacherStart=layout.indexOf('user.role === "teacher"');
+ assert.ok(studentStart>=0&&parentStart>studentStart&&teacherStart>parentStart);
+ assert.doesNotMatch(layout.slice(studentStart,parentStart),/teacher\/coefficients/);
+ assert.match(layout.slice(teacherStart),/to="\/app\/teacher\/coefficients"/);
+ assert.equal((layout.match(/to="\/app\/teacher\/coefficients"/g)??[]).length,1);
  assert.match(read("src/features/schools/pages/LocalSchoolGradeConfiguration.tsx"),/SchoolTeacherCoefficientDelegations/);
 });
 test("B6.2: CI fixtures test A/B, locked, revoked, rollback",()=>{
