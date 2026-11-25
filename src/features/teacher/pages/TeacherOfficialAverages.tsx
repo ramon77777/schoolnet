@@ -1,4 +1,5 @@
 import {useEffect,useState} from "react";
+import {paginateOfficialAverageRows,type OfficialAverageStatusFilter} from "@/features/teacher/lib/teacherOfficialAveragesTableModel";
 import {Link} from "react-router-dom";
 import {useAuth} from "@/lib/auth/AuthProvider";
 import {getTeacherOfficialAveragesCatalog} from "@/features/teacher/lib/teacherOfficialAveragesCatalogApi";
@@ -56,6 +57,9 @@ export default function TeacherOfficialAverages(){
  const [subjectId,setSubjectId]=useState("");
  const [periodId,setPeriodId]=useState("");
  const [search,setSearch]=useState("");
+ const [statusFilter,setStatusFilter]=useState<OfficialAverageStatusFilter>("all");
+ const [page,setPage]=useState(1);
+ const resetTableFilters=()=>{setSearch("");setStatusFilter("all");setPage(1);};
  const [previewRevision,setPreviewRevision]=useState(0);
  const [preview,setPreview]=useState<TeacherOfficialSubjectAverages|null>(null);
  const [previewFor,setPreviewFor]=useState("");
@@ -116,10 +120,8 @@ export default function TeacherOfficialAverages(){
  },[allowed,selectedAssignment,period,key]);
 
  const currentPreview=allowed&&previewState==="ready"&&previewFor===key?preview:null;
- const normalized=search.trim().toLocaleLowerCase("fr");
- const filteredRows=(currentPreview?.students??[]).filter(row=>
-  !normalized||row.studentName.toLocaleLowerCase("fr").includes(normalized))
-  .sort((a,b)=>a.studentName.localeCompare(b.studentName,"fr",{numeric:true}));
+ const table=paginateOfficialAverageRows(currentPreview?.students??[],search,statusFilter,page);
+ const filteredRows=table.rows;
  const ready=currentPreview?.students.filter(row=>row.state==="ready").length??0;
  const incomplete=currentPreview?.students.filter(row=>row.state==="incomplete").length??0;
  const unconfigured=currentPreview?.students.filter(row=>row.state==="not_configured").length??0;
@@ -201,7 +203,7 @@ export default function TeacherOfficialAverages(){
     <label className="space-y-1 text-sm font-semibold text-slate-800">
      Établissement
      <select className={selectClass} value={activeSchoolId} disabled={locked}
-      onChange={e=>{setSchoolId(e.target.value);setYearId("");setClassId("");setSubjectId("");setPeriodId("");setSearch("");}}>
+      onChange={e=>{setSchoolId(e.target.value);setYearId("");setClassId("");setSubjectId("");setPeriodId("");resetTableFilters();}}>
       {schools.length===0?<option value="">Aucun établissement</option>:
        schools.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
      </select>
@@ -209,7 +211,7 @@ export default function TeacherOfficialAverages(){
     <label className="space-y-1 text-sm font-semibold text-slate-800">
      Année scolaire
      <select className={selectClass} value={activeYearId} disabled={locked}
-      onChange={e=>{setYearId(e.target.value);setClassId("");setSubjectId("");setPeriodId("");setSearch("");}}>
+      onChange={e=>{setYearId(e.target.value);setClassId("");setSubjectId("");setPeriodId("");resetTableFilters();}}>
       {years.length===0?<option value="">Aucune année</option>:
        years.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
      </select>
@@ -217,7 +219,7 @@ export default function TeacherOfficialAverages(){
     <label className="space-y-1 text-sm font-semibold text-slate-800">
      Classe
      <select className={selectClass} value={activeClassId} disabled={locked}
-      onChange={e=>{setClassId(e.target.value);setSubjectId("");setPeriodId("");setSearch("");}}>
+      onChange={e=>{setClassId(e.target.value);setSubjectId("");setPeriodId("");resetTableFilters();}}>
       {classes.length===0?<option value="">Aucune classe</option>:
        classes.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
      </select>
@@ -225,7 +227,7 @@ export default function TeacherOfficialAverages(){
     <label className="space-y-1 text-sm font-semibold text-slate-800">
      Matière
      <select className={selectClass} value={activeSubjectId} disabled={locked}
-      onChange={e=>{setSubjectId(e.target.value);setPeriodId("");setSearch("");}}>
+      onChange={e=>{setSubjectId(e.target.value);setPeriodId("");resetTableFilters();}}>
       {subjects.length===0?<option value="">Aucune matière</option>:
        subjects.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
      </select>
@@ -234,7 +236,7 @@ export default function TeacherOfficialAverages(){
      Période de notation
      <select className={selectClass} value={activePeriodId}
       disabled={locked||periods.length===0}
-      onChange={e=>{setPeriodId(e.target.value);setSearch("");}}>
+      onChange={e=>{setPeriodId(e.target.value);resetTableFilters();}}>
       {periods.length===0?<option value="">Aucune période</option>:
        periods.map(p=><option key={p.id} value={p.id}>
         {p.name} ({p.code})
@@ -288,14 +290,27 @@ export default function TeacherOfficialAverages(){
         {" "}{currentPreview.subjectCoefficient??"non défini"}
        </p>
       </div>
-      <label className="block text-sm font-medium text-slate-700">
-       Rechercher un élève
-       <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
-        placeholder="Nom de l'élève…"
-        className="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"/>
-      </label>
+      <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
+       <label className="block text-sm font-medium text-slate-700">
+        Rechercher un élève
+        <input type="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}
+         placeholder="Nom de l'élève…" autoComplete="off"
+         className="mt-1 block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"/>
+       </label>
+       <label className="block text-sm font-medium text-slate-700">
+        Situation
+        <select className={selectClass} value={statusFilter} onChange={e=>{
+         setStatusFilter(e.target.value as OfficialAverageStatusFilter);setPage(1);
+        }}>
+         <option value="all">Toutes les situations</option>
+         <option value="ready">Calculable</option>
+         <option value="incomplete">Notes à compléter</option>
+         <option value="not_configured">Non paramétrée</option>
+        </select>
+       </label>
+      </div>
      </div>
-     <div className="overflow-x-auto">
+     <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[680px] text-left text-sm">
        <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
         <tr>
@@ -322,15 +337,31 @@ export default function TeacherOfficialAverages(){
        </tbody>
       </table>
      </div>
+     {filteredRows.length>0&&<div className="space-y-3 p-4 md:hidden">
+      {filteredRows.map(row=><article key={row.studentId} className="rounded-xl border border-slate-200 p-4">
+       <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="font-semibold text-slate-900">{row.studentName}</p>
+        <span className={"rounded-full px-3 py-1 text-xs font-semibold "+statusMeta[row.state].className}>{statusMeta[row.state].label}</span>
+       </div>
+       <div className="mt-3 flex items-end justify-between gap-3">
+        <p className="text-xs text-slate-600">{row.publishedAssessments} / {row.includedAssessments} évaluations publiées</p>
+        <p className="text-lg font-extrabold text-blue-700">{row.state==="ready"?displayScore(row.averageOn20):"—"}</p>
+       </div>
+      </article>)}
+     </div>}
      {filteredRows.length===0&&<p className="px-5 py-10 text-center text-sm text-slate-500">
       {currentPreview.students.length===0?
        "Aucun élève actuellement inscrit dans cette classe.":
        "Aucun élève ne correspond à cette recherche."}
      </p>}
-     <div className="border-t border-slate-100 px-5 py-4 text-xs leading-5 text-slate-500">
-      {filteredRows.length} élève(s) affiché(s). Une moyenne « calculable » reste
-      une prévisualisation : aucune moyenne générale, aucun rang et aucune
-      publication ne sont produits dans ce module.
+     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
+      <p className="text-xs leading-5 text-slate-500">{table.total} résultat(s) · Page {table.currentPage} sur {table.pageCount}. Prévisualisation non publiée.</p>
+      <div className="flex items-center gap-2">
+       <button type="button" className="sn-btn-ghost" disabled={table.currentPage<=1}
+        onClick={()=>setPage(n=>Math.max(1,n-1))}>← Précédent</button>
+       <button type="button" className="sn-btn-ghost" disabled={table.currentPage>=table.pageCount}
+        onClick={()=>setPage(n=>Math.min(table.pageCount,n+1))}>Suivant →</button>
+      </div>
      </div>
     </section>
    </>}
