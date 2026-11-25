@@ -484,13 +484,12 @@ export default function DashboardLayout() {
             </NavLink>
 
             <NavLink
-              className={navItem}
+              className={({isActive})=>navItem({
+                isActive:isActive||pathname==="/app/teacher/official-averages",
+              })}
               to="/app/teacher/averages"
             >
               📊 Moyennes
-            </NavLink>
-            <NavLink className={navItem} to="/app/teacher/official-averages">
-              📐 Moyennes officielles
             </NavLink>
 
             <NavLink

@@ -6,6 +6,9 @@ on:
       - 'src/features/teacher/lib/teacherOfficialAverages*'
       - 'scripts/test-schoolnet-s4c3b3-consolidation.mjs'
       - 'scripts/test-schoolnet-s4c3b4-local-fixtures.mjs'
+      - 'scripts/test-schoolnet-s4c3b6-1-averages-hub.mjs'
+      - 'src/features/teacher/pages/TeacherAveragesHub.tsx'
+      - 'src/features/teacher/lib/teacherAveragesHubModel.ts'
       - 'src/features/teacher/pages/TeacherOfficialAverages.tsx'
       - 'src/routes/router.tsx'
       - 'src/layouts/DashboardLayout.tsx'
@@ -37,6 +40,7 @@ jobs:
       - run: npm run qa:s4c3b2
       - run: npm run qa:s4c3b3
       - run: npm run qa:s4c3b4
+      - run: npm run qa:s4c3b6-1
       - run: npm run qa:s4c3a
       - run: npm run qa:s4c3a1
       - run: npm run lint
