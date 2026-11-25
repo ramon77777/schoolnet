@@ -20,7 +20,6 @@ on:
       - 'src/layouts/DashboardLayout.tsx'
       - 'supabase/proposals/s4c3b2_teacher_official_subject_averages.sql'
       - 'supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql'
-            supabase/proposals/s4c3b6_teacher_coefficients_delegation.sql
       - 'supabase/verification/s4c3b2_teacher_official_subject_averages_rollback_manual.sql'
       - 'supabase/verification/s4c3b2_teacher_official_averages_catalog_rollback_manual.sql'
       - 'scripts/test-schoolnet-s4c3b2-teacher-averages.mjs'
