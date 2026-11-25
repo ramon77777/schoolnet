@@ -11,10 +11,11 @@ export function paginateOfficialAverageRows(
  page:number,
  pageSize=OFFICIAL_AVERAGES_PAGE_SIZE,
 ){
- const needle=query.trim().toLocaleLowerCase("fr-FR");
+ const normalize=(value:string)=>value.normalize("NFD").replace(/\p{M}/gu,"").toLocaleLowerCase("fr-FR");
+ const needle=normalize(query.trim());
  const filtered=rows.filter(row=>
   (status==="all"||row.state===status)&&
-  (!needle||row.studentName.toLocaleLowerCase("fr-FR").includes(needle)),
+  (!needle||normalize(row.studentName).includes(needle)),
  ).sort((a,b)=>a.studentName.localeCompare(b.studentName,"fr",{numeric:true}));
  const safePageSize=Number.isSafeInteger(pageSize)&&pageSize>0?pageSize:OFFICIAL_AVERAGES_PAGE_SIZE;
  const pageCount=Math.max(1,Math.ceil(filtered.length/safePageSize));
