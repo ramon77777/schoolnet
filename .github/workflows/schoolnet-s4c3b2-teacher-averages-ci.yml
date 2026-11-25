@@ -4,8 +4,13 @@ on:
     paths:
       - '.github/workflows/schoolnet-s4c3b2-teacher-averages-ci.yml'
       - 'src/features/teacher/lib/teacherOfficialAverages*'
+      - 'src/features/teacher/pages/TeacherOfficialAverages.tsx'
+      - 'src/routes/router.tsx'
+      - 'src/layouts/DashboardLayout.tsx'
       - 'supabase/proposals/s4c3b2_teacher_official_subject_averages.sql'
+      - 'supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql'
       - 'supabase/verification/s4c3b2_teacher_official_subject_averages_rollback_manual.sql'
+      - 'supabase/verification/s4c3b2_teacher_official_averages_catalog_rollback_manual.sql'
       - 'scripts/test-schoolnet-s4c3b2-teacher-averages.mjs'
       - 'tests/s4c3b-tenant-ci/fixtures/teacher-averages-a-b.sql'
       - 'docs/releases/SCHOOLNET_S4C3B2_TEACHER_OFFICIAL_AVERAGES_2026-11-24.md'
@@ -77,12 +82,13 @@ jobs:
           for file in \
             supabase/proposals/s4c3a_official_periods_coefficients.sql \
             supabase/proposals/s4c3a1_automatic_period_codes.sql \
-            supabase/proposals/s4c3b2_teacher_official_subject_averages.sql
+            supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
+            supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql
           do
             psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f "$file" >/dev/null
           done
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
-            -v ON_ERROR_STOP=1 -c "SELECT to_regprocedure('public.schoolnet_teacher_official_subject_averages(uuid,uuid,uuid,uuid)') IS NOT NULL;" | grep -Fxq t
+            -v ON_ERROR_STOP=1 -c "SELECT to_regprocedure('public.schoolnet_teacher_official_subject_averages(uuid,uuid,uuid,uuid)') IS NOT NULL AND to_regprocedure('public.schoolnet_teacher_official_averages_catalog()') IS NOT NULL;" | grep -Fxq t
       - name: Run teacher A/B authorization, weighted scores, unpublished and rollback fixture
         env:
           PGPASSWORD: postgres
@@ -93,6 +99,12 @@ jobs:
             2>&1 | tee /tmp/schoolnet-c3b2-a-b.log
           for proof in \
             C3B2_PASS_SCHOOL_B_ISOLATED_POSITIVE \
+            C3B2_PASS_CATALOG_B_OWN_SCHOOL_ONLY \
+            C3B2_PASS_CATALOG_A_OWN_ASSIGNMENTS_AND_PERIODS \
+            C3B2_PASS_CATALOG_ADMIN_DENIED \
+            C3B2_PASS_CATALOG_UNASSIGNED_EMPTY \
+            C3B2_PASS_CATALOG_REVOKED_EMPTY \
+            C3B2_PASS_CATALOG_ANON_DENIED \
             C3B2_PASS_TEACHER_READ_PUBLISHED_ONLY \
             C3B2_PASS_UNCONFIGURED_PERIOD \
             C3B2_PASS_FOREIGN_SCHOOL_DENIED \
@@ -113,6 +125,11 @@ jobs:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -1 \
+            -f supabase/verification/s4c3b2_teacher_official_averages_catalog_rollback_manual.sql \
+            2>&1 | tee /tmp/schoolnet-c3b2-catalog-rollback.log
+          grep -Fq 'S4C3B2_CATALOG_TARGETED_ROLLBACK_OK' /tmp/schoolnet-c3b2-catalog-rollback.log
           psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
             -v ON_ERROR_STOP=1 -1 \
             -f supabase/verification/s4c3b2_teacher_official_subject_averages_rollback_manual.sql \
