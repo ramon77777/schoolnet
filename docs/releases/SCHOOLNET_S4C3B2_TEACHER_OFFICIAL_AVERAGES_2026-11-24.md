@@ -52,3 +52,21 @@ Exemple fictif : deux quiz officiels publiés, `20/20` coefficient 1 et `5/10` c
 - [ ] Intégration de la page enseignant, contrôles visuels et GO fusion/publication distincts.
 
 **Ne pas installer ce SQL sur Supabase principal sans une nouvelle autorisation explicite.**
+
+## Extension interface — 25 novembre 2026 (branche de développement uniquement)
+
+**GO accordé pour préparer l'écran enseignant, pas pour activer le SQL ni pour fusionner ou publier.**
+
+- Route protégée au rôle `teacher` : `/app/teacher/official-averages`.
+- Entrée propre `📐 Moyennes officielles` dans le menu enseignant, distincte du module historique `📊 Moyennes` (cours libres V1).
+- Page `src/features/teacher/pages/TeacherOfficialAverages.tsx` : filtres **établissement, année scolaire, classe, matière, période**, rechargement, indicateurs, recherche locale d'élève et tableau confidentiel.
+- Le tableau affiche **uniquement les moyennes de matière prévisionnelles calculables** : `ready`, `incomplete` et `not_configured`. Les moyennes incomplètes restent masquées (pas de zéro automatique). Aucune moyenne générale, aucun rang et aucun bouton d'édition ou publication.
+- Nouveau catalogue serveur **teacher-only** : `supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql`. Il retourne uniquement les affectations actives, classes/matières/périodes de l'enseignant courant (`auth.uid()`), sans élève ni note.
+- Contrat et API du catalogue : `src/features/teacher/lib/teacherOfficialAveragesCatalogModel.ts`, `teacherOfficialAveragesCatalogApi.ts` ; appels RPC uniquement. **Ne jamais réutiliser la RPC de configuration de l'administrateur `schoolnet_school_grading_configuration` pour ce rôle.**
+- Le catalogue et le calcul sont **deux fonctions distinctes à activer ultérieurement sur PostgreSQL**, après GO explicite, sauvegarde et tests :
+  `public.schoolnet_teacher_official_averages_catalog()` et `public.schoolnet_teacher_official_subject_averages(uuid,uuid,uuid,uuid)`.
+- Tant que le SQL n'est pas installé, la page affiche **« Activation SQL en attente »**, sans données fictives de notes ou `SELECT` de contournement.
+- Une vérification TypeScript/ESLint/build et une recette PostgreSQL **sur base jetable uniquement**, incluant deux établissements et les deux rollbacks ciblés, sont exigées avant toute proposition d'activation.
+- Le rollback du nouveau catalogue est indépendant du calcul : `supabase/verification/s4c3b2_teacher_official_averages_catalog_rollback_manual.sql`.
+
+**Toujours interdits à ce stade :** installation sur Supabase principal, publication des moyennes, fusion vers `main`, déploiement Vercel. L'interface et ses appels RPC restent isolés dans la PR en brouillon.
