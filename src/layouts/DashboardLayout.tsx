@@ -703,7 +703,7 @@ export default function DashboardLayout() {
         </button>
       </nav>
     );
-  }, [user, onLogout, unreadCount, pendingPublicRequests]);
+  }, [user, onLogout, unreadCount, pendingPublicRequests, pathname]);
 
   // ✅ Loading UI (évite les redirections pendant loading)
   if (loading) {
