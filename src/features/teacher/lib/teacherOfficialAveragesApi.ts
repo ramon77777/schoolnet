@@ -14,6 +14,14 @@ export async function getTeacherOfficialSubjectAverages(input:{
 }):Promise<TeacherOfficialSubjectAverages>{
  if(!input.schoolId||!input.periodId||!input.classId||!input.subjectId)
   throw new Error("Établissement, classe, matière et période requis.");
+ if(import.meta.env.DEV){
+  const demo=await import("./teacherOfficialAveragesDevFixture");
+  if(demo.isTeacherOfficialAveragesDevFixtureEnabled()){
+   const result=demo.makeTeacherOfficialAveragesDemoPreview(input);
+   if(!isTeacherOfficialSubjectAverages(result,input))throw new Error("Moyennes fictives invalides.");
+   return result;
+  }
+ }
  const {data,error}=await supabase.rpc("schoolnet_teacher_official_subject_averages",{
   p_school_id:input.schoolId,
   p_period_id:input.periodId,

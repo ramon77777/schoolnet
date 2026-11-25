@@ -165,6 +165,15 @@ export default function TeacherOfficialAverages(){
    de publication n'a pas été validée.
   </div>
 
+  {import.meta.env.DEV && typeof window!=="undefined" &&
+   (window.location.hostname==="127.0.0.1"||window.location.hostname==="localhost") &&
+   new URLSearchParams(window.location.search).get("schoolnet_c3b4_demo")==="1" &&
+   <div role="status" className="rounded-xl border border-violet-300 bg-violet-50 p-4 text-sm font-medium text-violet-900">
+    MODE RECETTE LOCALE C.3-B.4 — données 100 % fictives, non publiées.
+    Le tableau simule les réponses du serveur pour tester les filtres, la pagination
+    et le responsive. Les droits et calculs SQL sont vérifiés séparément en CI.
+    Aucune note réelle n'est lue pour ce tableau.
+   </div>}
   {!authLoading&&!allowed&&
    <div role="alert" className="sn-card p-5 text-sm text-red-700">
     Connectez-vous avec un compte enseignant réel pour consulter ce module.
