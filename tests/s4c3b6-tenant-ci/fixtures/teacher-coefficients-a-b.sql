@@ -166,7 +166,9 @@ BEGIN
  PERFORM public.schoolnet_teacher_set_assessment_coefficient(
   s,t,'a0000000-0000-4000-8000-000000000001',3,true);
  v:=public.schoolnet_teacher_coefficient_settings(s);
- IF (v->'assessments'->0->>'coefficient')::numeric<>3 OR
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v->'assessments') item
+   WHERE item->>'assessmentId'='a0000000-0000-4000-8000-000000000001'
+     AND (item->>'coefficient')::numeric=3) OR
    jsonb_array_length(v->'history')<>1
  THEN RAISE EXCEPTION 'B6_TEACHER_WRITE_AUDIT_MISSING'; END IF;
  RAISE NOTICE 'S4C3B6_PASS_OWN_ASSESSMENT_AUDITED';
