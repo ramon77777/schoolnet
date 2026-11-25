@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/schoolnet-s4c3b2-teacher-averages-ci.yml'
       - 'src/features/teacher/lib/teacherOfficialAverages*'
+      - 'scripts/test-schoolnet-s4c3b3-consolidation.mjs'
       - 'src/features/teacher/pages/TeacherOfficialAverages.tsx'
       - 'src/routes/router.tsx'
       - 'src/layouts/DashboardLayout.tsx'
@@ -33,6 +34,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run qa:s4c3b1
       - run: npm run qa:s4c3b2
+      - run: npm run qa:s4c3b3
       - run: npm run qa:s4c3a
       - run: npm run qa:s4c3a1
       - run: npm run lint
