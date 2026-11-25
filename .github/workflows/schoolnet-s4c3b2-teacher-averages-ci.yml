@@ -1,0 +1,141 @@
+name: SCHOOLNET S4-C.3-B.2 - teacher official averages (A/B disposable)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/schoolnet-s4c3b2-teacher-averages-ci.yml'
+      - 'src/features/teacher/lib/teacherOfficialAverages*'
+      - 'scripts/test-schoolnet-s4c3b3-consolidation.mjs'
+      - 'scripts/test-schoolnet-s4c3b4-local-fixtures.mjs'
+      - 'src/features/teacher/pages/TeacherOfficialAverages.tsx'
+      - 'src/routes/router.tsx'
+      - 'src/layouts/DashboardLayout.tsx'
+      - 'supabase/proposals/s4c3b2_teacher_official_subject_averages.sql'
+      - 'supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql'
+      - 'supabase/verification/s4c3b2_teacher_official_subject_averages_rollback_manual.sql'
+      - 'supabase/verification/s4c3b2_teacher_official_averages_catalog_rollback_manual.sql'
+      - 'scripts/test-schoolnet-s4c3b2-teacher-averages.mjs'
+      - 'tests/s4c3b-tenant-ci/fixtures/teacher-averages-a-b.sql'
+      - 'docs/releases/SCHOOLNET_S4C3B2_TEACHER_OFFICIAL_AVERAGES_2026-11-24.md'
+      - 'package.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract-lint-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3b1
+      - run: npm run qa:s4c3b2
+      - run: npm run qa:s4c3b3
+      - run: npm run qa:s4c3b4
+      - run: npm run qa:s4c3a
+      - run: npm run qa:s4c3a1
+      - run: npm run lint
+      - run: npm run build
+  isolated-postgres-a-b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start a disposable Supabase local PostgreSQL (never hosted)
+        working-directory: tests/s4b3c1-tenant-ci
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Install fake school and assessment schema locally
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for file in \
+            tests/s4b1-tenant-ci/fixtures/legacy-minimal.sql \
+            supabase/proposals/s3c_school_class_assignments.sql \
+            supabase/proposals/s4a_school_pedagogy_overview.sql \
+            tests/s4b1-tenant-ci/fixtures/course-core.sql \
+            supabase/proposals/s4b1_school_course_bridge.sql \
+            tests/s4b2-tenant-ci/fixtures/course-content.sql \
+            supabase/proposals/s4b2_student_school_courses.sql \
+            supabase/proposals/s4b2r_teacher_course_class_summary.sql \
+            tests/s4b3-tenant-ci/fixtures/assessment-core.sql \
+            tests/s4b3b0-tenant-ci/fixtures/submission-core.sql \
+            supabase/proposals/s4b3a_school_assessment_links.sql
+          do
+            psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f "$file" >/dev/null
+          done
+          psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "ALTER TABLE public.schoolnet_school_memberships ADD COLUMN revoked_at timestamptz; ALTER TABLE public.school_years ADD COLUMN starts_on date NOT NULL DEFAULT DATE '2026-09-01', ADD COLUMN ends_on date NOT NULL DEFAULT DATE '2027-07-31';"
+      - name: Install C3-A, auto-codes and C3-B.2 on local PG only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for file in \
+            supabase/proposals/s4c3a_official_periods_coefficients.sql \
+            supabase/proposals/s4c3a1_automatic_period_codes.sql \
+            supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
+            supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql
+          do
+            psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f "$file" >/dev/null
+          done
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -c "SELECT to_regprocedure('public.schoolnet_teacher_official_subject_averages(uuid,uuid,uuid,uuid)') IS NOT NULL AND to_regprocedure('public.schoolnet_teacher_official_averages_catalog()') IS NOT NULL;" | grep -Fxq t
+      - name: Run teacher A/B authorization, weighted scores, unpublished and rollback fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -f tests/s4c3b-tenant-ci/fixtures/teacher-averages-a-b.sql \
+            2>&1 | tee /tmp/schoolnet-c3b2-a-b.log
+          for proof in \
+            C3B2_PASS_SCHOOL_B_ISOLATED_POSITIVE \
+            C3B2_PASS_CATALOG_B_OWN_SCHOOL_ONLY \
+            C3B2_PASS_CATALOG_A_OWN_ASSIGNMENTS_AND_PERIODS \
+            C3B2_PASS_CATALOG_ADMIN_DENIED \
+            C3B2_PASS_CATALOG_UNASSIGNED_EMPTY \
+            C3B2_PASS_CATALOG_REVOKED_EMPTY \
+            C3B2_PASS_CATALOG_ANON_DENIED \
+            C3B2_PASS_TEACHER_READ_PUBLISHED_ONLY \
+            C3B2_PASS_UNCONFIGURED_PERIOD \
+            C3B2_PASS_FOREIGN_SCHOOL_DENIED \
+            C3B2_PASS_UNASSIGNED_SUBJECT_DENIED \
+            C3B2_PASS_CROSS_PERIOD_DENIED \
+            C3B2_PASS_WEIGHTED_12_50_ZERO_AND_V1_EXCLUDED \
+            C3B2_PASS_ADMIN_NO_STUDENT_GRADES \
+            C3B2_PASS_TEACHER_WITHOUT_ASSIGNMENT_DENIED \
+            C3B2_PASS_REVOKED_STUDENT_HIDDEN \
+            C3B2_PASS_REVOKED_TEACHER_DENIED \
+            C3B2_PASS_ANON_DENIED \
+            S4C3B2_A_B_FIXTURE_ROLLED_BACK
+          do
+            grep -Fq "$proof" /tmp/schoolnet-c3b2-a-b.log
+          done
+      - name: Verify targeted rollback on ephemeral PG only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -1 \
+            -f supabase/verification/s4c3b2_teacher_official_averages_catalog_rollback_manual.sql \
+            2>&1 | tee /tmp/schoolnet-c3b2-catalog-rollback.log
+          grep -Fq 'S4C3B2_CATALOG_TARGETED_ROLLBACK_OK' /tmp/schoolnet-c3b2-catalog-rollback.log
+          psql -X -A -t -h 127.0.0.1 -p 54342 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -1 \
+            -f supabase/verification/s4c3b2_teacher_official_subject_averages_rollback_manual.sql \
+            2>&1 | tee /tmp/schoolnet-c3b2-rollback.log
+          grep -Fq 'S4C3B2_TARGETED_ROLLBACK_OK' /tmp/schoolnet-c3b2-rollback.log

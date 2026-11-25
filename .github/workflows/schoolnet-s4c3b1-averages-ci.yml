@@ -1,0 +1,32 @@
+name: SCHOOLNET S4-C.3-B.1 - official averages pure math / no production SQL
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/schoolnet-s4c3b1-averages-ci.yml'
+      - 'src/features/schools/lib/schoolOfficialAverageMath.ts'
+      - 'scripts/test-schoolnet-s4c3b1-official-averages.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3B1_OFFICIAL_AVERAGES_CALCULATION_2026-11-24.md'
+      - 'package.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pure-formulas:
+    name: C3-B.1 - pure averages, privacy, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3b1
+      - run: npm run qa:s4c3a
+      - run: npm run qa:s4c3a1
+      - run: npm run lint
+      - run: npm run build
