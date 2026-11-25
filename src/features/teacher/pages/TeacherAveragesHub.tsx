@@ -10,10 +10,10 @@ import TeacherAverages from "./TeacherAverages";
 import TeacherOfficialAverages from "./TeacherOfficialAverages";
 
 type Snapshot={
- ownerId:string;status:"loading"|"ready"|"error";
+ ownerId:string;revision:number;status:"ready"|"error";
  officialCount:number;legacyCount:number;
 };
-const empty:Snapshot={ownerId:"",status:"loading",officialCount:0,legacyCount:0};
+const empty:Snapshot={ownerId:"",revision:-1,status:"ready",officialCount:0,legacyCount:0};
 const optionButton=(active:boolean)=>
  "rounded-xl px-4 py-3 text-sm font-semibold transition-colors "+
  (active?"bg-blue-600 text-white shadow-sm":
@@ -32,7 +32,6 @@ export default function TeacherAveragesHub(){
  useEffect(()=>{
   if(!ownerId)return;
   let cancelled=false;
-  setSnapshot({ownerId,status:"loading",officialCount:0,legacyCount:0});
   void Promise.all([
    getTeacherOfficialAveragesCatalog(),
    supabase.rpc("teacher_average_classes"),
@@ -40,16 +39,16 @@ export default function TeacherAveragesHub(){
    if(legacy.error)throw legacy.error;
    const legacyCount=countTeacherLegacyAverageClasses(legacy.data);
    if(cancelled)return;
-   setSnapshot({ownerId,status:"ready",
+   setSnapshot({ownerId,revision,status:"ready",
     officialCount:official.assignments.length,legacyCount});
   }).catch(()=>{
    if(cancelled)return;
-   setSnapshot({ownerId,status:"error",officialCount:0,legacyCount:0});
+   setSnapshot({ownerId,revision,status:"error",officialCount:0,legacyCount:0});
   });
   return()=>{cancelled=true;};
  },[ownerId,revision]);
 
- const current=ownerId&&snapshot.ownerId===ownerId?snapshot:null;
+ const current=ownerId&&snapshot.ownerId===ownerId&&snapshot.revision===revision?snapshot:null;
  const selection=current?.status==="ready"?
   selectTeacherAverageSpace(
    current.officialCount,current.legacyCount,searchParams.get("tab")):null;
@@ -60,7 +59,7 @@ export default function TeacherAveragesHub(){
   params.set("tab",tab);
   setSearchParams(params,{replace:true});
  };
- if(authLoading||ownerId&&!current||current?.status==="loading"){
+ if(authLoading||(Boolean(ownerId)&&!current)){
   return <section role="status" aria-busy="true" className="sn-card p-6 text-sm text-slate-600">
    Vérification de vos classes et affectations autorisées…
   </section>;
