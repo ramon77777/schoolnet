@@ -152,9 +152,12 @@ export default function TeacherOfficialAverages({embedded=false}:{embedded?:bool
       incluses par votre établissement entrent dans le calcul.
      </p>
     </div>
+    <div className="flex flex-wrap items-center gap-2">
+     <Link className="sn-btn-ghost" to="/app/teacher/coefficients">🧮 Mes coefficients</Link>
     {!embedded&&<Link className="sn-btn-ghost" to="/app/teacher/averages">
      ← Mes moyennes
     </Link>}
+    </div>
    </div>
   </header>
 

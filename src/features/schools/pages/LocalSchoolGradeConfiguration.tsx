@@ -11,6 +11,7 @@ import {
 } from "@/features/schools/lib/schoolGradeConfigurationApi";
 import {availablePeriods,validCoefficient,type SchoolGradeConfig,type SchoolGradePeriod}
  from "@/features/schools/lib/schoolGradeConfigurationModel";
+import SchoolTeacherCoefficientDelegations from "@/features/schools/components/SchoolTeacherCoefficientDelegations";
 import {periodKindFromCode,previewNextPeriodCode,suggestedPeriodName,
  type SchoolPeriodKind} from "@/features/schools/lib/schoolGradePeriodCodes";
 
@@ -376,5 +377,6 @@ export default function LocalSchoolGradeConfiguration(){
     </div>
    </section>}
   </div>}
+  {current&&selectedSchool&&<SchoolTeacherCoefficientDelegations schoolId={selectedSchool.id}/>}
  </main>;
 }

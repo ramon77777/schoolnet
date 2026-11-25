@@ -264,6 +264,9 @@ export default function DashboardLayout() {
             >
               📊 Moyennes
             </NavLink>
+            <NavLink className={navItem} to="/app/teacher/coefficients">
+              🧮 Mes coefficients
+            </NavLink>
 
             <NavLink
               className={navItem}

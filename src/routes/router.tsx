@@ -54,6 +54,7 @@ import TeacherDashboard from "@/features/teacher/pages/TeacherDashboard";
 import TeacherAverages from "@/features/teacher/pages/TeacherAverages";
 import TeacherAveragesHub from "@/features/teacher/pages/TeacherAveragesHub";
 import TeacherOfficialAverages from "@/features/teacher/pages/TeacherOfficialAverages";
+import TeacherCoefficients from "@/features/teacher/pages/TeacherCoefficients";
 import TeacherReportCards from "@/features/teacher/pages/TeacherReportCards";
 import TeacherAttendance from "@/features/teacher/pages/TeacherAttendance";
 import TeacherTimetable from "@/features/teacher/pages/TeacherTimetable";
@@ -383,6 +384,7 @@ export const router = createBrowserRouter([
               // Legacy direct URL retained: never alter the V1 average engine.
               { path: "teacher/averages/free", element: <TeacherAverages /> },
               { path: "teacher/official-averages", element: <TeacherOfficialAverages /> },
+              { path: "teacher/coefficients", element: <TeacherCoefficients /> },
               {
                 path: "teacher/report-cards",
                 element: <TeacherReportCards />,

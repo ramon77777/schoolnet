@@ -38,7 +38,8 @@
     "qa:s4c3b2": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b2-teacher-averages.mjs",
     "qa:s4c3b3": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b3-consolidation.mjs",
     "qa:s4c3b4": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b4-local-fixtures.mjs",
-    "qa:s4c3b6-1": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b6-1-averages-hub.mjs"
+    "qa:s4c3b6-1": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b6-1-averages-hub.mjs",
+    "qa:s4c3b6-2": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b6-2-coefficients.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
