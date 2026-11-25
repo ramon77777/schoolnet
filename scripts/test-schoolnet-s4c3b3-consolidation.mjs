@@ -26,6 +26,9 @@ test("C3-B.3: filtering, accent-insensitive casing and page clamping",()=>{
  assert.equal(result.currentPage,1);
  assert.equal(result.total,3);
  assert.equal(result.rows.every(r=>r.state==="ready"),true);
+ const unaccented=paginateOfficialAverageRows(students,"ELEVE 01","all",1);
+ assert.equal(unaccented.total,1);
+ assert.equal(unaccented.rows[0].studentName,"Élève 01");
  assert.equal(paginateOfficialAverageRows(students,"not found","all",2).total,0);
  assert.equal(paginateOfficialAverageRows(students,"","all",0).currentPage,1);
  assert.equal(paginateOfficialAverageRows(students,"","all",NaN).currentPage,1);
