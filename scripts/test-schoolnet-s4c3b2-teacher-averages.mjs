@@ -143,7 +143,7 @@ test("C3-B.2 UI: route enseignant indépendante de la V1 et affichage sans publi
  assert.match(page,/getTeacherOfficialSubjectAverages\(/);
  assert.match(page,/Prévisualisation uniquement/);
  assert.match(page,/row\.state==="ready"/);
- assert.match(page,/Activ ation SQL en attente/.replace(" ","")); // user-facing unavailable state
+ assert.match(page,/Activation SQL en attente/); // user-facing unavailable state
  assert.doesNotMatch(page,/supabase\.from\(|supabase\.auth|\.insert\(|\.update\(|\.delete\(/);
  assert.doesNotMatch(page,/Exporter les notes|Publier les moyennes|Envoyer aux parents/);
 });
