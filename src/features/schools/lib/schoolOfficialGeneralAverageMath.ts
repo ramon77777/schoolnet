@@ -12,7 +12,7 @@ import {
   computeOfficialAveragePreview,
   type OfficialAssessmentForAverage,
   type OfficialSubjectCoefficient,
-} from "./schoolOfficialAverageMath";
+} from "./schoolOfficialAverageMath.ts";
 
 export type OfficialSchoolScope = {
   schoolId: string;
