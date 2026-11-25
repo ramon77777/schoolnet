@@ -100,6 +100,7 @@ jobs:
             supabase/proposals/s4c3a1_automatic_period_codes.sql \
             supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
             supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql \
+            supabase/proposals/s4c3b6_teacher_coefficients_delegation.sql
           do
             psql -X -h 127.0.0.1 -p 54342 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 -f "$file" >/dev/null
           done
