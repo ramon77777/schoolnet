@@ -128,14 +128,16 @@ test("C3-B.2 UI: catalogue SQL strict, RPC lecture seule et permissions",()=>{
  assert.doesNotMatch(api,/supabase\.from\(/);
 });
 
-test("C3-B.2 UI: route enseignant indépendante de la V1 et affichage sans publication",()=>{
+test("C3-B.2 UI: route officielle conservée dans le menu Moyennes unifié, sans publication",()=>{
  const routes=readFileSync(new URL("../src/routes/router.tsx",import.meta.url),"utf8");
  const sidebar=readFileSync(new URL("../src/layouts/DashboardLayout.tsx",import.meta.url),"utf8");
  const page=readFileSync(new URL(
   "../src/features/teacher/pages/TeacherOfficialAverages.tsx",import.meta.url),"utf8");
  assert.match(routes,/teacher\/official-averages/);
  assert.match(routes,/TeacherOfficialAverages/);
- assert.match(sidebar,/to="\/app\/teacher\/official-averages"/);
+ assert.doesNotMatch(sidebar,/to="\/app\/teacher\/official-averages"/);
+ assert.match(routes,/TeacherAveragesHub/);
+ assert.match(routes,/teacher\/averages\/free/);
  assert.match(sidebar,/to="\/app\/teacher\/averages"/);
  assert.match(page,/user\.role==="teacher"/);
  assert.match(page,/!user\.isDemo/);
