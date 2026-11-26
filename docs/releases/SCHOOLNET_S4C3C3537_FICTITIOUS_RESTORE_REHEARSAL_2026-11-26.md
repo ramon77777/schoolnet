@@ -61,3 +61,5 @@ Une future utilisation de la sauvegarde réelle SCHOOLNET exigera un **GO explic
 **AUCUNE restauration réelle, aucune intervention sur Supabase principal, aucun import de données réelles, aucune fusion `main`, aucun Vercel et aucun export de notes réelles.** Le verrou `SCHOOLNET_REAL_EXPORTS_RELEASED = false` reste en place.
 
 Référence officielle : [Supabase — Backup and Restore using the CLI](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore).
+
+Ce test ne prouve pas une restauration complète de Supabase Auth et Storage, même si PostgreSQL et les octets fictifs sont testés avec de véritables outils de sauvegarde.
