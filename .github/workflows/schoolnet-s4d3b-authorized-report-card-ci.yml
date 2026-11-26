@@ -1,0 +1,95 @@
+name: SCHOOLNET S4-D.3b - authorized report card subject lines and real JWT
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d3a-fictional-reportcard-preview-20261126
+    paths:
+      - 'src/features/official-documents/lib/schoolAuthorizedReportCardModel.ts'
+      - 'src/features/official-documents/lib/schoolAuthorizedReportCardApi.ts'
+      - 'src/features/official-documents/lib/schoolAuthorizedReportCardDevFixture.ts'
+      - 'src/features/official-documents/pages/SchoolAuthorizedStudentReportCard.tsx'
+      - 'src/features/schools/pages/LocalSchoolOfficialGeneralAverages.tsx'
+      - 'supabase/proposals/s4d3b_school_report_card_authorized_preview.sql'
+      - 'tests/s4c3c35-supabase-ci/report-card-http.mjs'
+      - 'scripts/test-schoolnet-s4d3b-report-card-contract.mjs'
+      - 'docs/releases/SCHOOLNET_S4D3B_AUTHORIZED_SUBJECT_REPORT_CARD_2026-11-26.md'
+      - '.github/workflows/schoolnet-s4d3b-authorized-report-card-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d3b-subject-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  functional-contracts:
+    name: Read-only subject line client and existing SCHOOLNET screens
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d3b
+      - run: npm run qa:s4d3a
+      - run: npm run qa:s4c5
+      - run: npm run qa:s4c3c4
+      - run: npm run qa:s4c3c33
+      - run: npm run qa:s4d2c2
+      - run: npm run lint
+      - run: npm run build
+
+  disposable-real-auth:
+    name: GoTrue JWT and PostgREST access to ONE student report-card subject projection
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start local disposable Supabase with GoTrue and REST
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Install unchanged C3-C3 dependencies and new S4-D.3b PROPOSAL in local Postgres only
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4d3b_school_report_card_authorized_preview.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "NOTIFY pgrst, 'reload schema';"
+          sleep 2
+      - name: Test local Auth/JWT admin, teacher, parent, students and A-B isolation
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          test "${API_URL}" = "http://127.0.0.1:55421"
+          node --test report-card-http.mjs
+      - name: Drop the disposable DB and all fictional Auth users
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true
