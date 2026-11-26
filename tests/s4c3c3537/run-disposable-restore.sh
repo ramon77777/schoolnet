@@ -63,7 +63,7 @@ pg pg_dump -Fc --no-owner --schema=schoolnet_rehearsal \
 test -s "$TMP/fictitious.dump"
 (cd "$TMP" && sha256sum fictitious.dump > fictitious.dump.sha256)
 (cd "$TMP" && sha256sum -c fictitious.dump.sha256)
-pg pg_restore -l /synthetic/fictitious.dump | grep -Fq 'TABLE schoolnet_rehearsal students'
+pg pg_restore -l /synthetic/fictitious.dump | grep -F 'TABLE schoolnet_rehearsal students' >/dev/null
 echo "PASS Authentic pg_dump archive and inventory"
 
 cp "$TMP/fictitious.dump" "$TMP/tampered.dump"
