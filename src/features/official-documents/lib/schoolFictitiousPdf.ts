@@ -5,7 +5,7 @@
 import {
   assertFictionalExportDocument, FICTIONAL_EXPORT_LABEL, FICTIONAL_TEST_LABEL,
   frenchAverage, frenchStatus, type FictionalExportDocument,
-} from "./schoolFictitiousExportDocument";
+} from "./schoolFictitiousExportDocument.ts";
 
 const extended: Record<number, number> = {
   0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84,
