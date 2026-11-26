@@ -9,7 +9,13 @@ Le sous-lot **S4-D.2c.4** a été validé par l'utilisateur sur Windows : branch
 
 L'audit précédent C.3-C.3.5.3.2 avait figé une divergence **62 migrations Supabase / 54 fichiers GitHub**, soit **10 versions enregistrées uniquement à distance** et **2 fichiers présents uniquement dans GitHub**. L'observation directe actuelle par le connecteur Supabase retrouve exactement **62 / 54, 10 / 2**. L'historique distant se termine par la version **20261125132844**.
 
-La déclaration de provenance `tests/s4c3c353/migration-reconciliation.manifest.json` reste la référence. Les dix fichiers SQL historiques originaux ne sont **pas certifiés** : neuf groupes ont des propositions candidates, pas une preuve d'exécution identique. La version du **13 novembre 2026**, `20261113124329`, reste sans source originale vérifiée. La présence d'une version dans l'historique ne prouve pas l'identité de ses instructions SQL. **Ne pas renommer les propositions pour simuler des migrations déjà exécutées.**
+Le manifeste `tests/s4c3c353/migration-reconciliation.manifest.json` reste le **constat historique initial**, établi avant la découverte ci-dessous. Il signalait neuf groupes SQL candidats et l'absence du fichier du **13 novembre 2026**. Il n'est pas réécrit rétroactivement.
+
+**Découverte nouvelle — registre `supabase_migrations.schema_migrations.statements` :** les dix versions historiques manquantes possèdent chacune **un bloc SQL non vide** enregistré sur Supabase principal. Une comparaison du contenu entier, sans lecture de données d'élèves, établit **huit correspondances strictement identiques** à un fichier SQL déjà présent dans GitHub. La version du **13 novembre** a été retrouvée dans le registre puis archivée exactement sous `tests/s4c3c3534/recovered-ledger/` ; la version du **25 novembre à 10 h 46** contient l'intégralité de deux propositions GitHub assemblées, avec un en-tête historique de 184 caractères et un séparateur LF. Son texte historique complet a également été archivé.
+
+Chaque contenu, source existante ou copie inertielle, est vérifié par son **SHA-256 calculé côté PostgreSQL 17** et recalculé sur les octets du blob Git. Le registre `tests/s4c3c3534/ledger-statement-evidence.json` donne les dix empreintes et les correspondances, sans divulguer de valeurs privées. Les deux copies ont l'extension **`.sql.txt`**, **hors `supabase/migrations`** : elles ne sont ni des migrations actives ni une instruction de les appliquer.
+
+**Portée exacte de la preuve :** le texte stocké dans le registre Supabase est désormais retrouvé et corroboré au niveau des octets. Cela ne démontre pas de manière indépendante que tous les effets DDL restent effectifs, ni que le registre n'a jamais subi de modifications. **Aucun `migration repair`, réexécution SQL ou transfert de données scolaires n'est autorisé par cette découverte.**
 
 ### 2. Résultats réels de l'inspection de catalogue
 
@@ -53,13 +59,15 @@ La porte `tests/s4c3c3533/recovery-readiness.json` reste bloquée : aucune nouve
 ### 7. Artifacts vérifiables du sous-lot
 
 - `tests/s4c3c3534/readonly-parity-observation.json` : snapshot réduit, **métadonnées seulement**, enregistrement immuable de ce que le catalogue a confirmé et de ce qu'il n'a pas prouvé.
+- `tests/s4c3c3534/ledger-statement-evidence.json` : dix empreintes **SHA-256**, huit fichiers candidats strictement identiques et deux archives supplémentaires non exécutables.
+- `tests/s4c3c3534/recovered-ledger/*.sql.txt` : textes du registre distant du **13/11** et du **25/11** conservés sans modification, isolés des migrations SQL exécutables. Le filtre automatique de secrets n'a détecté aucun motif évident dans ces deux textes ; une relecture humaine reste nécessaire.
 - `tests/s4c3c3534/readonly-catalog-audit.sql` : exemple de quatre requêtes **SELECT-only** pour rejouer un contrôle de catalogue lors d'un audit autorisé. La CI ne l'exécute pas contre un serveur.
 - `scripts/test-schoolnet-s4c3c3534-readonly-parity.mjs` : comparaison automatique avec les manifestes historiques et les blocages de sauvegarde ; vérifications de non-activation.
 - `.github/workflows/schoolnet-s4c3c3534-readonly-parity-ci.yml` : exécution Node, vérifications antérieures, lint et build **sans identifiant ni réseau Supabase**.
 
 ### 8. Critères concrets pour lever les blocages, et ordre des décisions
 
-1. **Sources historiques :** obtenir les SQL originaux certifiés des 10 versions, notamment du 13 novembre, ou enregistrer une autre preuve formelle approuvée qui distingue clairement présence d'objets et source historique. Aucune modification du registre distant par commodité.
+1. **Sources historiques :** les dix textes enregistrés dans le registre distant sont désormais retrouvés et hachés. Faire **relire et approuver** leur provenance, leurs éventuels effets secondaires et les différences avec le schéma effectivement installé, en particulier le fichier du 13 novembre et l'assemblage du 25 novembre. Ne jamais déduire de l'identité du texte que les effets sont encore présents ; **aucune modification du registre distant**.
 2. **Deux fichiers Git-only :** approuver explicitement la décision par migration. La sécurisation des corrections pourrait être déjà effective mais non attribuable à ce fichier exact ; la bascule annuelle n'est pas installée et ne doit pas être confondue avec les moyennes générales.
 3. **Sauvegarde privée et restauration :** vérifier un export récent DB et une cible de test isolée, inventorier Auth/config et Storage, comparer structures et permissions, disposer d'un retour arrière réellement testé. Cette opération nécessitera un GO distinct.
 4. **Parité technique :** réconcilier le SQL cible C.3-C.3 avec les définitions réelles des functions, grants, RLS et hooks. Tester ensuite dans une base jetable représentative, sans importer d'élèves ni de notes.
