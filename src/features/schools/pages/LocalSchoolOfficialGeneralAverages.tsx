@@ -643,7 +643,7 @@ export default function LocalSchoolOfficialGeneralAverages() {
                           {selectedStudentReview.explanation}
                         </p>
                         <p className="mt-2 text-xs text-slate-500">
-                          Aucune note brute, aucun bulletin créé ou publié depuis cette fiche.
+                          Aucun recalcul local, aucune note brute, aucun bulletin créé ou publié.
                         </p>
                         {scope && currentCurriculum?.status === "approved" &&
                           currentPreview?.state === "preview" && reportViewer &&
