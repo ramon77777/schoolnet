@@ -1,0 +1,24 @@
+# SCHOOLNET V2 C.3-C.3.5.1: ephemeral local stack in GitHub Actions ONLY.
+# Never link to a hosted Supabase project. No production users, keys or data.
+project_id = "schoolnet_s4c3c35_full_auth_http_ci"
+
+[api]
+port = 55421
+enabled = true
+schemas = ["public", "graphql_public"]
+
+[db]
+major_version = 17
+port = 55422
+shadow_port = 55423
+
+[db.seed]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://localhost:55421"
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
