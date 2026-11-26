@@ -26,6 +26,7 @@ import LocalSchoolAssignments from "@/features/schools/pages/LocalSchoolAssignme
 import LocalSchoolPedagogy from "@/features/schools/pages/LocalSchoolPedagogy";
 import LocalSchoolAssessmentSupervision from "@/features/schools/pages/LocalSchoolAssessmentSupervision";
 import LocalSchoolGradeConfiguration from "@/features/schools/pages/LocalSchoolGradeConfiguration";
+import LocalSchoolOfficialGeneralAverages from "@/features/schools/pages/LocalSchoolOfficialGeneralAverages";
 import LocalSchoolCourses from "@/features/schools/pages/LocalSchoolCourses";
 import AdminAverages from "@/features/admin/pages/AdminAverages";
 import AdminPublicSite from "@/features/admin/pages/AdminPublicSite";
@@ -413,6 +414,7 @@ export const router = createBrowserRouter([
               { path: "school/courses", element: <LocalSchoolCourses /> },
                { path: "school/assessments", element: <LocalSchoolAssessmentSupervision /> },
               { path: "school/grading-settings", element: <LocalSchoolGradeConfiguration /> },
+               { path: "school/official-general-averages", element: <LocalSchoolOfficialGeneralAverages /> },
             ],
           },
 
