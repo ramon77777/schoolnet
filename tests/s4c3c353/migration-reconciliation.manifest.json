@@ -1,0 +1,147 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.2",
+  "observedOn": "2026-11-26",
+  "source": "non-destructive live-schema and migration-history inspection in S4-C.3-C.3.5.3.1; repository tree at fixed commit",
+  "baseCommit": "ffbfc8a942d6563abe82d4dd8fa0dac63e052cf2",
+  "supabaseProject": "schoolnet_2.0",
+  "supabaseProjectRef": "anttmbhaphkhmkoqsofd",
+  "comparison": {
+    "registeredRemoteVersions": 62,
+    "repositoryMigrationFiles": 54,
+    "historyOnlyVersions": 10,
+    "repositoryOnlyVersions": 2,
+    "reconciliationStatus": "BLOCKED_NO_DEPLOY"
+  },
+  "historyOnly": [
+    {
+      "version": "20261112140100",
+      "name": "schoolnet_family_password_auth_hook_proof_20261112",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/20261112_family_password_auth_hook_proof.sql",
+          "blobSha": "a6b6b1057c80d10a308bbd8a15ab8b9fe8c49eb3"
+        }
+      ]
+    },
+    {
+      "version": "20261113124329",
+      "name": "schoolnet_student_no_email_security_release_20261113",
+      "provenance": "ORIGINAL_SOURCE_NOT_VERIFIED",
+      "candidates": []
+    },
+    {
+      "version": "20261123105413",
+      "name": "schoolnet_s4b3b2_official_assessment_attempts",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4b3b2_official_assessment_attempts.sql",
+          "blobSha": "7cfffdce37ca1c7160687f35b7a7c912fbc7d6d9"
+        }
+      ]
+    },
+    {
+      "version": "20261123125725",
+      "name": "schoolnet_s4b3b3_official_teacher_grading",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4b3b3_official_teacher_grading.sql",
+          "blobSha": "794021138793c7abb51ccab4521fff86b27e74b8"
+        }
+      ]
+    },
+    {
+      "version": "20261123143017",
+      "name": "schoolnet_s4b3b3n_official_teacher_submission_notifications",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql",
+          "blobSha": "9cda46040cef18d8e37e5f496d091b086bda6385"
+        }
+      ]
+    },
+    {
+      "version": "20261124075811",
+      "name": "schoolnet_s4b3b4_student_official_dashboard",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4b3b4_student_official_dashboard.sql",
+          "blobSha": "42033b6c2bc24687ebb58605125973475a79c12d"
+        }
+      ]
+    },
+    {
+      "version": "20261124133104",
+      "name": "schoolnet_s4c3a_official_periods_coefficients_20261124",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4c3a_official_periods_coefficients.sql",
+          "blobSha": "fe23f07bb14b474f7b93dfb3afd4c6e0dceccfbe"
+        }
+      ]
+    },
+    {
+      "version": "20261124150608",
+      "name": "schoolnet_s4c3a1_automatic_period_codes_20261124",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4c3a1_automatic_period_codes.sql",
+          "blobSha": "e68131723b555f70759a2f107e4c09a6fd51bcee"
+        }
+      ]
+    },
+    {
+      "version": "20261125104641",
+      "name": "schoolnet_s4c3b2_teacher_official_readonly_20261125",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql",
+          "blobSha": "24ec5fec7d87c0a890956b7020aef97526bc5457"
+        },
+        {
+          "path": "supabase/proposals/s4c3b2_teacher_official_subject_averages.sql",
+          "blobSha": "4f379160c73d389f2e1a8b3fece7828173c59a79"
+        }
+      ]
+    },
+    {
+      "version": "20261125132844",
+      "name": "schoolnet_s4c3b6_teacher_coefficients_delegation_20261125",
+      "provenance": "PROPOSAL_CANDIDATE_NOT_PROVEN_AS_EXECUTED_SQL",
+      "candidates": [
+        {
+          "path": "supabase/proposals/s4c3b6_teacher_coefficients_delegation.sql",
+          "blobSha": "97f8d90b7a91b263eb049b5ba5f0f8de02f5923b"
+        }
+      ]
+    }
+  ],
+  "repositoryOnly": [
+    {
+      "version": "20261109140104",
+      "path": "supabase/migrations/20261109140104_harden_assessment_legacy_rpcs.sql",
+      "blobSha": "21c2df7c79d41907f33833e22c6dd6fc462a055d",
+      "provenance": "REPOSITORY_FILE_REMOTE_HISTORY_NOT_VERIFIED"
+    },
+    {
+      "version": "20261110090000",
+      "path": "supabase/migrations/20261110090000_school_year_rollover_controlled.sql",
+      "blobSha": "7c9e009e350ff3df54435786a524eac0813bfc32",
+      "provenance": "REPOSITORY_FILE_REMOTE_HISTORY_NOT_VERIFIED"
+    }
+  ],
+  "guardrails": [
+    "No copied proposal may be renamed into a live migration until its actual executed definition is verified.",
+    "Version present in history is not proof that available source has matching bytes.",
+    "Version missing in history is not proof SQL has never been applied manually.",
+    "No migration repair, DB push/reset, hosted SQL, main branch merge, Vercel deploy, or hosted sandbox resume.",
+    "All compatibility HTTP tests run only against disposable localhost Supabase with fictional accounts."
+  ]
+}
