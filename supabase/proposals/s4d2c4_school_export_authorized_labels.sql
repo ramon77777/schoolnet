@@ -203,8 +203,6 @@ DO $postflight$
 BEGIN
  IF has_function_privilege('anon',
   'public.schoolnet_official_export_labels(uuid,uuid,uuid,text,uuid)','EXECUTE')
- OR has_function_privilege('public',
-  'public.schoolnet_official_export_labels(uuid,uuid,uuid,text,uuid)','EXECUTE')
  THEN RAISE EXCEPTION 'S4D2C4_INSECURE_FUNCTION_GRANT'; END IF;
 END $postflight$;
 SELECT 'S4D2C4_CANDIDATE_DISPOSABLE_ONLY' AS verdict;
