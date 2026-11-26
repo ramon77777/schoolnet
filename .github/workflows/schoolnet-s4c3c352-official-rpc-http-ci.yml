@@ -1,0 +1,90 @@
+name: SCHOOLNET S4-C.3-C.3.5.2 - official RPC with real Auth JWT
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c35-isolated-supabase-ci-20261126
+    paths:
+      - '.github/workflows/schoolnet-s4c3c352-official-rpc-http-ci.yml'
+      - 'tests/s4c3c35-supabase-ci/**'
+      - 'supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql'
+      - 'supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql'
+      - 'scripts/test-schoolnet-s4c3c352-official-rpc-http.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C352_OFFICIAL_RPC_REAL_AUTH_2026-11-26.md'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-c3c352-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    name: C3-C.3.5.2 - source guards and regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c2
+      - run: npm run qa:s4c3c3
+      - run: npm run qa:s4c3c33
+      - run: npm run qa:s4c3c34
+      - run: npm run qa:s4c3c35
+      - run: npm run qa:s4c3c352
+      - run: npm run lint
+      - run: npm run build
+
+  real-supabase-official-rpc:
+    name: C3-C.3.5.2 - official RPC through JWT and PostgREST on temporary stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start disposable full Supabase with GoTrue and PostgREST
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Install isolated realistic SCHOOLNET SQL structure and UNMODIFIED proposed RPCs
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "NOTIFY pgrst, 'reload schema';"
+          sleep 2
+      - name: Run real GoTrue signup/password login and official RPC scenarios
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          test "${API_URL}" = "http://127.0.0.1:55421"
+          node --test official-averages-http.mjs
+      - name: Drop disposable containers, Auth accounts and DB volumes
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true
