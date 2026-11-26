@@ -221,10 +221,10 @@ export default function LocalSchoolOfficialGeneralAverages() {
       draftSubjectIds.some((id) => !availableSubjects.some((s) => s.subjectId === id)))
       return;
     const ok = window.confirm("Enregistrer cette liste de matières officielles ? " +
-      "Toute modification invalide son approbation jusqu'à une nouvelle validation.");
+      "Une modification effective invalide son approbation jusqu'à une nouvelle validation.");
     if (!ok) return;
     void mutate(() => saveOfficialCurriculum(scope, draftSubjectIds),
-      "Liste enregistrée en brouillon. Une approbation explicite est nécessaire.");
+      "Liste enregistrée. Vérifiez le statut d’approbation actualisé.");
   }
 
   function approveCurriculum() {
@@ -444,7 +444,7 @@ export default function LocalSchoolOfficialGeneralAverages() {
           className="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
           <h3 className="font-bold text-slate-900">Matières proposées pour cette classe</h3>
           <p className="text-xs text-slate-600">
-            Choisissez 1 à 60 matières. L'enregistrement remet toute approbation en brouillon.
+            Choisissez 1 à 60 matières. Une modification des matières invalide toute approbation antérieure.
           </p>
           {missingAvailable && <p role="alert" className="text-sm text-amber-900">
             Certaines matières déjà enregistrées ne figurent plus dans les affectations actives.
