@@ -10,7 +10,7 @@ import {
   makeDemoGeneralPreview,
 } from "../src/features/schools/lib/schoolOfficialGeneralAveragesDemo.ts";
 
-const read = (p) => readFileSync(new URL("../"+p, import.meta.url),"utf8");
+const read = (p) => readFileSync(new URL("../"+p, import.meta.url),"utf8").replace(/\r\n/g,"\n");
 const page=read("src/features/schools/pages/LocalSchoolOfficialGeneralAverages.tsx");
 const helper=read("src/features/schools/lib/schoolGeneralStudentReview.ts");
 const api=read("src/features/schools/lib/schoolOfficialGeneralAveragesApi.ts");
