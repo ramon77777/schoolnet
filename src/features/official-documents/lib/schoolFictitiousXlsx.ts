@@ -8,8 +8,11 @@ import {
 } from "./schoolFictitiousExportDocument.ts";
 
 const utf8 = new TextEncoder();
-const xmlEscape = (value: string) => value
-  .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "")
+const xmlEscape = (value: string) => Array.from(value)
+  .filter((char) => {
+    const code = char.codePointAt(0) ?? 0;
+    return code === 9 || code === 10 || code === 13 || code >= 32;
+  }).join("")
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
   .replace(/>/g, "&gt;")
