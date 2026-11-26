@@ -8,11 +8,16 @@ const audit = load("../tests/s4c3c-tenant-ci/fixtures/school-admin-security-audi
 const ci = load("../.github/workflows/schoolnet-s4c3c34-security-audit-ci.yml");
 
 test("C3-C.3.4: a real school-admin catalog READ never issues SELECT FOR UPDATE",()=>{
-  const read = rpc.indexOf("IF p_action='read' THEN");
-  const write = rpc.indexOf("\n ELSE\n  SELECT id,status,approved_at",read);
-  assert.ok(read > -1 && write > read, "explicit read/write split is required");
-  assert.doesNotMatch(rpc.slice(read,write),/FOR UPDATE/i);
-  assert.match(rpc.slice(write,write+490),/FOR UPDATE;/i);
+  // Git on Windows may check out SQL with CRLF, while CI Linux uses LF.
+  // Require the same read/write security split under both line endings.
+  for (const source of [rpc, rpc.replace(/\r?\n/g, "\r\n")]) {
+    const branches = source.match(
+      /IF p_action='read' THEN\s+([\s\S]*?)\s+ELSE\s+([\s\S]*?)\s+END IF;/
+    );
+    assert.ok(branches, "explicit read/write split is required");
+    assert.doesNotMatch(branches[1], /FOR UPDATE/i);
+    assert.match(branches[2], /FOR UPDATE;/i);
+  }
   assert.match(audit,/BEGIN READ ONLY;[\s\S]*SET LOCAL ROLE authenticated;/);
   assert.match(audit,/C3C34_PASS_CATALOG_READ_ONLY_TRANSACTION/);
 });
