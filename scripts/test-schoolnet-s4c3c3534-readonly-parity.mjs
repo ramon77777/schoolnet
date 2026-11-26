@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync,readdirSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+import {createHash} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 
@@ -10,6 +12,11 @@ const json=relative=>JSON.parse(read(relative));
 const snapshot=json("tests/s4c3c3534/readonly-parity-observation.json");
 const manifest=json("tests/s4c3c353/migration-reconciliation.manifest.json");
 const restore=json("tests/s4c3c3533/recovery-readiness.json");
+const ledger=json("tests/s4c3c3534/ledger-statement-evidence.json");
+const gitBlob=relative=>execFileSync("git",["show","HEAD:"+relative],{
+ cwd:root,maxBuffer:32*1024*1024
+});
+const md5=bytes=>createHash("md5").update(bytes).digest("hex");
 const vercel=json("vercel.json");
 const pkg=json("package.json");
 const branch="feature/schoolnet-s4c3c3534-readonly-parity-audit-20261126";
@@ -44,7 +51,14 @@ test("C3-C.3.5.3.4: live history count still agrees with the immutable 10+2 reco
 });
 
 test("C3-C.3.5.3.4: 10 remote history SQL originals remain uncertified",()=>{
- assert.equal(snapshot.migrationHistory.uncertifiedHistoricalOriginals,10);
+ assert.equal(snapshot.migrationHistory.historicalSourceBaselineStatus,
+  "10_ORIGINALS_NOT_CERTIFIED_AT_C3532_SNAPSHOT");
+ assert.equal(snapshot.migrationHistory.storedLedgerStatementsPresent,10);
+ assert.equal(snapshot.migrationHistory.exactExistingCandidateTexts,8);
+ assert.equal(snapshot.migrationHistory.archivedNonExecutableLedgerSources,2);
+ assert.equal(snapshot.migrationHistory.storedStatementEqualityVerified,true);
+ assert.equal(snapshot.migrationHistory.previouslyMissingGitSourceVersion,"20261113124329");
+ assert.equal(snapshot.readiness.historicalSqlTextRecoveredFromLedger,true);
  const orphan=manifest.historyOnly.find(x=>x.version===snapshot.migrationHistory.orphanOriginalSource);
  assert.ok(orphan);
  assert.equal(orphan.provenance,"ORIGINAL_SOURCE_NOT_VERIFIED");
@@ -167,4 +181,59 @@ test("C3-C.3.5.3.4: branch is nondeploying, CI has no hosted data path",()=>{
   assert.ok(doc.includes(token),"Missing caution: "+token);
  }
  assert.match(doc,/AUCUNE ACTION DE MIGRATION AUTORISÉE/);
+});
+
+
+test("C3-C.3.5.3.4: 10 historical SQL statements have source-text MD5-equal Git blobs",()=>{
+ assert.equal(ledger.workPackage,snapshot.workPackage);
+ assert.equal(ledger.projectRef,snapshot.projectRef);
+ assert.equal(ledger.remoteVersionsWithNonemptyRecordedSql,10);
+ assert.equal(ledger.statementsPerVersion,1);
+ assert.equal(ledger.versions.length,10);
+ assert.equal(ledger.matchedExistingCandidateExactly,8);
+ assert.equal(ledger.recoveredRemoteOnlyStatementAsInertText,1);
+ assert.equal(ledger.recoveredCompositeStatementAsInertText,1);
+ assert.equal(ledger.allTenStoredSqlTextsFingerprintVerified,true);
+ assert.equal(ledger.originalTextArchivedUnderMigrations,false);
+ assert.equal(ledger.productionExecutionIndependentlyVerified,false);
+ assert.equal(new Set(ledger.versions.map(x=>x.version)).size,10);
+ assert.deepEqual(ledger.versions.map(x=>x.version).sort(),manifest.historyOnly.map(x=>x.version).sort());
+ for(const v of ledger.versions){
+  assert.match(v.md5,/^[0-9a-f]{32}$/);
+  assert.ok(Number.isInteger(v.chars)&&v.chars>1000);
+  const inputPath=v.paths[0];
+  assert.ok(inputPath.startsWith("supabase/proposals/")||
+    inputPath.startsWith("tests/s4c3c3534/recovered-ledger/"));
+  const source=gitBlob(inputPath);
+  assert.equal(source.toString("utf8").length,v.chars,
+    "Stored ledger source length: "+v.version);
+  assert.equal(md5(source),v.md5,
+    "Exact committed Git bytes must match observed remote SQL MD5: "+v.version);
+ }
+});
+
+test("C3-C.3.5.3.4: the two recovered originals are inert evidence, never migrations",()=>{
+ const recovered=ledger.versions.filter(v=>v.kind.includes("RECOVERED_NONEXECUTABLE"));
+ assert.equal(recovered.length,2);
+ assert.deepEqual(recovered.map(v=>v.version).sort(),["20261113124329","20261125104641"]);
+ for(const v of recovered){
+  assert.ok(v.paths[0].endsWith(".sql.txt"));
+  assert.ok(v.paths[0].startsWith("tests/s4c3c3534/recovered-ledger/"));
+  const code=gitBlob(v.paths[0]).toString("utf8");
+  assert.ok(code.startsWith("-- SCHOOLNET"));
+  assert.doesNotMatch(v.paths[0],/supabase\/migrations\//);
+ }
+ const history=ledger.versions.find(v=>v.version==="20261113124329");
+ assert.equal(history.kind,"REMOTE_TEXT_RECOVERED_NONEXECUTABLE");
+ assert.equal(history.paths.length,1);
+ const combo=ledger.versions.find(v=>v.version==="20261125104641");
+ assert.equal(combo.kind,"REMOTE_COMPOSITE_RECOVERED_NONEXECUTABLE");
+ assert.equal(combo.composite.headerChars,184);
+ const whole=gitBlob(combo.paths[0]).toString("utf8");
+ const first=gitBlob(combo.composite.firstCandidate).toString("utf8");
+ const second=gitBlob(combo.composite.secondCandidate).toString("utf8");
+ assert.equal(whole,whole.slice(0,184)+first+"\n"+second,
+  "Composite recorded SQL must preserve its historical wrapper and full component text");
+ assert.equal(combo.composite.separator,"\n");
+ assert.equal(md5(Buffer.from(whole,"utf8")),combo.md5);
 });
