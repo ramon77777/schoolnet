@@ -56,6 +56,8 @@ export type SyntheticSchoolLabels = {
   subjectName: string | null;
 };
 
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const noBrowser = () => {
   if (typeof window !== "undefined") {
     throw new Error("S4-D.2c.2 : génération strictement interdite dans le navigateur.");
@@ -152,7 +154,12 @@ export function assertSyntheticPreviewDocument(
       d.completionUnit !== (d.kind === "class_general" ? "matières" : "évaluations") ||
       (d.kind === "subject_period" && !d.subjectId) ||
       (d.kind === "class_general" && d.subjectId !== null) ||
-      !/^[0-9a-f-]{36}$/i.test(d.auditId) ||
+      ![d.schoolId,d.schoolYearId,d.classId,d.periodId,d.auditId].every(x =>
+        typeof x === "string" && uuid.test(x)) ||
+      (d.subjectId !== null && (typeof d.subjectId !== "string" || !uuid.test(d.subjectId))) ||
+      typeof d.generatedAt !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(d.generatedAt) ||
+      !Number.isFinite(Date.parse(d.generatedAt)) ||
       !label(d.schoolName,75) || !label(d.schoolYear,40) ||
       !label(d.className,40) || !label(d.periodName,55) ||
       !label(d.title,110) ||
