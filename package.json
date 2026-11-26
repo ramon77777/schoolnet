@@ -57,7 +57,8 @@
     "demo:s4d2c2": "node --experimental-strip-types scripts/generate-schoolnet-s4d2c2-samples.mjs",
     "qa:s4d2c3": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2c3-integrity.mjs",
     "qa:s4d2c4": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2c4-label-contract.mjs",
-    "qa:s4c3c3534": "node --test scripts/test-schoolnet-s4c3c3534-readonly-parity.mjs"
+    "qa:s4c3c3534": "node --test scripts/test-schoolnet-s4c3c3534-readonly-parity.mjs",
+    "qa:s4c3c3535": "node --test scripts/test-schoolnet-s4c3c3535-effect-inventory.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
