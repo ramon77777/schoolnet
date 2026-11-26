@@ -319,8 +319,9 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
           </button>
         </div>
         <p className="text-xs text-slate-500">
-          Les boutons d'export réel restent désactivés : ils exigent encore la RPC d'autorisation
-          et de journalisation. Les relevés provisoires restent distincts des bulletins publiés.
+          Aucun fichier exporté à cette étape depuis les données scolaires réelles :
+          les boutons de production exigent toujours la RPC d'autorisation et de journalisation.
+          Les fichiers fictifs sont réservés à la recette locale.
         </p>
         {demo && <div className="space-y-3 rounded-xl border-2 border-violet-200 bg-violet-50 p-4">
           <p className="text-xs font-extrabold uppercase tracking-wide text-violet-800">
