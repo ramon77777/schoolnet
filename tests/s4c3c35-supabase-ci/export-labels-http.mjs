@@ -24,7 +24,7 @@ const roleKeys=[
  "admin_a","admin_b","teacher_a","teacher_b","parent_a",
  "student_a1","student_a2","student_a3","student_b1","student_transfer"
 ];
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const scope=(school,period,cls)=>({
  p_school_id:school,p_period_id:period,p_class_id:cls
 });
