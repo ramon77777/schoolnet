@@ -36,7 +36,7 @@ export type ExportPreviewRpcTransport = (
   args: ExportPreviewRpcArgs,
 ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
 
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Construct exactly the allow-listed RPC parameters; no grades or viewer ID. */
 export function makeOfficialExportRpcArgs(
