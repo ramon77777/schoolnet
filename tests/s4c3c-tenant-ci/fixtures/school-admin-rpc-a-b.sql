@@ -248,13 +248,12 @@ BEGIN
  RAISE NOTICE 'C3C33_PASS_REAPPROVAL_CHANGES_SUBJECT_DENOMINATOR';
 
  -- User role in profiles and membership must BOTH authorize the school.
- FOR v_teacher IN SELECT user_id FROM public.schoolnet_school_memberships
- WHERE school_id=v_school_a AND user_id IN(
+ FOREACH v_teacher IN ARRAY ARRAY[
   '00000000-0000-4000-8000-000000000003'::uuid,
   '00000000-0000-4000-8000-000000000004'::uuid,
   '00000000-0000-4000-8000-000000000007'::uuid,
   '00000000-0000-4000-8000-000000000070'::uuid
- ) LOOP
+ ] LOOP
   PERFORM set_config('request.jwt.claim.sub',v_teacher::text,true);
   v_denied:=false;
   BEGIN
