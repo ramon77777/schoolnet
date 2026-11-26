@@ -4,10 +4,10 @@
  */
 import {
   makeFictionalExportDocument, type FictionalExportDocument,
-} from "./schoolFictitiousExportDocument";
-import { renderFictionalPdf } from "./schoolFictitiousPdf";
-import { renderFictionalXlsx } from "./schoolFictitiousXlsx";
-import type { ExportPlan, ExportRequest } from "./schoolOfficialExportPlanning";
+} from "./schoolFictitiousExportDocument.ts";
+import { renderFictionalPdf } from "./schoolFictitiousPdf.ts";
+import { renderFictionalXlsx } from "./schoolFictitiousXlsx.ts";
+import type { ExportPlan, ExportRequest } from "./schoolOfficialExportPlanning.ts";
 
 export function generateFictionalDownloadBytes(
   request: ExportRequest,
@@ -39,7 +39,7 @@ export function downloadFictionalSchoolExport(
 ): void {
   if (!import.meta.env.DEV || typeof window === "undefined" ||
       typeof document === "undefined" ||
-      !new URLSearchParams(window.location.search).has("schoolnet_s4d_demo")) {
+      !new URLSearchParams(window.location.search).get("schoolnet_s4d_demo") !== "1") {
     throw new Error("Les téléchargements fictifs sont interdits hors mode de recette local.");
   }
   const result = generateFictionalDownloadBytes(request, plan);
