@@ -200,6 +200,7 @@ test("C3-C.3.5.3.4: 10 historical SQL statements have source-text MD5-equal Git 
  assert.deepEqual(ledger.versions.map(x=>x.version).sort(),manifest.historyOnly.map(x=>x.version).sort());
  for(const v of ledger.versions){
   assert.match(v.md5,/^[0-9a-f]{32}$/);
+  assert.match(v.sha256,/^[0-9a-f]{64}$/);
   assert.ok(Number.isInteger(v.chars)&&v.chars>1000);
   const inputPath=v.paths[0];
   assert.ok(inputPath.startsWith("supabase/proposals/")||
@@ -209,6 +210,8 @@ test("C3-C.3.5.3.4: 10 historical SQL statements have source-text MD5-equal Git 
     "Stored ledger source length: "+v.version);
   assert.equal(md5(source),v.md5,
     "Exact committed Git bytes must match observed remote SQL MD5: "+v.version);
+  assert.equal(createHash("sha256").update(source).digest("hex"),v.sha256,
+    "Exact Git bytes must match strong SHA-256 of hosted ledger: "+v.version);
  }
 });
 
