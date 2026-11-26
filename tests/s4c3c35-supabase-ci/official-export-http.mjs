@@ -279,8 +279,10 @@ test("S4-D.2b: disposable Auth/JWT scoped exports and audit",async t=>{
    "SELECT string_agg(column_name,',') FROM information_schema.columns WHERE table_schema='schoolnet_private' AND table_name='school_export_preview_audit'"]);
   for(const f of ["score","student_name","student_id","token","email","phone"])
    assert.ok(!columns.toLowerCase().includes(f));
-  forbidden(await api("/rest/v1/school_export_preview_audit?select=*",
-    users.admin_a),"direct client audit read denied");
+  const auditRead=await api("/rest/v1/school_export_preview_audit?select=*",
+    users.admin_a);
+  assert.ok([401,403,404].includes(auditRead.status),
+    "private audit must be denied or unexposed, got HTTP "+auditRead.status);
  });
  await t.test("unpublishing a submission hides its score without implicit zero",async()=>{
   sql("UPDATE public.assessment_submissions SET status='graded',published_at=NULL"+
