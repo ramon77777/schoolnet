@@ -1,0 +1,47 @@
+name: SCHOOLNET C.3.5.3.6 - privileged RPC review and restore no-go
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c3535-effect-inventory-20261126
+    paths:
+      - 'tests/s4c3c3536/**'
+      - 'scripts/test-schoolnet-s4c3c3536-privileged-review.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C3536_PRIVILEGED_FUNCTIONS_RECOVERY_PLAN_2026-11-26.md'
+      - '.github/workflows/schoolnet-s4c3c3536-privileged-review-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-c3536-privileged-review
+  cancel-in-progress: true
+jobs:
+  read-only-review:
+    name: Privileged function evidence and unchanged release gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c3536
+      - run: npm run qa:s4c3c3535
+      - run: npm run qa:s4c3c3534
+      - run: npm run qa:s4c3c353
+      - run: npm run qa:s4c3c3533
+      - run: npm run qa:s4d2c4
+      - run: npm run qa:s4d2c3
+      - run: npm run qa:s4d2c2
+      - run: npm run qa:s4d2c1
+      - run: npm run qa:s4d2b
+      - run: npm run qa:s4d2a
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
