@@ -70,6 +70,26 @@ test("S4-D.2a: document fixture is explicitly fictional, 13 complete/incomplete 
  assert.equal(doc.rows.filter(r=>r.state==="ready" && r.averageOn20===0).length,1);
  assert.equal(doc.rows.filter(r=>r.state!=="ready" && r.averageOn20===null).length,5);
 });
+test("S4-D.2a: subject exports count assessments and differ from general averages",()=>{
+ const general=fixture();
+ const mathRequest={...request,kind:"subject_period",subjectId:"00000000-0000-4000-8000-000000000150"};
+ const frenchRequest={...mathRequest,subjectId:"00000000-0000-4000-8000-000000000151"};
+ const math=fixture(mathRequest),french=fixture(frenchRequest);
+ assert.equal(general.completionUnit,"matières");
+ assert.equal(math.completionUnit,"évaluations");
+ assert.equal(french.completionUnit,"évaluations");
+ assert.equal(general.rows[0].averageOn20,16.67);
+ assert.equal(math.rows[0].averageOn20,17.25);
+ assert.equal(french.rows[0].averageOn20,14.5);
+ assert.equal(math.rows[1].averageOn20,0);
+ assert.equal(math.rows[2].averageOn20,null);
+ assert.ok(latin(renderFictionalPdf(math)).includes("3 évaluations"));
+ assert.ok(t.decode(zipEntries(renderFictionalXlsx(math)).get("xl/worksheets/sheet1.xml"))
+  .includes("3 / 3 évaluations"));
+ assert.ok(latin(renderFictionalPdf(general)).includes("3 matières"));
+ assert.throws(()=>renderFictionalXlsx({...math,completionUnit:"matières"}));
+ assert.throws(()=>fixture({...mathRequest,subjectId:"00000000-0000-4000-8000-000000009999"}));
+});
 test("S4-D.2a: a provisional generator fails closed on unknown tenant, annual, published, unapproved rights",()=>{
  assert.throws(()=>fixture({...request,scope:{...scope,schoolId:"school-B"}}));
  assert.throws(()=>fixture({...request,cadence:"annual",scope:{...scope,periodId:null}}));
@@ -121,6 +141,8 @@ test("S4-D.2a: XLSX is a proper ZIP/OOXML package with exactly one visible sheet
  assert.ok(files.has("xl/workbook.xml"));
  assert.ok(files.has("xl/worksheets/sheet1.xml"));
  assert.ok(files.has("xl/styles.xml"));
+ const styleXml=t.decode(files.get("xl/styles.xml"));
+ assert.match(styleXml,/<cellStyles count="1">/);
  assert.equal(files.size,8);
  const sheet=t.decode(files.get("xl/worksheets/sheet1.xml"));
  const book=t.decode(files.get("xl/workbook.xml"));
