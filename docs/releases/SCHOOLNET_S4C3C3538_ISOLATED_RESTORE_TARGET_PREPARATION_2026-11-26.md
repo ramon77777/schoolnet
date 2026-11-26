@@ -5,6 +5,8 @@
 **Nature :** préqualification documentaire, critères techniques et sécuritaires, matrice d'approbations.  
 **État :** aucune cible choisie ou provisionnée, aucune archive consultée, aucune base de données restaurée.
 
+**AUCUNE restauration réelle n'a été effectuée ni n'est autorisée par ce sous-lot.**
+
 ### 1. Origine et limites de l'autorisation
 
 Après la réussite du sous-lot **C.3.5.3.7** (Windows : branche `local/schoolnet-c3537`, commit **`99943c1`**, **10/10** tests, build 934 modules, Git propre ; GitHub Actions : **138/138** tests et restauration fictive PostgreSQL 17.6), l'utilisateur a donné son **accord uniquement pour préparer la phase C.3.5.3.8**.
