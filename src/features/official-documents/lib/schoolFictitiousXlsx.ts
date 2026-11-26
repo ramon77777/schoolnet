@@ -5,7 +5,7 @@
 import {
   assertFictionalExportDocument, FICTIONAL_EXPORT_LABEL, FICTIONAL_TEST_LABEL,
   frenchStatus, type FictionalExportDocument,
-} from "./schoolFictitiousExportDocument";
+} from "./schoolFictitiousExportDocument.ts";
 
 const utf8 = new TextEncoder();
 const xmlEscape = (value: string) => value
