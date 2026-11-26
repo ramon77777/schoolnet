@@ -1,0 +1,40 @@
+name: SCHOOLNET S4-D.2c.1 - dormant school export RPC bridge
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d2b-secure-export-projection-20261126
+    paths:
+      - '.github/workflows/schoolnet-s4d2c1-preview-bridge-ci.yml'
+      - 'src/features/official-documents/lib/schoolOfficialExportPreviewBridge.ts'
+      - 'src/features/official-documents/lib/schoolOfficialExportProjectionModel.ts'
+      - 'scripts/test-schoolnet-s4d2c1-export-bridge.mjs'
+      - 'docs/releases/SCHOOLNET_S4D2C1_EXPORT_RPC_BRIDGE_2026-11-26.md'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d2c1-bridge-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  strict-client-contract:
+    name: Verify read-only preview bridge and existing non-export guarantees
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d2c1
+      - run: npm run qa:s4d2b
+      - run: npm run qa:s4d2a
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
