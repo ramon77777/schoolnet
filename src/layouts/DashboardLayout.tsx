@@ -492,6 +492,8 @@ export default function DashboardLayout() {
               📊 Moyennes
             </NavLink>
 
+            <NavLink className={navItem} to="/app/teacher/official-exports">📄 Exports des moyennes</NavLink>
+
             <NavLink className={navItem} to="/app/teacher/coefficients">
               🧮 Mes coefficients
             </NavLink>
@@ -555,6 +557,7 @@ export default function DashboardLayout() {
              <NavLink className={navItem} to="/app/school/assessments">🧪 Évaluations officielles</NavLink>
             <NavLink className={navItem} to="/app/school/grading-settings">📐 Périodes et coefficients</NavLink>
              <NavLink className={navItem} to="/app/school/official-general-averages">📊 Moyennes générales</NavLink>
+             <NavLink className={navItem} to="/app/school/official-documents">📄 Bulletins et exports</NavLink>
           </>
         )}
 
