@@ -41,7 +41,8 @@
     "qa:s4c3b6-1": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b6-1-averages-hub.mjs",
     "qa:s4c3b6-2": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3b6-2-coefficients.mjs",
     "qa:s4c3c2": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3c2-general-averages.mjs",
-    "qa:s4c3c3": "node --test scripts/test-schoolnet-s4c3c3-sql-contract.mjs"
+    "qa:s4c3c3": "node --test scripts/test-schoolnet-s4c3c3-sql-contract.mjs",
+    "qa:s4c3c33": "node --test scripts/test-schoolnet-s4c3c33-rpc-security.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",

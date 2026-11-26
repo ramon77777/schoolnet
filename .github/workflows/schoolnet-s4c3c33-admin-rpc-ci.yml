@@ -1,0 +1,103 @@
+name: SCHOOLNET S4-C.3-C.3.3 - school admin secure general average RPC
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c3-official-averages-sql-20261126
+    paths:
+      - .github/workflows/schoolnet-s4c3c33-admin-rpc-ci.yml
+      - supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql
+      - tests/s4c3c-tenant-ci/fixtures/school-admin-rpc-*.sql
+      - scripts/test-schoolnet-s4c3c33-rpc-security.mjs
+      - docs/releases/SCHOOLNET_S4C3C33_SCHOOL_ADMIN_RPC_2026-11-26.md
+      - package.json
+      - vercel.json
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract-and-regression:
+    name: School admin RPC - source contract and regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c2
+      - run: npm run qa:s4c3c3
+      - run: npm run qa:s4c3c33
+      - run: npm run lint
+      - run: npm run build
+  disposable-postgresql:
+    name: School admin RPC - PostgreSQL 17 multi-tenant A/B and rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: schoolnet_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_fixture"
+          --health-interval 10s --health-timeout 5s --health-retries 6
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: schoolnet_fixture
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: PostgreSQL client
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+      - name: Install fake school metadata and pure SQL kernel, no hosted database
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -1 -f tests/s4c3c-tenant-ci/fixtures/minimal-postgres-school-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql
+          psql -X -v ON_ERROR_STOP=1 -1 -f tests/s4c3c-tenant-ci/fixtures/school-admin-rpc-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql
+      - name: Execute real-role A/B isolation, invalidation, published-only and rollback
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/s4c3c-tenant-ci/fixtures/school-admin-rpc-a-b.sql 2>&1 | tee /tmp/c3c33-test.log
+          for proof in \
+            C3C33_PASS_ADMIN_CATALOG_DRAFT \
+            C3C33_PASS_ADMIN_CATALOG_APPROVED \
+            C3C33_PASS_REAL_JOIN_TWO_SUBJECT_WEIGHTED_16_67 \
+            C3C33_PASS_UNPUBLISHED_NOT_ZERO_AND_HIDDEN \
+            C3C33_PASS_ACTIVE_DOUBLE_ENROLLMENT_BLOCKED \
+            C3C33_PASS_MINIMAL_PROJECTION_NO_OTHER_SCHOOL_OR_RAW_NOTES \
+            C3C33_PASS_PREVIEW_READ_ONLY \
+            C3C33_PASS_ADMIN_B_DENIED_A \
+            C3C33_PASS_ADMIN_B_DENIED_A_WRITE \
+            C3C33_PASS_ADMIN_B_OWN_SCHOOL_ONLY \
+            C3C33_PASS_ADMIN_A_DENIED_B \
+            C3C33_PASS_FOREIGN_CLASS_PERIOD_IDOR_REJECTED \
+            C3C33_PASS_LOCKED_PERIOD_CONFIG_DENIED \
+            C3C33_PASS_DRAFT_CATALOG_HIDES_AVERAGES \
+            C3C33_PASS_REAPPROVAL_CHANGES_SUBJECT_DENOMINATOR \
+            C3C33_PASS_REVOKED_TEACHER_PARENT_STUDENT_ALL_DENIED \
+            C3C33_PASS_PRIVATE_HELPER_DIRECT_CALL_REJECTED \
+            C3C33_PASS_ANON_NO_EXECUTE_NO_DIRECT_TABLE_GRANTS \
+            C3C33_PASS_NO_AUTH_UID_DENIED \
+            C3C33_ISOLATED_ROLLBACK_OK
+          do
+            grep -Fq "$proof" /tmp/c3c33-test.log
+          done
