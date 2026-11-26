@@ -1,0 +1,100 @@
+name: SCHOOLNET S4-C.3-C.3.5.3.3 - migration evidence and fictional backup/restore
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c353-schema-reconciliation-20261126
+    paths:
+      - 'tests/s4c3c3533/**'
+      - 'scripts/test-schoolnet-s4c3c3533-readiness.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C3533_MIGRATIONS_BACKUP_RESTORE.md'
+      - 'vercel.json'
+      - 'package.json'
+      - '.github/workflows/schoolnet-s4c3c3533-backup-readiness-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4c3c3533-restore
+  cancel-in-progress: true
+jobs:
+  evidence-guards:
+    name: Guard unverified migration evidence and production-release boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c3533
+      - run: npm run qa:s4c3c353
+      - run: npm run lint
+      - run: npm run build
+
+  disposable-restore:
+    name: pg_dump and pg_restore on PostgreSQL 17 with fictional rows only
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic_local_only_pw
+          POSTGRES_DB: postgres
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Create, verify, and restore a synthetic archive in a second disposable database
+        env:
+          PGPASSWORD: synthetic_local_only_pw
+        run: |
+          set -euo pipefail
+          BACKUP_DIR="$RUNNER_TEMP/schoolnet-c3533"
+          mkdir -p "$BACKUP_DIR"
+          client() {
+            docker run --rm --network host \
+              -e PGPASSWORD="$PGPASSWORD" \
+              -v "$GITHUB_WORKSPACE:/work:ro" \
+              -v "$BACKUP_DIR:/archive" \
+              -w /work postgres:17 "$@"
+          }
+          client psql -X -h 127.0.0.1 -p 55433 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f tests/s4c3c3533/fixtures/backup-restore-seed.sql
+          client pg_dump -h 127.0.0.1 -p 55433 -U postgres -d postgres \
+            -Fc -n schoolnet_ci_backup -f /archive/synthetic.dump
+          test -s "$BACKUP_DIR/synthetic.dump"
+          client pg_restore -l /archive/synthetic.dump > "$BACKUP_DIR/toc.txt"
+          grep -q schoolnet_ci_backup "$BACKUP_DIR/toc.txt"
+          sha256sum "$BACKUP_DIR/synthetic.dump" > "$BACKUP_DIR/sha256.txt"
+          grep -Eq '^[a-f0-9]{64} ' "$BACKUP_DIR/sha256.txt"
+          client psql -X -h 127.0.0.1 -p 55433 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE schoolnet_ci_restore"
+          client pg_restore -h 127.0.0.1 -p 55433 -U postgres -d schoolnet_ci_restore \
+            --no-owner --no-acl --exit-on-error /archive/synthetic.dump
+          SOURCE=$(client psql -X -h 127.0.0.1 -p 55433 -U postgres -d postgres -At \
+            -c "SELECT string_agg(marker || ':' || amount::text || ':' || published::text, '|' ORDER BY marker) FROM schoolnet_ci_backup.sample_markers")
+          RESTORED=$(client psql -X -h 127.0.0.1 -p 55433 -U postgres -d schoolnet_ci_restore -At \
+            -c "SELECT string_agg(marker || ':' || amount::text || ':' || published::text, '|' ORDER BY marker) FROM schoolnet_ci_backup.sample_markers")
+          test "$SOURCE" = "$RESTORED"
+          test "$(client psql -X -h 127.0.0.1 -p 55433 -U postgres -d schoolnet_ci_restore -At \
+            -c 'SELECT count(*) FROM schoolnet_ci_backup.sample_markers')" = 3
+          test "$(client psql -X -h 127.0.0.1 -p 55433 -U postgres -d schoolnet_ci_restore -At \
+            -c "SELECT to_regclass('public.profiles') IS NULL")" = t
+          echo "Synthetic PostgreSQL archive and isolated restoration verified; no hosted SCHOOLNET data used."
+      - name: Remove temporary backup artifacts even after failure
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/schoolnet-c3533"
