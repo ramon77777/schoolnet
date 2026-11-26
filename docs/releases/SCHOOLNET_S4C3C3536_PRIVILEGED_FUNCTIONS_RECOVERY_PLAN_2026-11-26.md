@@ -5,7 +5,7 @@
 
 ### 1. Recette précédente confirmée sur Windows
 
-Le sous-lot **C.3.5.3.5** est validé : `local/schoolnet-c3535`, commit **`0e0b674`**, **10 tests réussis/10**, 934 modules compilés, statut Git propre après restauration de `tsconfig.app.tsbuildinfo`. L'inventaire de référence `tests/s4c3c3535/installed-effect-inventory.json` conserve la présence de **65/65 objets historiques** (50 fonctions, 9 tables, 5 triggers, 1 policy) sans prétendre certifier leurs corps ou permissions. Les dix textes SQL historiques sont comparés à leur empreinte SHA-256 dans C.3.5.3.4. Ces étapes demeurent valides : inutile de les recommencer.
+Le sous-lot **C.3.5.3.5** est validé : `local/schoolnet-c3535`, commit **`0e0b674`**, **10 tests réussis/10**, 934 modules compilés, statut Git propre après restauration de `tsconfig.app.tsbuildinfo`. L'inventaire de référence `tests/s4c3c3535/installed-effect-inventory.json` conserve la présence de **65 / 65 objets historiques** (50 fonctions, 9 tables, 5 triggers, 1 policy) sans prétendre certifier leurs corps ou permissions. Les dix textes SQL historiques sont comparés à leur empreinte SHA-256 dans C.3.5.3.4. Ces étapes demeurent valides : inutile de les recommencer.
 
 ### 2. Revue des fonctions critiques sur Supabase principal — lecture seule
 
