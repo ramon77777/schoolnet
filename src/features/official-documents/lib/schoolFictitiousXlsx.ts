@@ -63,7 +63,7 @@ function worksheet(doc: FictionalExportDocument): string {
       tCell("A" + n, item.studentCode),
       tCell("B" + n, item.studentName),
       tCell("C" + n, frenchStatus(item.state)),
-      tCell("D" + n, item.readySubjects + " / " + item.expectedSubjects + " matières"),
+      tCell("D" + n, item.completedItems + " / " + item.expectedItems + " " + doc.completionUnit),
       item.state === "ready" && item.averageOn20 !== null
         ? nCell("E" + n, item.averageOn20) : tCell("E" + n, "—"),
     ], 23));
@@ -116,7 +116,9 @@ const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" applyFont="1"/>' +
     '<xf numFmtId="2" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>' +
     '<xf numFmtId="0" fontId="3" fillId="4" borderId="0" applyFill="1" applyFont="1"/>' +
-  '</cellXfs></styleSheet>';
+  '</cellXfs>' +
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+  '</styleSheet>';
 
 type ZipEntry = { name: string; data: Uint8Array };
 function crc32(data: Uint8Array): number {
