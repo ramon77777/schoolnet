@@ -1,0 +1,40 @@
+name: SCHOOLNET S4-C.3-C.4 - secure school-admin official general averages UI
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c3533-backup-restore-gates-20261126
+    paths:
+      - 'src/features/schools/**'
+      - 'src/layouts/DashboardLayout.tsx'
+      - 'src/routes/router.tsx'
+      - 'scripts/test-schoolnet-s4c3c4-general-averages-ui.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C4_GENERAL_AVERAGES_UI_2026-11-26.md'
+      - 'package.json'
+      - 'vercel.json'
+      - '.github/workflows/schoolnet-s4c3c4-general-averages-ui-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-c3c4-ui
+  cancel-in-progress: true
+jobs:
+  ui-contract-and-build:
+    name: Scoped UI, isolated demonstrations, old averages and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c4
+      - run: npm run qa:s4c3c2
+      - run: npm run qa:s4c3c3533
+      - run: npm run qa:s4c3b6-1
+      - run: npm run lint
+      - run: npm run build
