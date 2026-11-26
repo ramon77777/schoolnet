@@ -118,7 +118,7 @@ test("C3.5.3.7: no contradiction with earlier recovery-readiness block",()=>{
 test("C3.5.3.7: written acceptance criteria distinguish fake mocks from real Auth and Storage",()=>{
  for(const marker of ["PostgreSQL 17","fictives","Auth","Storage",
   "GoTrue","octets","restauration","GO","Supabase principal",
-  "données réelles","AUCUNE","validation Windows"]){
+  "données réelles","AUCUNE","Recette Windows"]){
    assert.ok(doc.includes(marker),"Missing clarification "+marker);
  }
  assert.match(doc,/ne prouve pas une restauration complète/i);
