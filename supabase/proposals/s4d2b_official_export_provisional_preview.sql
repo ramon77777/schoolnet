@@ -61,8 +61,9 @@ DECLARE
 BEGIN
  -- No user id is accepted from the client; no JWT user_metadata decisions.
  IF v_uid IS NULL OR p_school_id IS NULL OR p_period_id IS NULL
- OR p_class_id IS NULL OR p_kind NOT IN ('subject_period','class_general')
- OR p_format NOT IN ('pdf','xlsx')
+ OR p_class_id IS NULL OR p_kind IS NULL
+ OR p_kind NOT IN ('subject_period','class_general')
+ OR p_format IS NULL OR p_format NOT IN ('pdf','xlsx')
  OR p_document_state IS DISTINCT FROM 'provisional'
  OR (p_kind='subject_period' AND p_subject_id IS NULL)
  OR (p_kind='class_general' AND p_subject_id IS NOT NULL)
@@ -124,6 +125,7 @@ BEGIN
 
  FOR v_item IN SELECT value FROM jsonb_array_elements(v_source->'students') LOOP
   IF jsonb_typeof(v_item) IS DISTINCT FROM 'object'
+  OR v_item->>'state' IS NULL
   OR v_item->>'state' NOT IN ('ready','incomplete','not_configured')
   OR jsonb_typeof(v_item->'studentId') IS DISTINCT FROM 'string'
   OR jsonb_typeof(v_item->'studentName') IS DISTINCT FROM 'string'
