@@ -1,0 +1,99 @@
+name: SCHOOLNET S4-C.3-C.3.1-2 - private curriculum and SQL averages
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/schoolnet-s4c3c3-curriculum-sql-ci.yml'
+      - 'supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql'
+      - 'tests/s4c3c-tenant-ci/**'
+      - 'scripts/test-schoolnet-s4c3c3-sql-contract.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C3_1_2_SQL_CATALOG_AND_KERNEL_2026-11-26.md'
+      - 'package.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-contract:
+    name: C3-C.3.1-2 - no production exposure, regression, lint/build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c2
+      - run: npm run qa:s4c3c3
+      - run: npm run lint
+      - run: npm run build
+  isolated-postgresql:
+    name: C3-C.3.1-2 - PostgreSQL 17 disposable A/B, rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: schoolnet_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d schoolnet_fixture"
+          --health-interval 10s --health-timeout 5s --health-retries 6
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: schoolnet_fixture
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install PostgreSQL client only
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+      - name: Prepare a fictional schema, no hosted credentials
+        run: psql -X -v ON_ERROR_STOP=1 -1 -f tests/s4c3c-tenant-ci/fixtures/minimal-postgres-school-schema.sql
+      - name: Install SQL candidate on disposable service only
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -1 -f supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql | tee /tmp/c3c3-install.log
+          grep -Fq C3C3_PRIVATE_CATALOG_AND_KERNEL_PROPOSED_ONLY /tmp/c3c3-install.log
+      - name: Verify tenant A/B, private grants, formula and complete transaction rollback
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/s4c3c-tenant-ci/fixtures/curriculum-general-averages-a-b.sql 2>&1 | tee /tmp/c3c3-test.log
+          for proof in \
+            C3C3_PASS_FOREIGN_CLASS_REJECTED \
+            C3C3_PASS_FOREIGN_PERIOD_REJECTED \
+            C3C3_PASS_EMPTY_APPROVAL_DENIED \
+            C3C3_PASS_APPROVAL_WITH_SUBJECT \
+            C3C3_PASS_CATALOG_EDIT_INVALIDATES_APPROVAL \
+            C3C3_PASS_DUPLICATE_SUBJECT_DENIED \
+            C3C3_PASS_LOCKED_PERIOD_DENIED \
+            C3C3_PASS_ROLE_GRANTS_DENIED \
+            C3C3_PASS_MULTI_SUBJECT_WEIGHTED_14 \
+            C3C3_PASS_FINAL_ONLY_ROUNDING \
+            C3C3_PASS_PUBLISHED_ZERO \
+            C3C3_PASS_MISSING_NOT_ZERO \
+            C3C3_PASS_MISSING_COEFFICIENT_NOT_CONFIGURED \
+            C3C3_PASS_EXEMPTION_PENDING \
+            C3C3_PASS_PENDING_TRANSFER \
+            C3C3_PASS_UNAPPROVED_HIDDEN \
+            C3C3_PASS_EXCLUDED_ASSESSMENT \
+            C3C3_PASS_DUPLICATES_DENIED \
+            C3C3_PASS_INVALID_SCORE_DENIED \
+            C3C3_ISOLATED_TESTS_ROLLED_BACK
+          do
+            grep -Fq "$proof" /tmp/c3c3-test.log
+          done
