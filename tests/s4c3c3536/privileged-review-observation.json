@@ -1,0 +1,192 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.6",
+  "observationDate": "2026-11-26",
+  "project": "schoolnet_2.0",
+  "projectRef": "anttmbhaphkhmkoqsofd",
+  "source": "Read-only pg_catalog queries, qualified pg_get_functiondef for narrowly selected RPC/trigger functions, official Supabase security and backups documentation",
+  "accessScope": "CATALOG_ONLY_NO_USER_ROWS",
+  "productionSqlWrites": 0,
+  "studentRowsRead": 0,
+  "functionBodiesCopiedToGithub": false,
+  "independentlyVerifiedJwtBehavior": false,
+  "reviewStatus": "STATIC_REVIEW_REQUIRES_DISPOSABLE_AUTH_TESTS",
+  "schemaRoleCapabilities": [
+    {
+      "role": "anon",
+      "publicUsage": true,
+      "publicCreate": false,
+      "privateUsage": false,
+      "privateCreate": false
+    },
+    {
+      "role": "authenticated",
+      "publicUsage": true,
+      "publicCreate": false,
+      "privateUsage": true,
+      "privateCreate": false
+    },
+    {
+      "role": "service_role",
+      "publicUsage": true,
+      "publicCreate": false,
+      "privateUsage": false,
+      "privateCreate": false
+    }
+  ],
+  "functions": [
+    {
+      "signature": "public.get_my_role()",
+      "resultType": "user_role",
+      "ownerRole": "postgres",
+      "securityDefiner": true,
+      "searchPath": "public",
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "usesAuthUid": true,
+      "sourceReadsOwnProfileRoleByAuthUid": true,
+      "referencesEditableUserMetadata": false,
+      "category": "ROLE_HELPER",
+      "reviewFinding": "ROLE_FROM_AUTH_UID_PROFILE_WITH_BROAD_EXECUTE",
+      "interpretation": "The observed body selects p.role from public.profiles where p.id = auth.uid(). An anonymous caller's effective return was not tested; owner role and search_path still require dedicated review before any change.",
+      "changeApproved": false
+    },
+    {
+      "signature": "public.notify_assessment_correction_published()",
+      "resultType": "trigger",
+      "ownerRole": "postgres",
+      "securityDefiner": true,
+      "searchPath": "public, pg_temp",
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "usesAuthUid": false,
+      "referencesEditableUserMetadata": false,
+      "category": "TRIGGER_HELPER",
+      "reviewFinding": "PRIVILEGED_TRIGGER_WITH_INHERITED_EXECUTE",
+      "interpretation": "Return type trigger; granting EXECUTE does not itself prove an HTTP caller can execute this as an ordinary RPC or exploit it. Trigger attachment and function body require contextual review.",
+      "changeApproved": false
+    },
+    {
+      "signature": "public.trigger_refresh_progress_from_assessment_submission()",
+      "resultType": "trigger",
+      "ownerRole": "postgres",
+      "securityDefiner": true,
+      "searchPath": "public",
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "usesAuthUid": false,
+      "referencesEditableUserMetadata": false,
+      "category": "TRIGGER_HELPER",
+      "reviewFinding": "PRIVILEGED_TRIGGER_WITH_INHERITED_EXECUTE",
+      "interpretation": "Return type trigger, not direct evidence of a callable endpoint; review trigger invocation, statement privileges and object qualification before any proposed change.",
+      "changeApproved": false
+    },
+    {
+      "signature": "public.schoolnet_teacher_official_subject_averages(uuid,uuid,uuid,uuid)",
+      "resultType": "jsonb",
+      "ownerRole": "postgres",
+      "securityDefiner": false,
+      "searchPath": "pg_catalog",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "usesAuthUid": false,
+      "referencesEditableUserMetadata": false,
+      "category": "PUBLIC_RPC_FACADE",
+      "reviewFinding": "INVOCER_RPC_NO_ANON_EXECUTE",
+      "interpretation": "The public facade does not itself reference auth.uid(); security must be established in the private helper and tested with real disposable JWTs. Existing earlier CI covers teacher averages on disposable Supabase.",
+      "changeApproved": false
+    },
+    {
+      "signature": "schoolnet_private.teacher_official_grade(uuid,uuid,text,numeric,text)",
+      "resultType": "jsonb",
+      "ownerRole": "postgres",
+      "securityDefiner": true,
+      "searchPath": "pg_catalog",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "usesAuthUid": true,
+      "referencesEditableUserMetadata": false,
+      "mentionsSchoolMembershipOrAssignment": true,
+      "category": "PRIVATE_GRADING_HELPER",
+      "reviewFinding": "PRIVATE_DEFINER_WITH_EXPLICIT_IDENTITY_REFERENCE",
+      "interpretation": "Identity and school-affiliation checks appear in the body. Static flags do not certify whether every update is properly authorized, especially after revocation; preserve earlier tenant-isolation tests.",
+      "changeApproved": false
+    }
+  ],
+  "context": {
+    "publicSchemaCreateDeniedForAnonAuthenticated": true,
+    "privateSchemaCreateDeniedForAnonAuthenticated": true,
+    "triggerReturningFunctionsAreNotConfirmedDirectlyInvokable": true,
+    "auditMCPReadsDoNotEstablishProductionSecurityGuarantees": true,
+    "incidentConfirmed": false
+  },
+  "recovery": {
+    "databaseArchiveLocalIntegrityPreviouslyReported": true,
+    "independentDatabaseRestorePerformed": false,
+    "authRecoveryVerified": false,
+    "storageByteRecoveryVerified": false,
+    "bucketPoliciesVerifiedAfterRestore": false,
+    "emailSmsAndWebhooksDisabledOnRecoveryTarget": false,
+    "targetHostApproved": false,
+    "productionAccessOrMigrationAuthorized": false,
+    "fullRollbackTestVerified": false
+  },
+  "releaseGates": {
+    "historicalRegistryChanged": false,
+    "realGradeExportsReleased": false,
+    "mainMergeApproved": false,
+    "vercelProductionApproved": false,
+    "supabasePrincipalWriteApproved": false,
+    "anyRestorationApproved": false,
+    "status": "BLOCKED_REVIEW_AND_RESTORE_REQUIRED"
+  },
+  "limitations": [
+    "Only five targeted functions inspected, not all 50 historical functions or every privilege/policy.",
+    "Observed permissions may change; a metadata snapshot is time-bound and is not a live proof of security.",
+    "PostgreSQL trigger-returning functions have specific invocation rules; EXECUTE grants alone are not evidence of exploitable direct RPC access.",
+    "No Auth user record, JWT, student row, grade or Storage object was inspected, backed up or copied to GitHub.",
+    "Database backups do not include Storage object bytes; an Auth/Storage restoration requires separately controlled approvals and evidence."
+  ],
+  "officialReferences": [
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    "https://supabase.com/docs/guides/platform/backups",
+    "https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore"
+  ],
+  "advisoryScan": {
+    "source": "Supabase get_advisors(type=security) on hosted project; informational categories and counts, not verified exploitability",
+    "categories": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 18,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 14,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 45,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 114,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "auth_leaked_password_protection",
+        "level": "WARN",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+      }
+    ],
+    "automaticFixApproved": false,
+    "note": "Counts are category findings across project scopes, not 178 distinct vulnerabilities; overlapping observations and trigger return types must be reviewed with context."
+  }
+}
