@@ -71,8 +71,9 @@ export default function LocalSchoolOfficialGeneralAverages() {
   const ownerKey = allowed ? user?.id ?? "" : "";
   const visibleSchools = allowed && schoolsFor === ownerKey ? schools : [];
   const selectedSchool = visibleSchools.find((school) => school.id === schoolId) ?? null;
-  const configKey = selectedSchool && ownerKey
-    ? [ownerKey, selectedSchool.id, revision, localDemo ? "demo" : "live"].join("|") : "";
+  const selectedSchoolId = selectedSchool?.id ?? "";
+  const configKey = selectedSchoolId && ownerKey
+    ? [ownerKey, selectedSchoolId, revision, localDemo ? "demo" : "live"].join("|") : "";
 
   useEffect(() => {
     if (!allowed || !user?.id) return;
@@ -102,9 +103,9 @@ export default function LocalSchoolOfficialGeneralAverages() {
   }, [allowed, user?.id, localDemo]);
 
   useEffect(() => {
-    if (!allowed || !selectedSchool || !configKey) return;
+    if (!allowed || !selectedSchoolId || !configKey) return;
     let cancelled = false;
-    const schoolIdToLoad = selectedSchool.id;
+    const schoolIdToLoad = selectedSchoolId;
     if (localDemo) {
       setConfig(makeDemoGradeConfig(schoolIdToLoad));
       setConfigFor(configKey); setConfigState("ready");
@@ -120,7 +121,7 @@ export default function LocalSchoolOfficialGeneralAverages() {
         setConfig(null); setConfigFor(configKey); setConfigState("error");
       });
     return () => { cancelled = true; };
-  }, [allowed, selectedSchool?.id, configKey, localDemo]);
+  }, [allowed, selectedSchoolId, configKey, localDemo]);
 
   const currentConfig = allowed && configFor === configKey &&
     configState === "ready" && config?.schoolId === selectedSchool?.id ? config : null;
@@ -146,11 +147,11 @@ export default function LocalSchoolOfficialGeneralAverages() {
     ? [ownerKey, selectedSchool.id, activeYearId, activeClassId, activePeriodId,
       revision, localDemo ? "demo" : "live"].join("|") : "";
 
-  const scope = useMemo<GeneralScope | null>(() => selectedSchool &&
+  const scope = useMemo<GeneralScope | null>(() => selectedSchoolId &&
     activeYearId && activeClassId && activePeriodId ? {
-      schoolId: selectedSchool.id, schoolYearId: activeYearId,
+      schoolId: selectedSchoolId, schoolYearId: activeYearId,
       classId: activeClassId, periodId: activePeriodId,
-    } : null, [selectedSchool?.id, activeYearId, activeClassId, activePeriodId]);
+    } : null, [selectedSchoolId, activeYearId, activeClassId, activePeriodId]);
 
   useEffect(() => {
     if (!allowed || !scope || !reviewKey) return;
@@ -182,7 +183,8 @@ export default function LocalSchoolOfficialGeneralAverages() {
     curriculum && scope ? curriculum : null;
   const currentPreview = reviewFor === reviewKey && reviewState === "ready" &&
     currentCurriculum?.status === "approved" ? preview : null;
-  const rows = currentPreview?.state === "preview" ? currentPreview.students : [];
+  const rows = useMemo(() => currentPreview?.state === "preview"
+    ? currentPreview.students : [], [currentPreview]);
   const totals = useMemo(() => summarizeGeneralStudents(rows), [rows]);
   const filtered = useMemo(() => filterGeneralStudents(rows, search, filter),
     [rows, search, filter]);
