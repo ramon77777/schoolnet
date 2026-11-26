@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -17,6 +18,19 @@ const http=text("tests/s4c3c35-supabase-ci/official-averages-http.mjs");
 const vercel=json("vercel.json");
 const packageJson=json("package.json");
 const blobSha=(data)=>createHash("sha1").update(`blob ${data.length}\0`).update(data).digest("hex");
+// Compare checkout bytes after EOL normalization, but authenticate exact committed Git bytes.
+// A source SQL blob can itself contain mixed LF/CRLF, so hashing a globally
+// normalized working copy would NOT preserve the immutable Git blob fingerprint.
+const normalizeEol=(data)=>data.toString("utf8").replace(/\r\n/g,"\n");
+const committedBlob=(relative)=>execFileSync("git",["show",`HEAD:${relative}`],{
+ cwd:root,maxBuffer:32*1024*1024
+});
+const assertGitSourceUnchanged=(relative,expectedSha)=>{
+ const original=committedBlob(relative);
+ assert.equal(blobSha(original),expectedSha,`Committed Git blob differs: ${relative}`);
+ assert.equal(normalizeEol(file(relative)),normalizeEol(original),
+  `Working-tree content differs beyond checkout line endings: ${relative}`);
+};
 
 test("C3-C.3.5.3.2: historical migration gap is explicit and never silently repaired",()=>{
  assert.equal(manifest.workPackage,"S4-C.3-C.3.5.3.2");
@@ -51,15 +65,28 @@ test("C3-C.3.5.3.2: nine historical groups have SHA-verified candidate proposals
   for(const c of item.candidates){
    assert.ok(c.path.startsWith("supabase/proposals/"));
    assert.match(c.blobSha,/^[a-f0-9]{40}$/);
-   assert.equal(blobSha(file(c.path)),c.blobSha,`Git blob differs: ${c.path}`);
+   assertGitSourceUnchanged(c.path,c.blobSha);
    candidateCount++;
   }
  }
  assert.equal(candidateCount,10,"one historical group has two linked SQL proposals");
  for(const r of manifest.repositoryOnly){
   assert.ok(r.path.startsWith("supabase/migrations/"));
-  assert.equal(blobSha(file(r.path)),r.blobSha);
+  assertGitSourceUnchanged(r.path,r.blobSha);
  }
+});
+
+test("C3-C.3.5.3.2: LF, mixed EOL, and Windows CRLF checkout retain Git source integrity",()=>{
+ const example=manifest.historyOnly.find(x=>x.version==="20261123105413").candidates[0];
+ const committed=committedBlob(example.path);
+ const committedText=committed.toString("utf8");
+ assert.match(committedText,/\r\n/,"Historical SQL includes mixed line endings");
+ assert.match(committedText,/(?<!\r)\n/,"Historical SQL also includes LF-only lines");
+ const simulatedWindows=Buffer.from(normalizeEol(committed).replace(/\n/g,"\r\n"),"utf8");
+ assert.equal(normalizeEol(simulatedWindows),normalizeEol(committed));
+ assert.equal(blobSha(committed),example.blobSha,"Original blob SHA remains exact");
+ assert.notEqual(normalizeEol(Buffer.concat([simulatedWindows,Buffer.from("-- unexpected SQL edit\r\n")])),
+  normalizeEol(committed),"A real SQL edit must still be detected");
 });
 
 test("C3-C.3.5.3.2: actual types and SELECT + RLS distinction are modeled without claims of exact policy parity",()=>{
@@ -102,7 +129,7 @@ test("C3-C.3.5.3.2: real HTTP integration fixture runs on disposable localhost a
  assert.match(http,/own\.every\(row=>row\.student_id===users\.student_a1\.id\)/);
  assert.match(http,/assert\.deepEqual\(rows,\[\]/);
  assert.doesNotMatch(ci,/supabase (?:link|db push|db reset|migration repair)|--remote|--linked|SUPABASE_DB_URL|SUPABASE_ACCESS_TOKEN|secrets\./);
- assert.match(ci,/permissions:\n  contents: read/);
+ assert.match(ci,/permissions:\r?\n  contents: read/);
 });
 
 test("C3-C.3.5.3.2: no production Git/Vercel publication from isolated branch",()=>{
