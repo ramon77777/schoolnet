@@ -1,0 +1,49 @@
+name: SCHOOLNET C.3.5.3.8 - independent restore target preflight (no real data)
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c3537-fictitious-pg-restore-20261126
+    paths:
+      - 'tests/s4c3c3538/**'
+      - 'scripts/test-schoolnet-s4c3c3538-isolation-plan.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C3538_ISOLATED_RESTORE_TARGET_PREPARATION_2026-11-26.md'
+      - '.github/workflows/schoolnet-s4c3c3538-restore-preflight-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-c3538-independent-restore-preflight
+  cancel-in-progress: true
+jobs:
+  plan-contract-and-regressions:
+    name: Restore readiness manifest and previous SCHOOLNET no-go gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c3538
+      - run: npm run qa:s4c3c3537
+      - run: npm run qa:s4c3c3536
+      - run: npm run qa:s4c3c3535
+      - run: npm run qa:s4c3c3534
+      - run: npm run qa:s4c3c353
+      - run: npm run qa:s4c3c3533
+      - run: npm run qa:s4d2c4
+      - run: npm run qa:s4d2c3
+      - run: npm run qa:s4d2c2
+      - run: npm run qa:s4d2c1
+      - run: npm run qa:s4d2b
+      - run: npm run qa:s4d2a
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
