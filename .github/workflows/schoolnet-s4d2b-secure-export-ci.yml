@@ -8,6 +8,7 @@ on:
       - 'src/features/official-documents/lib/schoolOfficialExportProjectionModel.ts'
       - 'scripts/test-schoolnet-s4d2b-export-contract.mjs'
       - 'tests/s4c3c35-supabase-ci/official-export-http.mjs'
+      - 'tests/s4c3c35-supabase-ci/fixtures/s4d2b_teacher_preflight_stub.sql'
       - 'docs/releases/SCHOOLNET_S4D2B_EXPORT_PROJECTION_2026-11-26.md'
       - 'package.json'
       - 'vercel.json'
@@ -67,6 +68,7 @@ jobs:
             tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql \
             supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql \
             supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql \
+            tests/s4c3c35-supabase-ci/fixtures/s4d2b_teacher_preflight_stub.sql \
             supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
             supabase/proposals/s4d2b_official_export_provisional_preview.sql
           do
