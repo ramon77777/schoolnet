@@ -24,6 +24,18 @@ Faire passer SCHOOLNET des simples maquettes de boutons PDF/Excel à des génér
 - **Aucun appel à V1** (`student_period_averages`, `report_cards`, `publish_admin_report_card`), aucune migration Supabase principal et aucune modification de `main`.
 - Même si la règle de simulation « éligible » passe, elle n'est **pas une autorisation serveur**. Le vrai raccordement exigera un contrat RPC sécurisé, journalisation, habilitations et un snapshot approuvé pour les documents publiés.
 
+## Ajustement après inspection des fichiers réellement téléchargés (26 novembre 2026)
+
+L'utilisateur a remis le PDF et le fichier Excel issus du navigateur : le PDF **s'ouvre correctement sur une page A4** ; le classeur Excel **s'ouvre avec une feuille**, 13 lignes de données, filtre et gel de la ligne d'en-tête, avec zéro numérique et cinq moyennes indisponibles non transformées en zéro.
+
+L'inspection a également révélé un point métier : un intitulé **« Moyennes par matière - Mathématiques »** ne doit pas afficher une complétude **« 3/3 matières »** (réservée à la moyenne générale). Le jeu fictif a donc été rendu explicitement cohérent :
+- **Relevé d'une matière** → nombre d'**évaluations** complètes et moyenne fictive **spécifique** à la matière ; Mathématiques et Français utilisent des valeurs différentes ;
+- **Moyennes générales** → nombre de **matières** complètes et moyennes générales fictives distinctes ;
+- la correspondance entre le type de relevé et l'unité de complétude est désormais **obligatoire et validée** avant chaque sérialisation PDF ou Excel ;
+- ajout d'un style « Normal » explicite au fichier Excel pour une meilleure compatibilité avec les lecteurs OOXML.
+
+Les anciennes captures et les fichiers téléversés restent la **preuve de la première génération** ; un nouveau contrôle est nécessaire sur les deux formats après ce correctif. Ce changement n'accède toujours à aucune note réelle.
+
 ## Recette automatisée
 
 Commande : `npm run qa:s4d2a`.
