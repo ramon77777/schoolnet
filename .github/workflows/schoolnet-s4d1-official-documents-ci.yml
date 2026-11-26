@@ -1,0 +1,41 @@
+name: SCHOOLNET S4-D.1 - V2 report cards and official grade exports foundation
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c4-general-averages-ui-20261126
+    paths:
+      - 'src/features/official-documents/**'
+      - 'src/routes/router.tsx'
+      - 'src/layouts/DashboardLayout.tsx'
+      - 'src/features/schools/pages/LocalSchoolDashboard.tsx'
+      - 'scripts/test-schoolnet-s4d1-documents-exports.mjs'
+      - 'docs/releases/SCHOOLNET_S4D1_REPORT_CARDS_EXPORTS_2026-11-26.md'
+      - 'package.json'
+      - 'vercel.json'
+      - '.github/workflows/schoolnet-s4d1-official-documents-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d1-documents
+  cancel-in-progress: true
+jobs:
+  official-documents-qa:
+    name: V2 exports permissions, old report-card separation, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run qa:s4c3c3533
+      - run: npm run qa:s4c3b6-1
+      - run: npm run lint
+      - run: npm run build
