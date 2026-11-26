@@ -31,8 +31,8 @@ test("C3.5.3.7: runner hard-fails outside disposable GitHub Linux with local-onl
 });
 
 test("C3.5.3.7: CI uses two independent PostgreSQL 17 containers with synthetic-only passwords",()=>{
- assert.match(ci,/source:\n    image: postgres:17\.6/);
- assert.match(ci,/target:\n    image: postgres:17\.6/);
+ assert.match(ci,/source:\n\s+image: postgres:17\.6/);
+ assert.match(ci,/target:\n\s+image: postgres:17\.6/);
  assert.match(ci,/55432:5432/);
  assert.match(ci,/55433:5432/);
  assert.match(ci,/POSTGRES_DB: schoolnet_synthetic/g);
