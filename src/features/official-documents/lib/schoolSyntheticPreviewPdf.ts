@@ -77,7 +77,7 @@ function pageStream(
   });
   commands.push("0.36 0.40 0.51 rg",
     textAt(45, 58, 8.3, "Document synthétique - aucune valeur officielle."),
-    textAt(45, 43, 8.3, "Référence de recette : " + doc.auditId.slice(0, 8)),
+    textAt(45, 43, 8.3, "Référence de recette : " + doc.auditId.slice(-8)),
     textAt(45, 28, 8.3, "Aucune note nominative réelle n'a été utilisée."),
     textAt(488, 43, 8, "Page " + (page + 1) + "/" + totalPages));
   return commands.join("\n") + "\n";

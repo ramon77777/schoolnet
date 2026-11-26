@@ -7,6 +7,7 @@ import {
   type VerifiedExportViewer,
 } from "./schoolOfficialExportPreviewBridge.ts";
 import type { ExportRequest } from "./schoolOfficialExportPlanning.ts";
+import { orderSchoolExportStudents } from "./schoolSyntheticRosterOrder.ts";
 
 export const SYNTHETIC_EXPORT_LABEL = "RELEVÉ PROVISOIRE - NON PUBLIÉ";
 export const SYNTHETIC_TEST_LABEL = "DONNÉES SYNTHÉTIQUES - RECETTE UNIQUEMENT";
@@ -81,7 +82,14 @@ export function makeSyntheticPreviewDocument(
 ): SyntheticPreviewDocument {
   noBrowser();
   const projection = assertMatchingOfficialExportProjection(raw, request, viewer);
-  if (!labels || labels.source !== "SCHOOLNET_SYNTHETIC_QA_LABELS" ||
+  const expectedLabelKeys = [
+    "source","schoolId","schoolYearId","classId","periodId","subjectId",
+    "schoolName","schoolYear","className","periodName","subjectName",
+  ];
+  if (!labels || typeof labels !== "object" ||
+      Object.keys(labels).length !== expectedLabelKeys.length ||
+      !expectedLabelKeys.every(key => Object.prototype.hasOwnProperty.call(labels,key)) ||
+      labels.source !== "SCHOOLNET_SYNTHETIC_QA_LABELS" ||
       labels.schoolId !== projection.schoolId ||
       labels.schoolYearId !== projection.schoolYearId ||
       labels.classId !== projection.classId ||
@@ -119,7 +127,7 @@ export function makeSyntheticPreviewDocument(
     periodName: labels.periodName,
     title,
     generatedAt,
-    rows: projection.students.map((student, i) => ({
+    rows: orderSchoolExportStudents(projection.students).map((student, i) => ({
       // For tests, print a row number, not the internal student's UUID.
       studentCode: String(i + 1).padStart(3, "0"),
       studentName: student.studentName,

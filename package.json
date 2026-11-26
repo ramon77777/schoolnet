@@ -54,7 +54,8 @@
     "qa:s4d2b": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2b-export-contract.mjs",
     "qa:s4d2c1": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2c1-export-bridge.mjs",
     "qa:s4d2c2": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2c2-synthetic-renderers.mjs",
-    "demo:s4d2c2": "node --experimental-strip-types scripts/generate-schoolnet-s4d2c2-samples.mjs"
+    "demo:s4d2c2": "node --experimental-strip-types scripts/generate-schoolnet-s4d2c2-samples.mjs",
+    "qa:s4d2c3": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2c3-integrity.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
