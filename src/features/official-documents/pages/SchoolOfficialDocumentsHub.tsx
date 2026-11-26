@@ -283,7 +283,7 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
           </ul>}
           <p className="mt-3 text-xs leading-5 text-slate-600">
             Même si les critères de simulation sont satisfaits, ce résultat n'est
-            **pas** une autorisation d'export. Une RPC dédiée devra vérifier les droits
+            pas une autorisation d'export. Une RPC dédiée devra vérifier les droits
             et générer les données sans passage par les tables V1.
           </p>
         </div>}
