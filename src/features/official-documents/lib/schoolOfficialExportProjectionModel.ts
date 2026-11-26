@@ -39,7 +39,7 @@ export type OfficialExportProjection = {
 const idRx = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const exact = (o: Record<string,unknown>, keys: readonly string[]) =>
   Object.keys(o).length === keys.length &&
-  keys.every(key => Object.hasOwn(o,key));
+  keys.every(key => Object.prototype.hasOwnProperty.call(o,key));
 
 function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
