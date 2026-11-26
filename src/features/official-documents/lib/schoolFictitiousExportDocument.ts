@@ -3,7 +3,7 @@
  * A separate server-signed, scope-limited export projection is required
  * before real student information can ever use an export renderer.
  */
-import type { ExportKind, ExportRequest, ExportPlan } from "./schoolOfficialExportPlanning.ts";
+import type { ExportRequest, ExportPlan } from "./schoolOfficialExportPlanning.ts";
 
 export type FictionalExportRow = {
   studentCode: string;
