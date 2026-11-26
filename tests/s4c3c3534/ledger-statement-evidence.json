@@ -99,7 +99,7 @@
       "composite": {
         "headerChars": 184,
         "firstCandidate": "supabase/proposals/s4c3b2_teacher_official_subject_averages.sql",
-        "separator": "\\n",
+        "separator": "\n",
         "secondCandidate": "supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql"
       }
     },
