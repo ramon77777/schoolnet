@@ -66,7 +66,10 @@ const noBrowser = () => {
 
 const label = (s: unknown, max: number) =>
   typeof s === "string" && s.length > 0 && s.length <= max &&
-  s.trim() === s && !/[\x00-\x1f\x7f]/u.test(s);
+  s.trim() === s && !Array.from(s).some(ch => {
+    const cp = ch.codePointAt(0) ?? 0;
+    return cp < 32 || cp === 127;
+  });
 
 /** Local QA labels are for display ONLY, never used for authorization. */
 export function makeSyntheticPreviewDocument(
