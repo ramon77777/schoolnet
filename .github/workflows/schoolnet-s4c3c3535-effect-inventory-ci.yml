@@ -1,0 +1,46 @@
+name: SCHOOLNET C.3.5.3.5 - SQL effects presence and restore gates
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c3534-readonly-parity-audit-20261126
+    paths:
+      - 'tests/s4c3c3535/**'
+      - 'scripts/test-schoolnet-s4c3c3535-effect-inventory.mjs'
+      - 'docs/releases/SCHOOLNET_S4C3C3535_INSTALLED_EFFECTS_AND_RECOVERY_GATE_2026-11-26.md'
+      - '.github/workflows/schoolnet-s4c3c3535-effect-inventory-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-c3535-effects-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  catalog-proof-and-regressions:
+    name: Test committed 65-object inventory and block unsafe deployments
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c3535
+      - run: npm run qa:s4c3c3534
+      - run: npm run qa:s4c3c353
+      - run: npm run qa:s4c3c3533
+      - run: npm run qa:s4d2c4
+      - run: npm run qa:s4d2c3
+      - run: npm run qa:s4d2c2
+      - run: npm run qa:s4d2c1
+      - run: npm run qa:s4d2b
+      - run: npm run qa:s4d2a
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
