@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getAdminSchools, getActiveSchoolAdmins } from "@/features/schools/lib/schoolManagementApi";
@@ -17,6 +17,7 @@ import {
 import {
   DEMO_SCHOOLS, makeDemoGradeConfig, makeDemoCurriculum, makeDemoGeneralPreview,
 } from "@/features/schools/lib/schoolOfficialGeneralAveragesDemo";
+import { getGeneralStudentReview } from "@/features/schools/lib/schoolGeneralStudentReview";
 
 type SchoolOption = { id: string; name: string; code: string };
 type LoadState = "idle" | "loading" | "ready" | "pending" | "error";
@@ -67,6 +68,10 @@ export default function LocalSchoolOfficialGeneralAverages() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<GeneralFilter>("all");
   const [page, setPage] = useState(1);
+  // The selection belongs to exactly one school/year/class/period/revision.
+  const [selectedReview, setSelectedReview] = useState<{
+    scopeKey: string; studentId: string;
+  } | null>(null);
 
   const ownerKey = allowed ? user?.id ?? "" : "";
   const visibleSchools = allowed && schoolsFor === ownerKey ? schools : [];
@@ -185,6 +190,12 @@ export default function LocalSchoolOfficialGeneralAverages() {
     currentCurriculum?.status === "approved" ? preview : null;
   const rows = useMemo(() => currentPreview?.state === "preview"
     ? currentPreview.students : [], [currentPreview]);
+  const selectedStudentReview = useMemo(() =>
+    allowed && scope && currentPreview?.state === "preview" &&
+    selectedReview?.scopeKey === reviewKey
+      ? getGeneralStudentReview(currentPreview, scope, selectedReview.studentId)
+      : null,
+    [allowed, scope, currentPreview, selectedReview, reviewKey]);
   const totals = useMemo(() => summarizeGeneralStudents(rows), [rows]);
   const filtered = useMemo(() => filterGeneralStudents(rows, search, filter),
     [rows, search, filter]);
@@ -198,6 +209,7 @@ export default function LocalSchoolOfficialGeneralAverages() {
   function changeContext() {
     setEditing(false); setNotice(null); setActionError(null);
     setSearch(""); setFilter("all"); setPage(1);
+    setSelectedReview(null);
   }
 
   async function mutate(action: () => Promise<OfficialCurriculum>, success: string) {
@@ -538,29 +550,101 @@ export default function LocalSchoolOfficialGeneralAverages() {
             </label>
           </div>
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-[650px] w-full text-left text-sm">
+            <table className="min-w-[750px] w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-bold">Élève</th>
                   <th scope="col" className="px-4 py-3 font-bold">Complétude</th>
                   <th scope="col" className="px-4 py-3 font-bold">État</th>
                   <th scope="col" className="px-4 py-3 text-right font-bold">Moyenne / 20</th>
+                  <th scope="col" className="px-4 py-3 text-right font-bold">Aperçu</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {visibleRows.map((student) => <tr key={student.studentId} className="bg-white">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{student.studentName}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {student.readySubjects} / {student.expectedSubjects} matières
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 " +
-                      statusClass[student.state]}>{statusLabels[student.state]}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-950">
-                    {displayGeneralAverage(student)}
-                  </td>
-                </tr>)}
+                {visibleRows.map((student) => <Fragment key={student.studentId}>
+                  <tr className="bg-white">
+                    <td className="px-4 py-3 font-semibold text-slate-900">{student.studentName}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {student.readySubjects} / {student.expectedSubjects} matières
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={"inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 " +
+                        statusClass[student.state]}>{statusLabels[student.state]}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-950">
+                      {displayGeneralAverage(student)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button type="button"
+                        className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-800 hover:bg-indigo-100"
+                        aria-label={"Consulter la fiche de " + student.studentName}
+                        aria-expanded={selectedStudentReview?.student.studentId === student.studentId}
+                        aria-controls={"general-student-review-" + student.studentId}
+                        onClick={() => setSelectedReview((previous) =>
+                          previous?.scopeKey === reviewKey && previous.studentId === student.studentId
+                            ? null : { scopeKey: reviewKey, studentId: student.studentId })}>
+                        {selectedStudentReview?.student.studentId === student.studentId ? "Masquer" : "Consulter"}
+                      </button>
+                    </td>
+                  </tr>
+                  {selectedStudentReview?.student.studentId === student.studentId && <tr
+                    id={"general-student-review-" + student.studentId}
+                    className="bg-indigo-50/60">
+                    <td colSpan={5} className="p-4 md:p-5">
+                      <section aria-label={"Fiche individuelle de " + student.studentName}
+                        className="rounded-xl border border-indigo-200 bg-white p-4 md:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">
+                              Fiche individuelle · Aperçu privé non publié
+                            </p>
+                            <h3 className="mt-1 text-lg font-extrabold text-slate-950">
+                              {selectedStudentReview.student.studentName}
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-600">
+                              {selectedSchool?.name} · {classes.find((item) => item.id === activeClassId)?.name}
+                              {" · "}{selectedPeriod?.name}
+                            </p>
+                          </div>
+                          <button type="button" className="sn-btn-ghost"
+                            onClick={() => setSelectedReview(null)}>Fermer la fiche</button>
+                        </div>
+                        <dl className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-lg bg-slate-50 p-3">
+                            <dt className="text-xs font-semibold text-slate-500">État de calcul</dt>
+                            <dd className="mt-1 font-bold text-slate-900">
+                              {statusLabels[selectedStudentReview.student.state]}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg bg-slate-50 p-3">
+                            <dt className="text-xs font-semibold text-slate-500">Matières calculables</dt>
+                            <dd className="mt-1 font-bold tabular-nums text-slate-900">
+                              {selectedStudentReview.student.readySubjects} / {selectedStudentReview.student.expectedSubjects}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg bg-slate-50 p-3">
+                            <dt className="text-xs font-semibold text-slate-500">Matières restantes</dt>
+                            <dd className="mt-1 font-bold tabular-nums text-slate-900">
+                              {selectedStudentReview.remainingSubjects}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg bg-indigo-50 p-3">
+                            <dt className="text-xs font-semibold text-indigo-700">Moyenne générale</dt>
+                            <dd className="mt-1 font-extrabold tabular-nums text-indigo-900">
+                              {displayGeneralAverage(selectedStudentReview.student)}
+                            </dd>
+                          </div>
+                        </dl>
+                        <p className="mt-4 text-sm leading-6 text-slate-700">
+                          {selectedStudentReview.explanation}
+                        </p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Aucun recalcul local, aucune note brute, aucun bulletin créé ou publié.
+                        </p>
+                      </section>
+                    </td>
+                  </tr>}
+                </Fragment>)}
               </tbody>
             </table>
           </div>
