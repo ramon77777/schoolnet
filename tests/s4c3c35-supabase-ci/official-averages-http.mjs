@@ -8,6 +8,8 @@ import { execFileSync } from "node:child_process";
 const API=process.env.API_URL;
 const ANON=process.env.ANON_KEY;
 const SERVICE=process.env.SERVICE_ROLE_KEY;
+// Schema parity mode is enabled only in disposable local CI; default C352 behavior stays unchanged.
+const REAL_SCHEMA_PARITY=process.env.SCHOOLNET_C353_SCHEMA_PARITY==="1";
 assert.equal(API,"http://127.0.0.1:55421","Only ephemeral local Supabase is permitted");
 assert.ok(ANON && SERVICE,"Missing local Supabase runner keys");
 const SCHOOL_A="00000000-0000-4000-8000-000000000010";
@@ -114,8 +116,12 @@ test("C3-C.3.5.2: real GoTrue JWT to unchanged school-admin official averages RP
   const scope=args(SCHOOL_A,PERIOD_A,CLASS_A);
   forbidden(await preview("anon",scope),"anonymous general preview");
   forbidden(await catalog("anon",scope,"read"),"anonymous catalog");
-  forbidden(await api("/rest/v1/assessment_submissions?select=*","anon"),
-    "anonymous raw submissions");
+  if(REAL_SCHEMA_PARITY){
+   const rows=success(await api("/rest/v1/assessment_submissions?select=*","anon"),
+     "anonymous SELECT grant filtered by RLS");
+   assert.deepEqual(rows,[],"SQL SELECT privilege cannot bypass RLS for anonymous users");
+  } else forbidden(await api("/rest/v1/assessment_submissions?select=*","anon"),
+     "anonymous raw submissions");
  });
  await t.test("teacher, parent, and student JWTs never gain admin rights",async()=>{
   const scope=args(SCHOOL_A,PERIOD_A,CLASS_A);
@@ -127,8 +133,14 @@ test("C3-C.3.5.2: real GoTrue JWT to unchanged school-admin official averages RP
     users.teacher_a,{...scope,p_teacher_id:users.admin_a.id});
   assert.ok([400,401,403,404].includes(injection.status),
     "Caller-supplied extra identity must never authorize access");
-  forbidden(await api("/rest/v1/assessment_submissions?select=*",
-    users.student_a1),"student raw submissions");
+  if(REAL_SCHEMA_PARITY){
+   const own=success(await api("/rest/v1/assessment_submissions?select=student_id,score",
+      users.student_a1),"student own submissions via scoped RLS");
+   assert.ok(Array.isArray(own) && own.length>0,"fictional student reads own grades");
+   assert.ok(own.every(row=>row.student_id===users.student_a1.id),
+     "no student may see another student's submissions");
+  } else forbidden(await api("/rest/v1/assessment_submissions?select=*",
+     users.student_a1),"student raw submissions");
  });
  await t.test("admins A/B cannot cross schools or mix foreign class/period IDs",async()=>{
   forbidden(await preview(users.admin_a,args(SCHOOL_B,PERIOD_B,CLASS_B)),
@@ -240,11 +252,31 @@ test("C3-C.3.5.2: real GoTrue JWT to unchanged school-admin official averages RP
   assert.equal(roster(aStill,users.student_a1.id)?.averageOn20,16.67);
  });
  await t.test("no raw data access, private helper exposure, or original grade mutation",async()=>{
-  for(const path of [
-   "/rest/v1/assessment_submissions?select=score",
-   "/rest/v1/profiles?select=*",
-   "/rest/v1/schoolnet_school_memberships?select=*"
-  ]) forbidden(await api(path,users.admin_a),"direct read blocked");
+  if(REAL_SCHEMA_PARITY){
+   // Production has SELECT grants on these tables but filters rows through RLS.
+   // This is a deliberately conservative RLS subset, NOT a clone of all live policies.
+   const raw=success(await api("/rest/v1/assessment_submissions?select=score,student_id",
+     users.admin_a),"school admin raw grade query");
+   assert.deepEqual(raw,[],"school admins cannot bypass synthetic grade RLS");
+   const profile=success(await api("/rest/v1/profiles?select=id,role",
+     users.admin_a),"profile self-read");
+   assert.equal(profile.length,1);
+   assert.equal(profile[0].id,users.admin_a.id);
+   assert.equal(profile[0].role,"school_admin");
+   const memberships=success(await api("/rest/v1/schoolnet_school_memberships?select=user_id,school_id",
+     users.admin_a),"membership self-read");
+   assert.ok(memberships.length>0);
+   assert.ok(memberships.every(row=>row.user_id===users.admin_a.id));
+   const other=success(await api("/rest/v1/assessment_submissions?select=score,student_id",
+     users.admin_b),"school B no direct grade rows");
+   assert.deepEqual(other,[]);
+  } else {
+   for(const path of [
+    "/rest/v1/assessment_submissions?select=score",
+    "/rest/v1/profiles?select=*",
+    "/rest/v1/schoolnet_school_memberships?select=*"
+   ]) forbidden(await api(path,users.admin_a),"direct read blocked");
+  }
   const hidden=await api("/rest/v1/rpc/school_official_general_averages",
      users.admin_a,"POST",a);
   assert.equal(hidden.status,404,"private schema must remain unexposed");

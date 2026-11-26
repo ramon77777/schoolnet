@@ -1,0 +1,166 @@
+{
+  "schemaReview": "S4-C.3-C.3.5.3.1",
+  "observationDate": "2026-11-26",
+  "source": "Prior read-only pg_catalog introspection of schoolnet_2.0 (no user rows); compatibility fixture is an intentional subset, NOT a database dump.",
+  "postgresql": "17.6",
+  "requiredTables": [
+    "public.profiles",
+    "public.classes",
+    "public.school_years",
+    "public.schoolnet_schools",
+    "public.academic_subjects",
+    "public.schoolnet_school_memberships",
+    "public.schoolnet_school_student_class_assignments",
+    "public.schoolnet_school_teacher_subject_assignments",
+    "public.courses",
+    "public.assessments",
+    "public.assessment_submissions",
+    "schoolnet_private.school_grading_periods",
+    "schoolnet_private.school_course_links",
+    "schoolnet_private.school_assessment_links",
+    "schoolnet_private.school_period_subject_coefficients",
+    "schoolnet_private.school_official_assessment_coefficients",
+    "schoolnet_private.school_teacher_coefficient_delegations"
+  ],
+  "enums": {
+    "user_role": [
+      "admin",
+      "teacher",
+      "student",
+      "parent",
+      "school_admin"
+    ],
+    "assessment_status": [
+      "draft",
+      "published",
+      "closed"
+    ],
+    "submission_status": [
+      "in_progress",
+      "submitted",
+      "graded",
+      "published"
+    ],
+    "course_status": [
+      "active",
+      "archived"
+    ]
+  },
+  "importantColumns": {
+    "public.profiles": {
+      "id": "uuid",
+      "role": "user_role",
+      "full_name": "text"
+    },
+    "public.assessments": {
+      "id": "uuid",
+      "course_id": "uuid",
+      "status": "assessment_status",
+      "max_score": "numeric(8,2)"
+    },
+    "public.assessment_submissions": {
+      "assessment_id": "uuid",
+      "student_id": "uuid",
+      "status": "submission_status",
+      "score": "numeric(6,2)",
+      "published_at": "timestamp with time zone"
+    },
+    "public.courses": {
+      "id": "uuid",
+      "status": "course_status"
+    },
+    "public.schoolnet_school_memberships": {
+      "school_id": "uuid",
+      "user_id": "uuid",
+      "member_role": "text",
+      "status": "text",
+      "revoked_at": "timestamp with time zone"
+    },
+    "schoolnet_private.school_grading_periods": {
+      "school_id": "uuid",
+      "school_year_id": "uuid",
+      "is_locked": "boolean"
+    },
+    "schoolnet_private.school_period_subject_coefficients": {
+      "period_id": "uuid",
+      "class_id": "uuid",
+      "subject_id": "uuid",
+      "coefficient": "numeric(6,2)"
+    },
+    "schoolnet_private.school_official_assessment_coefficients": {
+      "assessment_id": "uuid",
+      "period_id": "uuid",
+      "coefficient": "numeric(6,2)",
+      "include_in_average": "boolean"
+    }
+  },
+  "grants": {
+    "public.assessment_submissions": {
+      "anonSelect": true,
+      "authenticatedSelect": true,
+      "rls": true,
+      "actualPolicies": [
+        "assessment_submissions_select_admin",
+        "parent_read_linked_child_assessment_submissions",
+        "s4b3b0_online_submissions_guard",
+        "students_manage_own_submissions",
+        "teachers_view_submissions_for_own_assessments"
+      ]
+    },
+    "public.profiles": {
+      "anonSelect": true,
+      "authenticatedSelect": true,
+      "rls": true,
+      "actualPolicies": [
+        "profiles_select_admin",
+        "profiles_select_linked_children",
+        "profiles_select_self",
+        "profiles_select_students_of_assigned_teacher"
+      ]
+    },
+    "public.schoolnet_school_memberships": {
+      "anonSelect": false,
+      "authenticatedSelect": true,
+      "rls": true,
+      "actualPolicies": [
+        "schoolnet_school_memberships_select"
+      ]
+    },
+    "public.schoolnet_school_student_class_assignments": {
+      "anonSelect": false,
+      "authenticatedSelect": false,
+      "rls": true
+    },
+    "public.schoolnet_school_teacher_subject_assignments": {
+      "anonSelect": false,
+      "authenticatedSelect": false,
+      "rls": true
+    },
+    "schoolnet_private.school_grading_periods": {
+      "anonSelect": false,
+      "authenticatedSelect": false,
+      "rls": true
+    }
+  },
+  "getMyRole": {
+    "returnType": "user_role",
+    "securityDefiner": true,
+    "anonExecute": true,
+    "authenticatedExecute": true,
+    "liveSearchPath": "public"
+  },
+  "newObjectsAbsent": [
+    "schoolnet_private.school_official_curricula",
+    "schoolnet_private.school_official_curriculum_subjects",
+    "schoolnet_private.compute_official_general_average_preview(jsonb,jsonb,boolean,text)",
+    "schoolnet_private.school_official_general_averages(uuid,uuid,uuid)",
+    "public.schoolnet_school_official_curriculum(uuid,uuid,uuid,text,uuid[])",
+    "public.schoolnet_school_official_general_averages(uuid,uuid,uuid)"
+  ],
+  "limitations": [
+    "Legacy RLS policy names recorded; definitions not copied or assumed. Synthetic CI implements only a conservative scoped subset.",
+    "Schema snapshot is a fixed observation, not live monitoring; changes made after observation require a new inspection and separate GO.",
+    "Never copy data, auth.users rows, JWT, service_role keys, or real grades into CI.",
+    "get_my_role in CI intentionally uses safer fixed search_path pg_catalog rather than copying legacy public search_path."
+  ]
+}

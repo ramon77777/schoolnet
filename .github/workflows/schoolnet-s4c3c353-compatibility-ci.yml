@@ -1,0 +1,88 @@
+name: SCHOOLNET S4-C.3-C.3.5.3.2 - migration reconciliation and realistic Auth/RLS
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c352-official-rpc-real-auth-20261126
+    paths:
+      - '.github/workflows/schoolnet-s4c3c353-compatibility-ci.yml'
+      - 'tests/s4c3c353/**'
+      - 'tests/s4c3c35-supabase-ci/**'
+      - 'scripts/test-schoolnet-s4c3c353-schema-reconciliation.mjs'
+      - 'supabase/proposals/**'
+      - 'supabase/migrations/**'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-c353-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reconciliation:
+    name: Validate historical SHA manifest and isolated-test source guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c3c353
+      - run: npm run qa:s4c3c352
+      - run: npm run qa:s4c3c33
+      - run: npm run lint
+      - run: npm run build
+
+  disposable-auth-rls:
+    name: Real GoTrue JWT and PostgREST against enum/grant RLS fixture (temporary only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start one disposable local Supabase instance (not the hosted sandbox)
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Install only fictional CI schema, enum/grant overlay, and original unmodified C3C3 proposals
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f tests/s4c3c353/fixtures/real-schema-compatibility.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "NOTIFY pgrst, 'reload schema';"
+          sleep 2
+      - name: Exercise actual local Auth JWT and scope/RLS checks without external credentials
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          test "${API_URL}" = "http://127.0.0.1:55421"
+          SCHOOLNET_C353_SCHEMA_PARITY=1 node --test official-averages-http.mjs
+      - name: Destroy ephemeral containers and fictional accounts, including on failure
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true
