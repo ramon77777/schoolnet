@@ -1,0 +1,100 @@
+name: SCHOOLNET S4-D.2c.4 - JWT-authorized school export labels
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d2c3-synthetic-identity-order-20261126
+    paths:
+      - 'supabase/proposals/s4d2c4_school_export_authorized_labels.sql'
+      - 'src/features/official-documents/lib/schoolOfficialExportServerLabels.ts'
+      - 'tests/s4c3c35-supabase-ci/export-labels-http.mjs'
+      - 'tests/s4c3c35-supabase-ci/fixtures/s4d2c4_disposable_name_columns.sql'
+      - 'tests/s4c3c35-supabase-ci/fixtures/s4d2c4_disposable_names_seed.sql'
+      - 'scripts/test-schoolnet-s4d2c4-label-contract.mjs'
+      - '.github/workflows/schoolnet-s4d2c4-authorized-labels-ci.yml'
+      - 'docs/releases/SCHOOLNET_S4D2C4_AUTHORIZED_LABELS_2026-11-26.md'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d2c4-authorized-metadata
+  cancel-in-progress: true
+jobs:
+  contract-regressions:
+    name: Strict label contract and previous SCHOOLNET export checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d2c4
+      - run: npm run qa:s4d2c3
+      - run: npm run qa:s4d2c2
+      - run: npm run qa:s4d2c1
+      - run: npm run qa:s4d2b
+      - run: npm run qa:s4d2a
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
+
+  S4D2C4_DISPOSABLE_REAL_JWT:
+    name: Real GoTrue JWT and PostgREST on disposable localhost only
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start isolated Auth/PostgREST localhost services
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Load only synthetic fixtures and unchanged proposal chain
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for candidate in \
+            tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql \
+            tests/s4c3c35-supabase-ci/fixtures/s4d2c4_disposable_name_columns.sql \
+            supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql \
+            supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql \
+            tests/s4c3c35-supabase-ci/fixtures/s4d2b_teacher_preflight_stub.sql \
+            supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
+            supabase/proposals/s4d2b_official_export_provisional_preview.sql \
+            supabase/proposals/s4d2c4_school_export_authorized_labels.sql
+          do
+            psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres \
+              -v ON_ERROR_STOP=1 -1 -f "$candidate"
+          done
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+          sleep 2
+      - name: Exercise exact Auth/JWT and HTTP school metadata permissions
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          test "${API_URL}" = "http://127.0.0.1:55421"
+          node --test export-labels-http.mjs
+      - name: Destroy disposable Supabase tokens and local DB
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true

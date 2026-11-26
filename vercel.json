@@ -26,7 +26,8 @@
       "feature/schoolnet-s4d2b-secure-export-projection-20261126": false,
       "feature/schoolnet-s4d2c1-provisional-export-api-20261126": false,
       "feature/schoolnet-s4d2c2-synthetic-preview-renderers-20261126": false,
-      "feature/schoolnet-s4d2c3-synthetic-identity-order-20261126": false
+      "feature/schoolnet-s4d2c3-synthetic-identity-order-20261126": false,
+      "feature/schoolnet-s4d2c4-authorized-metadata-20261126": false
     }
   }
 }
