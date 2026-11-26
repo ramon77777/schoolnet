@@ -1,4 +1,4 @@
-# SCHOOLNET V2 — S4-D.3b · Bulletin : lignes de matières autorisées
+# SCHOOLNET V2 — S4-D.3b · Bulletins V2 : lignes de matières autorisées
 
 **Date : 26 novembre 2026.** Étape **fonctionnelle** suivant S4-D.3a (maquette fictive validée sur ordinateur avec élèves 01, 02 et 03). PR brouillon empilée sur #62 ; **aucun déploiement**, aucune migration sur Supabase principal et aucun export réel.
 
