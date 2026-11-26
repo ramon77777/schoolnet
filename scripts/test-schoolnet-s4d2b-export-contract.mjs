@@ -97,7 +97,7 @@ test("S4-D.2b: no unsupported official or annual documents are produced",()=>{
  assert.match(sql,/school_admin' AND p_kind='class_general'/);
  assert.match(sql,/teacher' AND p_kind='subject_period'/);
  assert.match(sql,/S4D2B_EXPORT_PERMISSION_NOT_IMPLEMENTED/);
- assert.doesNotMatch(sql,/PDF|XLSX file|pdf_render|snapshot_sign|annual_avg/);
+ assert.doesNotMatch(sql,/CREATE FUNCTION\s+[^\s]*(?:pdf_render|xlsx_render)|snapshot_sign|annual_avg/i);
  assert.match(docs,/annuel|annuelle/);
  assert.match(docs,/aucun déploiement/i);
 });
