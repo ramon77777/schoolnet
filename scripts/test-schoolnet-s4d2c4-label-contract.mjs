@@ -144,3 +144,9 @@ test("S4-D.2c.4: no browser import, SQL production install, or Vercel branch rel
   assert.doesNotMatch(x,/secrets\.|SUPABASE_DB_URL|SUPABASE_ACCESS_TOKEN|db push|migration repair|--linked|vercel deploy|supabase\.from|supabase\.rpc/i);
  }
 });
+
+test("S4-D.2c.4: disposable Auth fixture recognizes full 8-4-4-4-12 UUID",()=>{
+ const runner=read("tests/s4c3c35-supabase-ci/export-labels-http.mjs");
+ const expected="const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;";
+ assert.ok(runner.includes(expected),"GoTrue JWT UUID validation must include every UUID group");
+});
