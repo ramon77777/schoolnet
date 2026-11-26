@@ -59,7 +59,10 @@ test("C3-C.3.5.2: no real school records, exports, publication or main-site depl
  assert.match(seed,/C3-C\.3\.5\.2 fixture/);
  assert.match(ci,/qa:s4c3c352/);
  assert.match(ci,/npm run build/);
- assert.doesNotMatch(suite,/https:\/\/|supabase\.co|service_role|VITE_SUPABASE_/i);
+ // The LOCAL, ephemeral service role key is intentionally read from CLI env
+ // to create fake Auth users; disallow hosted URLs and browser-exposed keys.
+ assert.match(suite,/const SERVICE=process\.env\.SERVICE_ROLE_KEY;/);
+ assert.doesNotMatch(suite,/https:\/\/|supabase\.co|VITE_SUPABASE_/i);
  assert.doesNotMatch(rpc,/UPDATE public\.assessment_submissions/);
  assert.doesNotMatch(ci,/vercel deploy|supabase projects create|supabase functions deploy/);
 });
