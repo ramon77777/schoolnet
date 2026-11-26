@@ -1,0 +1,156 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.4",
+  "observationDate": "2026-11-26",
+  "source": "Connected Supabase read-only: list_migrations, list_tables(public,schoolnet_private), SELECT on pg_catalog; compared with checked-in reconciliation manifest and fixed Git migration tree",
+  "projectName": "schoolnet_2.0",
+  "projectRef": "anttmbhaphkhmkoqsofd",
+  "postgresMajor": 17,
+  "metadataOnly": true,
+  "studentRecordsInspected": false,
+  "hostedWritesPerformed": false,
+  "migrationHistory": {
+    "remoteRegistered": 62,
+    "githubMigrationFilesAtBaseline": 54,
+    "historyOnly": 10,
+    "repositoryOnly": 2,
+    "historyOnlyVersions": [
+      "20261112140100",
+      "20261113124329",
+      "20261123105413",
+      "20261123125725",
+      "20261123143017",
+      "20261124075811",
+      "20261124133104",
+      "20261124150608",
+      "20261125104641",
+      "20261125132844"
+    ],
+    "repoOnlyVersions": [
+      "20261109140104",
+      "20261110090000"
+    ],
+    "lastRegisteredVersion": "20261125132844",
+    "migrationHistoryRepairApproved": false,
+    "historicalSourceBaselineStatus": "10_ORIGINALS_NOT_CERTIFIED_AT_C3532_SNAPSHOT",
+    "previouslyMissingGitSourceVersion": "20261113124329",
+    "storedLedgerStatementsPresent": 10,
+    "exactExistingCandidateTexts": 8,
+    "archivedNonExecutableLedgerSources": 2,
+    "storedStatementEqualityVerified": true,
+    "provenanceEvidencePath": "tests/s4c3c3534/ledger-statement-evidence.json"
+  },
+  "labelSources": {
+    "public.schoolnet_schools.name": "text",
+    "public.school_years.name": "text",
+    "public.classes.name": "text",
+    "schoolnet_private.school_grading_periods.name": "text",
+    "public.academic_subjects.name": "text"
+  },
+  "requiredObjects": {
+    "public.profiles": true,
+    "public.schoolnet_schools": true,
+    "public.school_years": true,
+    "public.classes": true,
+    "public.academic_subjects": true,
+    "public.schoolnet_school_memberships": true,
+    "public.schoolnet_school_teacher_subject_assignments": true,
+    "public.schoolnet_school_student_class_assignments": true,
+    "public.assessment_submissions": true,
+    "schoolnet_private.school_grading_periods": true,
+    "schoolnet_private.school_period_subject_coefficients": true,
+    "schoolnet_private.school_official_curricula": false,
+    "schoolnet_private.school_official_curriculum_subjects": false,
+    "schoolnet_private.school_export_preview_audit": false
+  },
+  "functionObservation": {
+    "public.get_my_role()": {
+      "present": true,
+      "returnType": "user_role",
+      "securityDefiner": true,
+      "searchPath": "public",
+      "anonExecute": true,
+      "authenticatedExecute": true
+    },
+    "public.schoolnet_teacher_official_subject_averages(uuid,uuid,uuid,uuid)": {
+      "present": true,
+      "returnType": "jsonb",
+      "securityDefiner": false,
+      "searchPath": "pg_catalog",
+      "anonExecute": false,
+      "authenticatedExecute": true
+    },
+    "public.schoolnet_school_official_general_averages(uuid,uuid,uuid)": {
+      "present": false
+    },
+    "public.schoolnet_official_export_preview(uuid,uuid,uuid,text,uuid,text,text)": {
+      "present": false
+    },
+    "public.schoolnet_official_export_labels(uuid,uuid,uuid,text,uuid)": {
+      "present": false
+    }
+  },
+  "repositoryOnlyMigrationEffectiveSchema": {
+    "20261109140104": {
+      "filename": "20261109140104_harden_assessment_legacy_rpcs.sql",
+      "remoteLedgerEntry": false,
+      "observedLegacyPublish": {
+        "present": true,
+        "securityDefiner": true,
+        "searchPath": "pg_catalog",
+        "anonExecute": false,
+        "authenticatedExecute": true,
+        "creatorCheckPattern": true
+      },
+      "observedLegacyMarkGraded": {
+        "present": true,
+        "securityDefiner": true,
+        "searchPath": "pg_catalog",
+        "anonExecute": false,
+        "authenticatedExecute": true,
+        "creatorCheckPattern": true
+      },
+      "observedRecalculate": {
+        "present": true,
+        "securityDefiner": true,
+        "searchPath": "public",
+        "anonExecute": false,
+        "authenticatedExecute": false
+      },
+      "observedTriggerExists": true,
+      "result": "KEY_PROTECTIVE_EFFECTS_PRESENT_SOURCE_NOT_CERTIFIED",
+      "originalMigrationExecutionProven": false
+    },
+    "20261110090000": {
+      "filename": "20261110090000_school_year_rollover_controlled.sql",
+      "remoteLedgerEntry": false,
+      "observedYearRolloverDecisionsTable": false,
+      "observedYearRolloverRunsTable": false,
+      "observedYearRolloverSaveRpc": false,
+      "observedYearRolloverFinalizeRpc": false,
+      "observedGuardTrigger": false,
+      "observedExistingAdminYearSwitchRpc": true,
+      "result": "ROLLOVER_FEATURE_OBJECTS_NOT_INSTALLED",
+      "originalMigrationExecutionProven": false
+    }
+  },
+  "readiness": {
+    "originalHistoricalSqlCertified": false,
+    "backupFullRestoreProven": false,
+    "authStorageRecoverabilityProven": false,
+    "productionSqlGo": false,
+    "hostedSandboxGo": false,
+    "mainMergeGo": false,
+    "vercelDeployGo": false,
+    "realDocumentExportEnabled": false,
+    "status": "BLOCKED_NO_DEPLOY",
+    "historicalSqlTextRecoveredFromLedger": true
+  },
+  "limitations": [
+    "Only presence, signatures, grants, and narrow safe pattern checks of installed function definitions were observed, not a byte-level comparison of executed migration SQL.",
+    "A migration absent from the ledger may have effects manually installed; partial presence is not proof of executed migration provenance.",
+    "The old get_my_role SECURITY DEFINER function has search_path=public and anon EXECUTE from legacy schema; flag for separate security review, not modified here.",
+    "This is a point-in-time observation, not a live continuous audit or a production-complete backup.",
+    "Supabase CLI v3 changed default local/remote targeting in November 2026: keep CI CLI pinned, verify --help and do not run remote migration or push operations.",
+    "All ten recorded SQL texts now have verified Git byte counterparts: eight existing proposal files and two inert .sql.txt evidence copies. This proves ledger text, not independently that each DDL effect remains installed."
+  ]
+}
