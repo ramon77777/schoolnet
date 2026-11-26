@@ -145,10 +145,10 @@ test("S4-D.3b: real ephemeral Auth JWT isolates single-student report-card subje
   const by=subjects(data);
   assert.equal(by.get(MATH).averageOn20,20);
   assert.equal(by.get(MATH).coefficient,2);
-  assert.equal(by.get(MATH).subjectName,"Mathématiques");
+  assert.equal(by.get(MATH).subjectName,"Mathématiques fictives");
   assert.equal(by.get(FRENCH).averageOn20,10);
   assert.equal(by.get(FRENCH).coefficient,1);
-  assert.equal(by.get(FRENCH).subjectName,"Français");
+  assert.equal(by.get(FRENCH).subjectName,"Français fictif");
   assert.equal(by.get(MATH).publishedAssessments,1);
   assert.equal(by.get(FRENCH).publishedAssessments,1);
   const original=good(await general(people.admin_a,A,A_PERIOD,A_CLASS),"general");
