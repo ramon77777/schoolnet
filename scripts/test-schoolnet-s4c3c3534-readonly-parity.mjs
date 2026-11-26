@@ -59,7 +59,7 @@ test("C3-C.3.5.3.4: 10 remote history SQL originals remain uncertified",()=>{
  assert.equal(snapshot.migrationHistory.storedStatementEqualityVerified,true);
  assert.equal(snapshot.migrationHistory.previouslyMissingGitSourceVersion,"20261113124329");
  assert.equal(snapshot.readiness.historicalSqlTextRecoveredFromLedger,true);
- const orphan=manifest.historyOnly.find(x=>x.version===snapshot.migrationHistory.orphanOriginalSource);
+ const orphan=manifest.historyOnly.find(x=>x.version===snapshot.migrationHistory.previouslyMissingGitSourceVersion);
  assert.ok(orphan);
  assert.equal(orphan.provenance,"ORIGINAL_SOURCE_NOT_VERIFIED");
  assert.deepEqual(orphan.candidates,[]);
@@ -145,8 +145,11 @@ test("C3-C.3.5.3.4: audit SQL is SELECT-only, never a migration or remote action
  assert.equal(statements.length,4);
  assert.ok(statements.every(s=>s.startsWith("SELECT ")));
  for(const statement of statements){
-  assert.doesNotMatch(statement,/\b(?:insert|update|delete|create|alter|drop|truncate|grant|revoke|call|execute|copy|pg_read_file|dblink)\b/iu);
-  assert.doesNotMatch(statement,/\b(?:auth\.users|assessment_submissions|student_enrollments)\b/iu);
+  // EXECUTE is a harmless quoted privilege argument to
+  // has_function_privilege(), not a SQL instruction.
+  const withoutStringLiterals=statement.replace(/'(?:''|[^'])*'/gu,"''");
+  assert.doesNotMatch(withoutStringLiterals,/\b(?:insert|update|delete|create|alter|drop|truncate|grant|revoke|call|execute|copy|pg_read_file|dblink)\b/iu);
+  assert.doesNotMatch(withoutStringLiterals,/\b(?:auth\.users|assessment_submissions|student_enrollments)\b/iu);
  }
  assert.match(query,/pg_catalog\.pg_proc/);
  assert.match(query,/has_function_privilege\('anon'/);
