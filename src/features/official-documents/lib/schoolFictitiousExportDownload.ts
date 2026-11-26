@@ -39,7 +39,7 @@ export function downloadFictionalSchoolExport(
 ): void {
   if (!import.meta.env.DEV || typeof window === "undefined" ||
       typeof document === "undefined" ||
-      !new URLSearchParams(window.location.search).get("schoolnet_s4d_demo") !== "1") {
+      new URLSearchParams(window.location.search).get("schoolnet_s4d_demo") !== "1") {
     throw new Error("Les téléchargements fictifs sont interdits hors mode de recette local.");
   }
   const result = generateFictionalDownloadBytes(request, plan);
