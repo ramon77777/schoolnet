@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { planSchoolOfficialExport } from "../src/features/official-documents/lib/schoolOfficialExportPlanning.ts";
 import {
-  assertFictionalExportDocument, makeFictionalExportDocument, excelLiteral,
+  assertFictionalExportDocument, makeFictionalExportDocument,
 } from "../src/features/official-documents/lib/schoolFictitiousExportDocument.ts";
 import { renderFictionalPdf } from "../src/features/official-documents/lib/schoolFictitiousPdf.ts";
 import { renderFictionalXlsx } from "../src/features/official-documents/lib/schoolFictitiousXlsx.ts";
