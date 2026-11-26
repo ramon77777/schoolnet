@@ -90,7 +90,7 @@ require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_a; SELECT count
 require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_b; SELECT count(*) FROM schoolnet_rehearsal.students")" 2 "B RLS students"
 require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_a; SELECT count(*) FROM schoolnet_rehearsal.students WHERE school_id='00000000-0000-4000-8000-000000000011'")" 0 "A cannot read B"
 require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_b; SELECT count(*) FROM schoolnet_rehearsal.students WHERE school_id='00000000-0000-4000-8000-000000000010'")" 0 "B cannot read A"
-require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_a; SELECT count(*) FROM schoolnet_rehearsal.mock_auth_accounts")" 2 "Fake Auth A scope"
+require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_a; SELECT count(*) FROM schoolnet_rehearsal.mock_auth_accounts")" 2 "Mock Auth A scope"
 require_equal "$(run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_b; SELECT count(*) FROM schoolnet_rehearsal.mock_storage_metadata")" 1 "Fake Storage metadata B scope"
 if run_sql "$TARGET" "SET ROLE schoolnet_rehearsal_guest; SELECT count(*) FROM schoolnet_rehearsal.students" >/dev/null 2>&1; then
   echo "FAIL: guest can read!" >&2
