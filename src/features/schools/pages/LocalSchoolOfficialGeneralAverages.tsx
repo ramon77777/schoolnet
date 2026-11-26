@@ -18,6 +18,7 @@ import {
   DEMO_SCHOOLS, makeDemoGradeConfig, makeDemoCurriculum, makeDemoGeneralPreview,
 } from "@/features/schools/lib/schoolOfficialGeneralAveragesDemo";
 import { getGeneralStudentReview } from "@/features/schools/lib/schoolGeneralStudentReview";
+import SchoolAuthorizedStudentReportCard from "@/features/official-documents/pages/SchoolAuthorizedStudentReportCard";
 
 type SchoolOption = { id: string; name: string; code: string };
 type LoadState = "idle" | "loading" | "ready" | "pending" | "error";
@@ -73,6 +74,9 @@ export default function LocalSchoolOfficialGeneralAverages() {
     scopeKey: string; studentId: string;
   } | null>(null);
 
+  const reportViewer = useMemo(() => allowed && user?.id ? ({
+    id: user.id, role: "school_admin", isDemo: Boolean(user.isDemo),
+  }) : null, [allowed, user?.id, user?.isDemo]);
   const ownerKey = allowed ? user?.id ?? "" : "";
   const visibleSchools = allowed && schoolsFor === ownerKey ? schools : [];
   const selectedSchool = visibleSchools.find((school) => school.id === schoolId) ?? null;
@@ -641,6 +645,17 @@ export default function LocalSchoolOfficialGeneralAverages() {
                         <p className="mt-2 text-xs text-slate-500">
                           Aucun recalcul local, aucune note brute, aucun bulletin créé ou publié.
                         </p>
+                        {scope && currentCurriculum?.status === "approved" &&
+                          currentPreview?.state === "preview" && reportViewer &&
+                          <SchoolAuthorizedStudentReportCard
+                            scope={scope}
+                            studentId={selectedStudentReview.student.studentId}
+                            curriculum={currentCurriculum}
+                            general={currentPreview}
+                            viewer={reportViewer}
+                            localDemo={localDemo}
+                            revisionKey={reviewKey}
+                          />}
                       </section>
                     </td>
                   </tr>}
