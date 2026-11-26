@@ -46,7 +46,8 @@
     "qa:s4c3c34": "node --test scripts/test-schoolnet-s4c3c34-security-audit.mjs",
     "qa:s4c3c35": "node --test scripts/test-schoolnet-s4c3c35-isolated-supabase-plan.mjs",
     "qa:s4c3c352": "node --test scripts/test-schoolnet-s4c3c352-official-rpc-http.mjs",
-    "qa:s4c3c353": "node --test scripts/test-schoolnet-s4c3c353-schema-reconciliation.mjs"
+    "qa:s4c3c353": "node --test scripts/test-schoolnet-s4c3c353-schema-reconciliation.mjs",
+    "qa:s4c3c3533": "node --test scripts/test-schoolnet-s4c3c3533-readiness.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",

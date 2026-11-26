@@ -1,0 +1,92 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.3",
+  "observedOn": "2026-11-26",
+  "sourceManifest": "tests/s4c3c353/migration-reconciliation.manifest.json",
+  "projectRef": "anttmbhaphkhmkoqsofd",
+  "productionWritesAllowed": false,
+  "provenance": {
+    "historyOnly": [
+      {
+        "version": "20261112140100",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261113124329",
+        "evidence": "SOURCE_NOT_FOUND",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261123105413",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261123125725",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261123143017",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261124075811",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261124133104",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261124150608",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261125104641",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      },
+      {
+        "version": "20261125132844",
+        "evidence": "CANDIDATE_ONLY",
+        "originalSqlVerified": false
+      }
+    ],
+    "repositoryOnly": [
+      {
+        "version": "20261109140104",
+        "remoteState": "NOT_IN_REGISTERED_HISTORY",
+        "effectiveSchemaVerified": false
+      },
+      {
+        "version": "20261110090000",
+        "remoteState": "NOT_IN_REGISTERED_HISTORY",
+        "effectiveSchemaVerified": false
+      }
+    ],
+    "historicalSourceCertification": "BLOCKED",
+    "migrationHistoryRepairAuthorized": false
+  },
+  "backups": {
+    "databaseExport": "NOT_PERFORMED",
+    "databaseArchiveIntegrity": "NOT_VERIFIED",
+    "authCoverage": "NOT_VERIFIED",
+    "storageObjectCoverage": "NOT_VERIFIED",
+    "privateOffsiteCopy": "NOT_VERIFIED",
+    "disposableFullRestore": "NOT_PERFORMED",
+    "credentialExposure": "PROHIBITED"
+  },
+  "approvals": {
+    "productionSQL": false,
+    "hostedSandboxResume": false,
+    "mainMerge": false,
+    "vercelProduction": false
+  },
+  "releaseReadiness": "BLOCKED",
+  "scope": "Documentation and fictional disposable CI restore only; no hosted changes, no migration repair and no backup of real user data."
+}
