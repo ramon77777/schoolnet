@@ -30,7 +30,8 @@
       "feature/schoolnet-s4d2c4-authorized-metadata-20261126": false,
       "feature/schoolnet-s4c3c3534-readonly-parity-audit-20261126": false,
       "feature/schoolnet-s4c3c3535-effect-inventory-20261126": false,
-      "feature/schoolnet-s4c3c3536-privileged-review-recovery-20261126": false
+      "feature/schoolnet-s4c3c3536-privileged-review-recovery-20261126": false,
+      "feature/schoolnet-s4c3c3537-fictitious-pg-restore-20261126": false
     }
   }
 }
