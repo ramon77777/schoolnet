@@ -1,0 +1,110 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.8",
+  "preparedOn": "2026-11-26",
+  "phase": "TARGET_SELECTION_AND_ISOLATION_DESIGN_ONLY",
+  "environmentCreated": false,
+  "projectOrServiceProvisioned": false,
+  "remoteOrLocalDatabaseTouched": false,
+  "privateArchiveOpened": false,
+  "privateArchiveMoved": false,
+  "privateArchiveUploaded": false,
+  "realSchoolDataProcessed": false,
+  "syntheticSourceRun": "S4-C.3-C.3.5.3.7_ON_GITHUB_ACTIONS_ONLY",
+  "principalSupabaseWriteAllowed": false,
+  "releaseGate": "BLOCKED_NO_RESTORE_GO",
+  "targetDecision": {
+    "selectedTarget": null,
+    "status": "AWAITING_EXPLICIT_SELECTION",
+    "alternatives": [
+      {
+        "id": "isolated_offline_host",
+        "label": "Serveur ou VM indépendant hors ligne",
+        "realDataCompatibleOnlyAfterApproval": true,
+        "paidCloudRequired": false,
+        "conditions": [
+          "Comptes distincts",
+          "Acces disque prive",
+          "PostgreSQL/version et extensions certifies",
+          "Egress coupe et test de notifications desactive",
+          "Stockage chiffre",
+          "Espace suffisant valide"
+        ]
+      },
+      {
+        "id": "separate_hosted_project",
+        "label": "Projet Supabase de test strictement distinct",
+        "realDataCompatibleOnlyAfterApproval": true,
+        "paidCloudRequired": "MAY_INCUR_COST",
+        "conditions": [
+          "Projet neuf sans liaison production",
+          "Accord explicite de creation et cout",
+          "Isolation Auth/SMTP/SMS/webhooks",
+          "Regles d'acces et region approuvees",
+          "Stockage prive controle",
+          "Politique de suppression documentee"
+        ]
+      }
+    ],
+    "noDefaultSelection": true,
+    "prohibitGithubActionsForRealArchive": true,
+    "prohibitSameProductionDatabaseAsTarget": true
+  },
+  "controls": {
+    "ownerOfTargetAssigned": false,
+    "costAndQuotasReviewed": false,
+    "allowedRegionAndHostingReviewed": false,
+    "backupStorageEncryptionReviewed": false,
+    "capacityAndPgVersionChecked": false,
+    "pgExtensionsRolesPoliciesAssessed": false,
+    "authenticatedSessionsAndKeysPlanApproved": false,
+    "storageByteInventoryAndPermissionsReviewed": false,
+    "outboundEmailSmsDisabledAndProven": false,
+    "externalWebhooksDisabledAndProven": false,
+    "egressIsolationValidated": false,
+    "independentDnsAndCredentialsValidated": false,
+    "rollbackAndDestructionRunbookApproved": false,
+    "incidentResponseContactAssigned": false,
+    "dataRetentionPeriodApproved": false,
+    "permittedEvidenceFormatApproved": false
+  },
+  "approvals": {
+    "documentationPreparation": true,
+    "inspectPrivateArchive": false,
+    "movePrivateArchive": false,
+    "createPaidCloudResources": false,
+    "provisionIsolatedTarget": false,
+    "restoreRealDatabase": false,
+    "restoreRealAuth": false,
+    "restoreRealStorage": false,
+    "testOnRealAccounts": false,
+    "allowExternalNotifications": false,
+    "productionMigration": false,
+    "migrationRepair": false,
+    "mainMerge": false,
+    "vercelDeploy": false,
+    "releaseRealExports": false
+  },
+  "tests": {
+    "scope": "Static approval and safety contract only",
+    "windowsQA": "qa:s4c3c3538",
+    "ciUsesRealBackup": false,
+    "liveGoTrueRestored": false,
+    "liveStorageRestored": false,
+    "previousSyntheticPostgresRestore": true,
+    "productionRestoreProved": false
+  },
+  "acceptedEvidence": [
+    "Metadonnees techniques generales (sans identifiants personnels ni secrets)",
+    "Checksums des archives locaux uniquement apres autorisation distincte",
+    "Comparaisons anonymisees de compteurs et signatures apres autorisation distincte",
+    "PV de tests A/B fictifs et controle RLS",
+    "PV de neutralisation e-mail/SMS/webhooks sans secret ni adresse de destinataire"
+  ],
+  "forbiddenEvidence": [
+    "Dump reel, liste de comptes Auth, notes individuelles, pieces jointes, photos et videos",
+    "Mot de passe, tokens, .env, cle service_role et URLs de connexion",
+    "Archive de sauvegarde reelle et blobs Storage",
+    "Journal SQL avec contenu de lignes ou noms d'eleves"
+  ],
+  "nextDecision": "User must explicitly choose isolated target and separately approve any provisioning/cost or real archive inspection/restoration"
+}
