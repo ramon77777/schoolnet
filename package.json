@@ -51,7 +51,8 @@
     "qa:s4c3c4": "node --experimental-strip-types --test scripts/test-schoolnet-s4c3c4-general-averages-ui.mjs",
     "qa:s4d1": "node --experimental-strip-types --test scripts/test-schoolnet-s4d1-documents-exports.mjs",
     "qa:s4d2a": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2a-file-export.mjs",
-    "qa:s4d2b": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2b-export-contract.mjs"
+    "qa:s4d2b": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2b-export-contract.mjs",
+    "qa:s4d2c1": "node --experimental-strip-types --test scripts/test-schoolnet-s4d2c1-export-bridge.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
