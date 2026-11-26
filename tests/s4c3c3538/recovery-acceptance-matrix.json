@@ -1,0 +1,125 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.8",
+  "planVersion": 1,
+  "source": "Preparation only; values reflect no selected target and no actual private restoration",
+  "status": "PLANNED_NOT_EXECUTED",
+  "acceptanceTests": [
+    {
+      "id": "TARGET_INDEPENDENT",
+      "domain": "topology",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Destination distincte de Supabase principal, isolement de comptes, clefs et flux de donnees",
+      "evidenceClass": "technical_metadata_only"
+    },
+    {
+      "id": "HOST_PG_COMPATIBILITY",
+      "domain": "database",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "PostgreSQL et extensions compatibles verifies avant chargement",
+      "evidenceClass": "technical_metadata_only"
+    },
+    {
+      "id": "STORAGE_CAPACITY_ENCRYPTION",
+      "domain": "host",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Capacite stockage/chiffrement/acces restreint justifies",
+      "evidenceClass": "non_sensitive_attestation"
+    },
+    {
+      "id": "EGRESS_NETWORK_BLOCK",
+      "domain": "network",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Acces sortant non necessaire interdit et verifie sans emails ou appels reels",
+      "evidenceClass": "non_sensitive_attestation"
+    },
+    {
+      "id": "MESSAGING_WEBHOOKS_DISABLED",
+      "domain": "integration",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Emails, SMS, webhooks, Cron, fonctions declenchantes neutralises avant import",
+      "evidenceClass": "non_sensitive_attestation"
+    },
+    {
+      "id": "AUTH_SESSIONS_KEYS_SEPARATED",
+      "domain": "auth",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Aucune reutilisation sessions, cles ou credentials de production",
+      "evidenceClass": "non_sensitive_attestation"
+    },
+    {
+      "id": "STORAGE_BYTES_SOURCE_AVAILABLE",
+      "domain": "storage",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Source privee d'octets Storage et plan de verification conforme aux metadata",
+      "evidenceClass": "aggregate_count_or_hash_after_go"
+    },
+    {
+      "id": "BACKUP_FORMAT_AND_SCOPE",
+      "domain": "backup",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Format, date et schemas couvertures DB/Auth/Storage verifies apres permission de lire la sauvegarde",
+      "evidenceClass": "aggregate_summary_after_go"
+    },
+    {
+      "id": "DATA_RETENTION_AND_DESTRUCTION",
+      "domain": "privacy",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Retention, responsable et preuve de destruction convenus avant import",
+      "evidenceClass": "non_sensitive_attestation"
+    },
+    {
+      "id": "REAL_ARCHIVE_ACCESS_GO",
+      "domain": "approval",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Accord distinct pour lecture et transfert d'une archive privee; aucune lecture en C3538",
+      "evidenceClass": "explicit_user_approval"
+    },
+    {
+      "id": "DB_RESTORE_GO",
+      "domain": "approval",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Accord distinct pour restaurer les donnees scolaires sur la cible agreee",
+      "evidenceClass": "explicit_user_approval"
+    },
+    {
+      "id": "AUTH_AND_STORAGE_RESTORE_GO",
+      "domain": "approval",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Autorisations distinctes et verification des composantes Auth et Storage",
+      "evidenceClass": "explicit_user_approval"
+    },
+    {
+      "id": "ROLLBACK_REHEARSAL",
+      "domain": "recovery",
+      "status": "NOT_STARTED",
+      "required": true,
+      "criterion": "Restauration independante et retour arriere verifies sans toucher production",
+      "evidenceClass": "non_sensitive_attestation"
+    }
+  ],
+  "stopIfAny": [
+    "Cible choisie sans approbation du cout ou de la zone",
+    "Une authentification ou cle de production est presente dans les logs/CI",
+    "Un destinataire reel peut recevoir email ou SMS",
+    "Un webhook ou un service tiers peut recevoir un evenement",
+    "Le volume des fichiers Storage ne dispose pas de copie de ses octets",
+    "La duree de conservation ou la destruction ne sont pas definies",
+    "L'hote partage la base de production ou les memes secrets",
+    "La sauvegarde n'est pas autorisee explicitement pour l'operation demandee"
+  ],
+  "canProceedToRealBackup": false,
+  "realRestoreCertified": false,
+  "approvalForHosting": false
+}
