@@ -1,0 +1,93 @@
+name: SCHOOLNET S4-D.2b - scoped official export preview and JWT security
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d2a-fictitious-pdf-xlsx-renderers-20261126
+    paths:
+      - 'supabase/proposals/s4d2b_official_export_provisional_preview.sql'
+      - 'src/features/official-documents/lib/schoolOfficialExportProjectionModel.ts'
+      - 'scripts/test-schoolnet-s4d2b-export-contract.mjs'
+      - 'tests/s4c3c35-supabase-ci/official-export-http.mjs'
+      - 'tests/s4c3c35-supabase-ci/fixtures/s4d2b_teacher_preflight_stub.sql'
+      - 'docs/releases/SCHOOLNET_S4D2B_EXPORT_PROJECTION_2026-11-26.md'
+      - 'package.json'
+      - 'vercel.json'
+      - '.github/workflows/schoolnet-s4d2b-secure-export-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d2b-export
+  cancel-in-progress: true
+jobs:
+  contracts:
+    name: Export SQL contract and earlier client checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d2b
+      - run: npm run qa:s4d2a
+      - run: npm run qa:s4d1
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
+
+  disposable-real-auth:
+    name: Real GoTrue JWT and PostgREST against disposable, isolated Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start disposable local Supabase Auth and PostgREST
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Apply ONLY fixture and draft SQL to localhost 55422
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for candidate in \
+            tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql \
+            supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql \
+            supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql \
+            tests/s4c3c35-supabase-ci/fixtures/s4d2b_teacher_preflight_stub.sql \
+            supabase/proposals/s4c3b2_teacher_official_subject_averages.sql \
+            supabase/proposals/s4d2b_official_export_provisional_preview.sql
+          do
+            psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres \
+              -v ON_ERROR_STOP=1 -1 -f "$candidate"
+          done
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres \
+            -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+          sleep 2
+      - name: Test real signed user tokens and private export audit
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          test "${API_URL}" = "http://127.0.0.1:55421"
+          node --test official-export-http.mjs
+      - name: Destroy disposable database, tokens and containers
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true
