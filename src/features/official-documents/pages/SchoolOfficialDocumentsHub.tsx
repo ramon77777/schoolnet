@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { downloadFictionalSchoolExport } from "../lib/schoolFictitiousExportDownload";
+import SchoolFictionalReportCardDemo from "./SchoolFictionalReportCardDemo";
 import {
   OFFICIAL_EXPORT_CATALOG, OFFICIAL_EXPORT_CADENCE_CATALOG,
   planSchoolOfficialExport, type ExportActorRole, type ExportKind,
@@ -177,6 +178,9 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
           <p className="text-sm leading-6 text-slate-600">{item.text}</p>
         </article>)}
       </section>
+
+      {demo && actor === "school_admin" &&
+        <SchoolFictionalReportCardDemo />}
 
       <section className="sn-card space-y-4 p-5 md:p-6">
         <div>
