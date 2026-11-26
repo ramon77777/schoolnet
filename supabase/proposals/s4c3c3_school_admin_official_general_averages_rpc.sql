@@ -121,12 +121,23 @@ BEGIN
   ) VALUES(p_school_id,v_year,p_class_id,p_period_id)
   ON CONFLICT(period_id,class_id) DO NOTHING;
  END IF;
- SELECT id,status,approved_at
- INTO v_curriculum,v_status,v_approved_at
- FROM schoolnet_private.school_official_curricula
- WHERE school_id=p_school_id AND school_year_id=v_year
-  AND class_id=p_class_id AND period_id=p_period_id
- FOR UPDATE;
+ -- Read-only catalogue lookup must NEVER acquire row locks: teachers and
+ -- school-admin dashboards can call this in a READ ONLY transaction. Writers
+ -- retain a row lock after their transaction-scoped advisory lock.
+ IF p_action='read' THEN
+  SELECT id,status,approved_at
+  INTO v_curriculum,v_status,v_approved_at
+  FROM schoolnet_private.school_official_curricula
+  WHERE school_id=p_school_id AND school_year_id=v_year
+   AND class_id=p_class_id AND period_id=p_period_id;
+ ELSE
+  SELECT id,status,approved_at
+  INTO v_curriculum,v_status,v_approved_at
+  FROM schoolnet_private.school_official_curricula
+  WHERE school_id=p_school_id AND school_year_id=v_year
+   AND class_id=p_class_id AND period_id=p_period_id
+  FOR UPDATE;
+ END IF;
  IF p_action='approve' AND v_curriculum IS NULL THEN
   RAISE EXCEPTION 'S4C3C3_NO_CURRICULUM' USING ERRCODE='22023';
  END IF;
