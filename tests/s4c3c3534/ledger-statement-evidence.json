@@ -21,7 +21,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/20261112_family_password_auth_hook_proof.sql"
-      ]
+      ],
+      "sha256": "1bf3499c745c7892b250645fedbd78de6ae0f20d99fde2053a708ce3cfeeeecc"
     },
     {
       "version": "20261113124329",
@@ -30,7 +31,8 @@
       "kind": "REMOTE_TEXT_RECOVERED_NONEXECUTABLE",
       "paths": [
         "tests/s4c3c3534/recovered-ledger/20261113124329_schoolnet_student_no_email_security_release_20261113.sql.txt"
-      ]
+      ],
+      "sha256": "f7eee7ac1dca97b0626f9e93b80db465269600892fa5a7f7154553d16e4a014b"
     },
     {
       "version": "20261123105413",
@@ -39,7 +41,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4b3b2_official_assessment_attempts.sql"
-      ]
+      ],
+      "sha256": "84b696b88660e21c967c667465a7d9c979e04bdf2a2f4c6fa81997fb44809954"
     },
     {
       "version": "20261123125725",
@@ -48,7 +51,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4b3b3_official_teacher_grading.sql"
-      ]
+      ],
+      "sha256": "11166c0094517b944a329004afab9301970a040ac09f3770b4d217ea46ca4e2d"
     },
     {
       "version": "20261123143017",
@@ -57,7 +61,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4b3b3n_official_teacher_submission_notifications.sql"
-      ]
+      ],
+      "sha256": "78c0484a14f88fa541d89d70bd374be4f8f5933acd22d10931c79ac61d943f60"
     },
     {
       "version": "20261124075811",
@@ -66,7 +71,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4b3b4_student_official_dashboard.sql"
-      ]
+      ],
+      "sha256": "1b9d4ba36ed75686215bc82f8d4052aad93282b72f9e0d1438a2fc15056ca513"
     },
     {
       "version": "20261124133104",
@@ -75,7 +81,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4c3a_official_periods_coefficients.sql"
-      ]
+      ],
+      "sha256": "a759e7e285fc9bb6efe00a2bf2b9d5078ced7a70b1320e0a76047b8f986922e5"
     },
     {
       "version": "20261124150608",
@@ -84,7 +91,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4c3a1_automatic_period_codes.sql"
-      ]
+      ],
+      "sha256": "7f6b590a02a09801e57603bb10635bca9206199cb609204e3866cadcf9148aa5"
     },
     {
       "version": "20261125104641",
@@ -101,7 +109,8 @@
         "firstCandidate": "supabase/proposals/s4c3b2_teacher_official_subject_averages.sql",
         "separator": "\n",
         "secondCandidate": "supabase/proposals/s4c3b2_teacher_official_averages_catalog.sql"
-      }
+      },
+      "sha256": "35a34903ed3e13d22ab61a97885705019d9b47b387ffaecc503ddf8b2e5f219c"
     },
     {
       "version": "20261125132844",
@@ -110,7 +119,8 @@
       "kind": "EXACT_SINGLE_GIT_PROPOSAL",
       "paths": [
         "supabase/proposals/s4c3b6_teacher_coefficients_delegation.sql"
-      ]
+      ],
+      "sha256": "c28894ff3ad2f517af8515be93fe39fa656d389e31e692e136057dbce79b092f"
     }
   ],
   "guardrails": [
@@ -118,5 +128,6 @@
     "None of the recovered texts are placed in supabase/migrations; an additional security/code review and backup-restoration GO is mandatory before any future migration.",
     "No SQL data rows, secret keys, JWTs, grade tables or school records were copied.",
     "Do not use migration repair, db push, hosted SQL or Vercel publication to resolve this documentation gap."
-  ]
+  ],
+  "strongHashMethod": "PostgreSQL 17 sha256(convert_to(stored SQL text, UTF8)); compare to Node SHA256 of exact committed Git blobs"
 }
