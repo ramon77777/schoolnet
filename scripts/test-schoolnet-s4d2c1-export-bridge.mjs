@@ -38,7 +38,6 @@ const reply={
    averageOn20:null,completedItems:2,expectedItems:3},
  ]
 };
-const clone=(x)=>structuredClone(x);
 
 test("S4-D.2c.1: teacher request generates an exact server RPC allowlist",()=>{
  const args=makeOfficialExportRpcArgs(tReq,teacher);
