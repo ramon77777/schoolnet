@@ -39,6 +39,8 @@ Le workflow `.github/workflows/schoolnet-s4d2b-secure-export-ci.yml` comporte de
 1. Contrats et régressions : `qa:s4d2b`, `qa:s4d2a`, `qa:s4d1`, `qa:s4c3c4`, lint et build.
 2. Tests HTTP Auth/JWT/PostgREST **réels mais jetables** : démarrage de Supabase local dans GitHub Actions, construction du schéma synthétique et des SQL candidats précédents, dix comptes fictifs GoTrue, séparation A/B, refus des rôles et membres révoqués, calcul/0/null, contrôle strict des champs, vérification du journal privé et absence de mutation des notes. Destruction des conteneurs/volumes en fin de job.
 
+Pour installer la proposition enseignante C.3-B.2 sur le schéma HTTP minimal, cette CI dispose d'un **stub fail-closed et jetable** `s4d2b_teacher_preflight_stub.sql` : il satisfait uniquement la vérification d'existence de la RPC de configuration C.3-A, que la fonction de calcul de l'enseignant n'appelle pas. Ce stub **lève une erreur si appelé**, reste dans le dossier `tests/` et ne représente **pas une validation de la configuration scolaire C.3-A réelle**. Aucun contournement des contrôles de notes/enseignant/établissement de C.3-B.2 n'est autorisé.
+
 Les fixtures sont des jeux **synthétiques**, pas une copie de la base de production. Aucune authentification Supabase principale, aucune clé hébergée, aucune restauration de données privées. Les SQL de la chaîne C.3-C demeurent des **propositions non certifiées comme migrations historiques** ; ne pas réparer leur numérotation artificiellement.
 
 ## Après CI — recette locale sur Windows
