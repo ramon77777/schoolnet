@@ -146,7 +146,7 @@ BEGIN
  THEN RAISE EXCEPTION 'CATALOG_APPROVAL_FAILED %',v_result; END IF;
  RAISE NOTICE 'C3C33_PASS_ADMIN_CATALOG_APPROVED';
 
- SELECT count(*) INTO v_before FROM public.assessment_submissions;
+ -- Grade integrity checked after RESET ROLE, never by the authenticated caller.
  v_result:=public.schoolnet_school_official_general_averages(
   v_school_a,v_period_a,v_class_a);
  IF v_result->>'studentCount'<>'3' OR v_result->>'expectedSubjects'<>'2'
@@ -177,9 +177,7 @@ BEGIN
    v_result::text LIKE '%subjects%' THEN
    RAISE EXCEPTION 'PII_OR_RAW_NOTE_LEAK'; END IF;
  RAISE NOTICE 'C3C33_PASS_MINIMAL_PROJECTION_NO_OTHER_SCHOOL_OR_RAW_NOTES';
- IF v_before<>(SELECT count(*) FROM public.assessment_submissions)
- THEN RAISE EXCEPTION 'PREVIEW_CHANGED_GRADES'; END IF;
- RAISE NOTICE 'C3C33_PASS_PREVIEW_READ_ONLY';
+ -- Source-grade row count is verified by the fixture harness with its own role.
 
  -- B-school admin cannot read A. A-school admin cannot read B.
  PERFORM set_config('request.jwt.claim.sub',v_admin_b::text,true);
@@ -304,6 +302,13 @@ BEGIN
 
 END $test$;
 RESET ROLE;
+DO $admin_fixture_integrity$
+BEGIN
+ IF (SELECT count(*) FROM public.assessment_submissions)<>9 THEN
+  RAISE EXCEPTION 'PREVIEW_CHANGED_GRADES';
+ END IF;
+ RAISE NOTICE 'C3C33_PASS_PREVIEW_READ_ONLY';
+END $admin_fixture_integrity$;
 ROLLBACK;
 SELECT CASE WHEN NOT EXISTS(
  SELECT 1 FROM schoolnet_private.school_official_curricula
