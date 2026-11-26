@@ -29,10 +29,15 @@
       "20261109140104",
       "20261110090000"
     ],
-    "uncertifiedHistoricalOriginals": 10,
-    "orphanOriginalSource": "20261113124329",
     "lastRegisteredVersion": "20261125132844",
-    "migrationHistoryRepairApproved": false
+    "migrationHistoryRepairApproved": false,
+    "historicalSourceBaselineStatus": "10_ORIGINALS_NOT_CERTIFIED_AT_C3532_SNAPSHOT",
+    "previouslyMissingGitSourceVersion": "20261113124329",
+    "storedLedgerStatementsPresent": 10,
+    "exactExistingCandidateTexts": 8,
+    "archivedNonExecutableLedgerSources": 2,
+    "storedStatementEqualityVerified": true,
+    "provenanceEvidencePath": "tests/s4c3c3534/ledger-statement-evidence.json"
   },
   "labelSources": {
     "public.schoolnet_schools.name": "text",
@@ -137,13 +142,15 @@
     "mainMergeGo": false,
     "vercelDeployGo": false,
     "realDocumentExportEnabled": false,
-    "status": "BLOCKED_NO_DEPLOY"
+    "status": "BLOCKED_NO_DEPLOY",
+    "historicalSqlTextRecoveredFromLedger": true
   },
   "limitations": [
     "Only presence, signatures, grants, and narrow safe pattern checks of installed function definitions were observed, not a byte-level comparison of executed migration SQL.",
     "A migration absent from the ledger may have effects manually installed; partial presence is not proof of executed migration provenance.",
     "The old get_my_role SECURITY DEFINER function has search_path=public and anon EXECUTE from legacy schema; flag for separate security review, not modified here.",
     "This is a point-in-time observation, not a live continuous audit or a production-complete backup.",
-    "Supabase CLI v3 changed default local/remote targeting in November 2026: keep CI CLI pinned, verify --help and do not run remote migration or push operations."
+    "Supabase CLI v3 changed default local/remote targeting in November 2026: keep CI CLI pinned, verify --help and do not run remote migration or push operations.",
+    "All ten recorded SQL texts now have verified Git byte counterparts: eight existing proposal files and two inert .sql.txt evidence copies. This proves ledger text, not independently that each DDL effect remains installed."
   ]
 }
