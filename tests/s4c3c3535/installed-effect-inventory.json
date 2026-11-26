@@ -1,0 +1,898 @@
+{
+  "workPackage": "S4-C.3-C.3.5.3.5",
+  "observationDate": "2026-11-26",
+  "project": "schoolnet_2.0",
+  "projectRef": "anttmbhaphkhmkoqsofd",
+  "source": "Read-only pg_catalog SQL queries (no school data) + SHA256-verified source texts of ten registered remote migrations from S4-C.3-C.3.5.3.4",
+  "auditMethod": "Regex enumeration of CREATE TABLE/FUNCTION/TRIGGER/POLICY names in stored SQL; lookup current pg_catalog by schema+name; record current signatures, RLS, EXECUTE permissions, trigger enabled status. Name presence is not definition equivalence.",
+  "sqlWritesOnHostedProject": 0,
+  "schoolRowsRead": 0,
+  "historyLedgerModified": false,
+  "sourceVersionCount": 10,
+  "uniqueObjectCount": 65,
+  "sourceOccurrences": 67,
+  "counts": {
+    "function": {
+      "expected": 50,
+      "found": 50
+    },
+    "table": {
+      "expected": 9,
+      "found": 9
+    },
+    "trigger": {
+      "expected": 5,
+      "found": 5
+    },
+    "policy": {
+      "expected": 1,
+      "found": 1
+    }
+  },
+  "restoredBackupFullyVerified": false,
+  "allObjectDefinitionsIdenticalToRecordedSql": false,
+  "securityReviewOpen": true,
+  "goForDeployment": false,
+  "limitations": [
+    "Function names are matched within schema; the observed live signature is recorded but not yet compared mechanically to the historical declaration.",
+    "Some recorded CREATE OR REPLACE FUNCTION statements may have been superseded by later migrations; current effects do not establish historical execution fidelity.",
+    "CREATE TRIGGER / POLICY name lookup can be ambiguous across tables; current attachment is recorded for human review.",
+    "Policy conditions, trigger bodies, runtime permissions and real JWT execution are not certified by this static inventory.",
+    "No real-user, grades, Auth tokens or Storage data was inspected or copied."
+  ],
+  "objects": [
+    {
+      "kind": "function",
+      "name": "public.notify_assessment_correction_published",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "public, pg_temp",
+      "anonExecuteObserved": true,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_family_password_session_proof",
+      "declaredIn": [
+        "20261112140100"
+      ],
+      "present": true,
+      "signatureObserved": "p_user_id uuid, p_after timestamp with time zone",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_no_email_activate_after_password",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "p_user_id uuid, p_phone_e164 text, p_code_hmac text",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_no_email_login_audit",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "p_outcome text",
+      "returnTypeObserved": "void",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_no_email_login_enabled",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "p_user_id uuid, p_phone_e164 text, p_code_hmac text",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_no_email_login_gate",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "p_phone_e164 text, p_code_hmac text, p_phone_bucket_hmac text, p_ip_bucket_hmac text",
+      "returnTypeObserved": "TABLE(rate_allowed boolean, student_auth_user_id uuid)",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_no_email_my_session_enabled",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_grading_configuration",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_lock_grading_period",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_set_assessment_coefficient",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_assessment_id uuid, p_coefficient numeric, p_include_in_average boolean",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_set_subject_coefficient",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_class_id uuid, p_subject_id uuid, p_coefficient numeric",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_set_teacher_coefficient_delegation",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_teacher_assignment_id uuid, p_enabled boolean",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_teacher_coefficient_delegations",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_school_upsert_grading_period",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_school_year_id uuid, p_code text, p_name text, p_starts_on date, p_ends_on date",
+      "returnTypeObserved": "uuid",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_student_official_dashboard",
+      "declaredIn": [
+        "20261124075811"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_student_official_published_result",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_course_id uuid, p_assessment_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_student_school_assessment_attempt",
+      "declaredIn": [
+        "20261123105413"
+      ],
+      "present": true,
+      "signatureObserved": "p_course_id uuid, p_assessment_id uuid, p_action text, p_answers jsonb, p_freeform_answer text",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_coefficient_settings",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_official_averages_catalog",
+      "declaredIn": [
+        "20261125104641"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_official_copies",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_assessment_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_official_grade",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_assessment_id uuid, p_submission_id uuid, p_action text, p_score numeric, p_feedback text",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_official_subject_averages",
+      "declaredIn": [
+        "20261125104641"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_class_id uuid, p_subject_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_set_assessment_coefficient",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_assessment_id uuid, p_coefficient numeric, p_include_in_average boolean",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.schoolnet_teacher_set_subject_coefficient",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_class_id uuid, p_subject_id uuid, p_coefficient numeric",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "public.trigger_refresh_progress_from_assessment_submission",
+      "declaredIn": [
+        "20261123105413"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "public",
+      "anonExecuteObserved": true,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_family_auth_proof.observe_family_access_token",
+      "declaredIn": [
+        "20261112140100"
+      ],
+      "present": true,
+      "signatureObserved": "event jsonb",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_family_auth_proof.reject_token_mutation",
+      "declaredIn": [
+        "20261112140100"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.notify_teacher_on_submission",
+      "declaredIn": [
+        "20261123105413",
+        "20261123143017"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_grading_configuration",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_lock_grading_period",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_set_assessment_coefficient",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_assessment_id uuid, p_coefficient numeric, p_include_in_average boolean",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_set_subject_coefficient",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_class_id uuid, p_subject_id uuid, p_coefficient numeric",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_set_teacher_coefficient_delegation",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_teacher_assignment_id uuid, p_enabled boolean",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_teacher_coefficient_delegations",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.school_upsert_grading_period",
+      "declaredIn": [
+        "20261124133104",
+        "20261124150608"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_school_year_id uuid, p_code text, p_name text, p_starts_on date, p_ends_on date",
+      "returnTypeObserved": "uuid",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.student_official_dashboard",
+      "declaredIn": [
+        "20261124075811"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.student_official_published_result",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_course_id uuid, p_assessment_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.student_school_assessment_attempt",
+      "declaredIn": [
+        "20261123105413"
+      ],
+      "present": true,
+      "signatureObserved": "p_course_id uuid, p_assessment_id uuid, p_action text, p_answers jsonb, p_freeform_answer text",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_coefficient_settings",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_official_averages_catalog",
+      "declaredIn": [
+        "20261125104641"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_official_copies",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_assessment_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_official_grade",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_assessment_id uuid, p_submission_id uuid, p_action text, p_score numeric, p_feedback text",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_official_grading_link",
+      "declaredIn": [
+        "20261123125725"
+      ],
+      "present": true,
+      "signatureObserved": "p_assessment_id uuid",
+      "returnTypeObserved": "uuid",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_official_subject_averages",
+      "declaredIn": [
+        "20261125104641"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_class_id uuid, p_subject_id uuid",
+      "returnTypeObserved": "jsonb",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_set_assessment_coefficient",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_assessment_id uuid, p_coefficient numeric, p_include_in_average boolean",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_private.teacher_set_subject_coefficient",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "signatureObserved": "p_school_id uuid, p_period_id uuid, p_class_id uuid, p_subject_id uuid, p_coefficient numeric",
+      "returnTypeObserved": "boolean",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": true
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_student_private.guard_no_email_child_ids",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_student_private.guard_no_email_parent_links",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_student_private.guard_no_email_record",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": false,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "function",
+      "name": "schoolnet_student_private.require_activated_before_parent_link",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "signatureObserved": "",
+      "returnTypeObserved": "trigger",
+      "securityDefinerObserved": true,
+      "searchPathObserved": "pg_catalog",
+      "anonExecuteObserved": false,
+      "authenticatedExecuteObserved": false
+    },
+    {
+      "kind": "policy",
+      "name": "schoolnet_family_token_insert_auth",
+      "declaredIn": [
+        "20261112140100"
+      ],
+      "present": true,
+      "attachedToObserved": "schoolnet_family_auth_proof.token_issue_observations",
+      "commandObserved": "a",
+      "permissiveObserved": true
+    },
+    {
+      "kind": "table",
+      "name": "public.schoolnet_student_no_email_requests",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": true
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_family_auth_proof.token_issue_observations",
+      "declaredIn": [
+        "20261112140100"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": true
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_private.school_grading_periods",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": false
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_private.school_official_assessment_coefficients",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": false
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_private.school_period_subject_coefficients",
+      "declaredIn": [
+        "20261124133104"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": false
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_private.school_teacher_coefficient_delegations",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": false
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_private.school_teacher_coefficient_events",
+      "declaredIn": [
+        "20261125132844"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": false
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_student_private.login_attempt_windows",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": true
+    },
+    {
+      "kind": "table",
+      "name": "schoolnet_student_private.login_audit",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "rlsEnabledObserved": true,
+      "rlsForcedObserved": true
+    },
+    {
+      "kind": "trigger",
+      "name": "schoolnet_family_token_append_only_trg",
+      "declaredIn": [
+        "20261112140100"
+      ],
+      "present": true,
+      "attachedToObserved": "schoolnet_family_auth_proof.token_issue_observations",
+      "enabledObserved": "O"
+    },
+    {
+      "kind": "trigger",
+      "name": "schoolnet_student_no_email_child_ids_guard",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "attachedToObserved": "public.profiles",
+      "enabledObserved": "O"
+    },
+    {
+      "kind": "trigger",
+      "name": "schoolnet_student_no_email_parent_links_guard",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "attachedToObserved": "public.parent_links",
+      "enabledObserved": "O"
+    },
+    {
+      "kind": "trigger",
+      "name": "schoolnet_student_no_email_record_guard",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "attachedToObserved": "public.schoolnet_student_no_email_requests",
+      "enabledObserved": "O"
+    },
+    {
+      "kind": "trigger",
+      "name": "schoolnet_student_no_email_resolution_guard",
+      "declaredIn": [
+        "20261113124329"
+      ],
+      "present": true,
+      "attachedToObserved": "public.public_enrollment_request_resolutions",
+      "enabledObserved": "O"
+    }
+  ]
+}
