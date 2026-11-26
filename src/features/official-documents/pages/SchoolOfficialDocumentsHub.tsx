@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { downloadFictionalSchoolExport } from "../lib/schoolFictitiousExportDownload";
 import {
   OFFICIAL_EXPORT_CATALOG, OFFICIAL_EXPORT_CADENCE_CATALOG,
   planSchoolOfficialExport, type ExportActorRole, type ExportKind,
@@ -89,6 +90,7 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
   const [format, setFormat] = useState<ExportFormat>("pdf");
   const [selectedSchool, setSelectedSchool] = useState<string>(ids.schoolA);
   const [selectedSubject, setSelectedSubject] = useState<string>(ids.subjectMath);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const request = useMemo<ExportRequest>(() => ({
     viewerId: "LOCAL-FICTIONAL-REVIEWER",
@@ -107,6 +109,20 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
   const preview = useMemo(() => demo && allowed
     ? planSchoolOfficialExport(request, makeFakeReview(actor, request))
     : null, [demo, allowed, request, actor]);
+  const demoFileEligible = demo && allowed && preview?.eligibleForServerReview === true &&
+    kind !== "class_subjects" && cadence !== "annual" && state === "provisional";
+
+  function downloadDemo(formatToDownload: ExportFormat): void {
+    if (!demoFileEligible) return;
+    const nextRequest = { ...request, format: formatToDownload };
+    const nextPlan = planSchoolOfficialExport(nextRequest, makeFakeReview(actor, nextRequest));
+    try {
+      downloadFictionalSchoolExport(nextRequest, nextPlan);
+      setDownloadError(null);
+    } catch {
+      setDownloadError("Échec de génération du fichier fictif. Aucun résultat scolaire réel n'a été consulté.");
+    }
+  }
 
   return <main className="space-y-6 pb-12">
     <header className="sn-card overflow-hidden border border-indigo-100 bg-gradient-to-br from-white via-blue-50 to-indigo-100 p-5 md:p-8">
@@ -303,9 +319,32 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
           </button>
         </div>
         <p className="text-xs text-slate-500">
-          Aucun fichier exporté à cette étape. Les relevés « provisoires »
-          resteront distincts des documents scolaires « officiellement publiés ».
+          Les boutons d'export réel restent désactivés : ils exigent encore la RPC d'autorisation
+          et de journalisation. Les relevés provisoires restent distincts des bulletins publiés.
         </p>
+        {demo && <div className="space-y-3 rounded-xl border-2 border-violet-200 bg-violet-50 p-4">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-violet-800">
+            Générateur PDF / Excel — documents fictifs uniquement
+          </p>
+          <p className="text-sm leading-6 text-violet-950">
+            Ce test produit de vrais fichiers PDF et Excel (.xlsx) sur votre ordinateur,
+            avec 13 élèves entièrement fictifs. Chaque document porte les mentions
+            « RELEVÉ PROVISOIRE — NON PUBLIÉ » et « DONNÉES FICTIVES ».
+            Aucun export réel ni bulletin officiel n'est activé.
+          </p>
+          {!demoFileEligible && <p role="status" className="text-sm font-medium text-amber-900">
+            Pour tester les fichiers : établissement fictif A, relevé par matière
+            ou moyenne générale, trimestre ou semestre et statut « provisoire ».
+            Les demandes non autorisées et l'annuel restent bloqués.
+          </p>}
+          {downloadError && <p role="alert" className="text-sm text-red-800">{downloadError}</p>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="sn-btn-primary" disabled={!demoFileEligible}
+              onClick={() => downloadDemo("pdf")}>Télécharger PDF fictif</button>
+            <button type="button" className="sn-btn-ghost" disabled={!demoFileEligible}
+              onClick={() => downloadDemo("xlsx")}>Télécharger Excel fictif (.xlsx)</button>
+          </div>
+        </div>}
       </section>
 
       <section className="sn-card space-y-3 p-5 md:p-6" aria-labelledby="s4d-workflow-title">
