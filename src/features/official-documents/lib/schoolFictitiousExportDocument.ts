@@ -44,6 +44,7 @@ export function makeFictionalExportDocument(
 ): FictionalExportDocument {
   if (!plan.eligibleForServerReview || plan.realDownloadAvailable ||
       request.state !== "provisional" ||
+      !["pdf", "xlsx"].includes(request.format) ||
       !["subject_period", "class_general"].includes(request.kind) ||
       request.cadence === "annual") {
     throw new Error("Export de test refusé : périmètre, publication ou format non pris en charge.");
