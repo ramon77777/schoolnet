@@ -99,6 +99,9 @@ export default function LocalSchoolDashboard() {
           <Link to="/app/school/official-general-averages" className="sn-btn-ghost inline-flex">
             Moyennes générales · S4-C.4
           </Link>
+          <Link to="/app/school/official-documents" className="sn-btn-ghost inline-flex">
+            Bulletins et exports · S4-D.1
+          </Link>
           <Link to="/app/profile" className="sn-btn-ghost inline-flex">
             Consulter mon profil
           </Link>
