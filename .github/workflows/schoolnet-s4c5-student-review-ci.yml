@@ -1,0 +1,37 @@
+name: SCHOOLNET S4-C.5 - school-admin general student review
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4c3c3538-isolated-restore-preflight-20261126
+    paths:
+      - 'src/features/schools/lib/schoolGeneralStudentReview.ts'
+      - 'src/features/schools/pages/LocalSchoolOfficialGeneralAverages.tsx'
+      - 'scripts/test-schoolnet-s4c5-general-student-review.mjs'
+      - 'docs/releases/SCHOOLNET_S4C5_GENERAL_STUDENT_REVIEW_2026-11-26.md'
+      - '.github/workflows/schoolnet-s4c5-student-review-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4c5-general-student-review
+  cancel-in-progress: true
+jobs:
+  functional-general-averages:
+    name: General average individual UI + prior C.3-C.4 regression and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4c5
+      - run: npm run qa:s4c3c4
+      - run: npm run lint
+      - run: npm run build
