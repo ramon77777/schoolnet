@@ -70,8 +70,8 @@ function pageStream(
       (y - 6) + " 510 20 re f");
     commands.push("0.13 0.19 0.31 rg",
       textAt(49, y, 8.2, student.studentName.slice(0, 34)),
-      textAt(250, y, 8.1, student.readySubjects + " / " +
-        student.expectedSubjects + " matières"),
+      textAt(250, y, 8.1, student.completedItems + " / " +
+        student.expectedItems + " " + doc.completionUnit),
       textAt(351, y, 8.1, frenchStatus(student.state)),
       textAt(492, y, 8.3, student.state === "ready"
         ? frenchAverage(student.averageOn20) : "-", true));
