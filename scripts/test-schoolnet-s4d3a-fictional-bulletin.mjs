@@ -145,7 +145,7 @@ test("S4-D.3a: output is always explicit NON PUBLISHED NON OFFICIAL demo",()=>{
   }
   assert.match(component,/SPÉCIMEN FICTIF/);
   assert.match(component,/SPÉCIMEN — DONNÉES 100 % FICTIVES — DOCUMENT NON VALABLE/);
-  assert.match(component,/elles ne représentent pas des évaluations ni des notes/);
+  assert.match(component,/elles ne représentent pas des évaluations ni des notes/i);
 });
 
 test("S4-D.3a: UI is a real responsive individual bulletin with selector and subject table",()=>{
