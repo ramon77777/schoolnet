@@ -180,6 +180,7 @@ DECLARE
  v_year uuid;
  v_policy schoolnet_private.school_bulletin_v2_policy_versions%ROWTYPE;
  v_case schoolnet_private.school_bulletin_v2_cases%ROWTYPE;
+ v_snapshot_id uuid;
  v_digest text;
 BEGIN
  IF v_actor IS NULL OR p_school_id IS NULL OR p_period_id IS NULL
@@ -250,12 +251,12 @@ BEGIN
   policy_id,source_projection,source_digest
  ) VALUES (p_school_id,v_year,p_class_id,p_period_id,p_student_id,
   v_policy.id,v_projection,v_digest)
- RETURNING id INTO v_case.snapshot_id;
+ RETURNING id INTO v_snapshot_id;
  INSERT INTO schoolnet_private.school_bulletin_v2_cases(
   school_id,school_year_id,class_id,period_id,student_id,
   snapshot_id,open_key
  ) VALUES (p_school_id,v_year,p_class_id,p_period_id,p_student_id,
-  v_case.snapshot_id,p_idempotency_key) RETURNING * INTO v_case;
+  v_snapshot_id,p_idempotency_key) RETURNING * INTO v_case;
  INSERT INTO schoolnet_private.school_bulletin_v2_events(
   school_id,case_id,actor_id,action,from_state,to_state,
   from_version,to_version,idempotency_key
