@@ -44,7 +44,8 @@
       "feature/schoolnet-s4d3h-publication-policy-draft-20261127": false,
       "feature/schoolnet-s4d3i-business-decisions-20261127": false,
       "feature/schoolnet-s4d3j-secure-workflow-contract-20261127": false,
-      "feature/schoolnet-s4d3k-disposable-sql-workflow-20261127": false
+      "feature/schoolnet-s4d3k-disposable-sql-workflow-20261127": false,
+      "feature/schoolnet-s4d3l-local-interactive-approval-20261127": false
     }
   }
 }
