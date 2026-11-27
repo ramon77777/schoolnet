@@ -1,0 +1,89 @@
+name: SCHOOLNET S4-D.3k - REAL disposable SQL approvals and Auth JWT
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d3j-secure-workflow-contract-20261127
+    paths:
+      - 'tests/s4d3k/**'
+      - 'scripts/test-schoolnet-s4d3k-sql-contract.mjs'
+      - '.github/workflows/schoolnet-s4d3k-real-auth-sql-ci.yml'
+      - 'docs/releases/SCHOOLNET_S4D3K_REAL_DISPOSABLE_SQL_2026-11-27.md'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d3k-sql-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  static-and-regressions:
+    name: SQL contract, report card regressions, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d3k
+      - run: npm run qa:s4d3j
+      - run: npm run qa:s4d3b
+      - run: npm run lint
+      - run: npm run build
+
+  real-go-true-postgrest-postgres:
+    name: REAL local GoTrue JWT + PostgREST + PostgreSQL transaction and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start disposABLE full Auth + PostgreSQL + PostgREST on localhost
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase --version
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Install only local fake SCHOOLNET V2 kernel and executable S4-D.3k prototype
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f tests/s4c3c35-supabase-ci/fixtures/official-averages-auth-schema.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_official_curriculum_and_general_average_kernel.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4c3c3_school_admin_official_general_averages_rpc.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f supabase/proposals/s4d3b_school_report_card_authorized_preview.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 -1 \
+            -f tests/s4d3k/disposable-bulletin-workflow.sql
+          psql -X -h 127.0.0.1 -p 55422 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "NOTIFY pgrst, 'reload schema';"
+          sleep 2
+      - name: Authenticate 11 local users and test actual SQL transactions through HTTP
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          set -a
+          source <(supabase status -o env)
+          set +a
+          test "${API_URL}" = "http://127.0.0.1:55421"
+          node --test ../s4d3k/real-auth-workflow-http.mjs
+      - name: Destroy all local disposable users, Postgres data and volumes
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true
