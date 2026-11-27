@@ -9,7 +9,7 @@ import {
   readOfficialCurriculum, readOfficialGeneralPreview, officialGeneralActivationPending,
 } from "@/features/schools/lib/schoolOfficialGeneralAveragesApi";
 import {
-  isOfficialCurriculum, isOfficialGeneralPreview,
+  isOfficialCurriculum, isOfficialGeneralPreview, summarizeGeneralStudents,
   type GeneralScope, type OfficialCurriculum, type OfficialGeneralPreview,
 } from "@/features/schools/lib/schoolOfficialGeneralAveragesModel";
 import {
@@ -191,6 +191,7 @@ export default function SchoolOfficialBulletinWorkspace() {
   const preview = curriculum?.status === "approved" &&
     currentRoster?.state === "ready" && currentRoster.preview?.state === "preview"
     ? currentRoster.preview : null;
+  const cohortTotals = preview ? summarizeGeneralStudents(preview.students) : null;
   const selectedStudent = preview?.students.find(student =>
     student.studentId === studentId) ?? null;
   const activeYear = years.find(year => year.id === activeYearId) ?? null;
@@ -359,6 +360,38 @@ export default function SchoolOfficialBulletinWorkspace() {
         <p role="status" className="text-sm text-amber-900">
           Aucune moyenne scolaire configurée pour ce contexte.
         </p>}
+      {preview && cohortTotals && <section
+        aria-label="Contrôle administratif des dossiers de la classe"
+        className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-extrabold text-slate-950">
+            S4-D.3e · Suivi des bulletins de la classe
+          </h3>
+          <span className="text-xs font-bold text-indigo-800">
+            Synthèse pédagogique · Non publié
+          </span>
+        </div>
+        <div className="mt-3 grid gap-3 grid-cols-2 xl:grid-cols-4">
+          {[
+            ["Dossiers", cohortTotals.total, "text-slate-950"],
+            ["Calculables", cohortTotals.ready, "text-emerald-800"],
+            ["À compléter", cohortTotals.incomplete, "text-amber-900"],
+            ["Non configurés", cohortTotals.notConfigured, "text-indigo-900"],
+          ].map(([label, count, color]) => <div key={label}
+            className="rounded-lg border border-white bg-white p-3">
+            <p className="text-xs font-semibold text-slate-600">{label}</p>
+            <p className={"mt-1 text-xl font-extrabold tabular-nums " + color}>
+              {count}
+            </p>
+          </div>)}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-slate-600">
+          Indicateurs issus de la projection générale autorisée. Une moyenne
+          calculable ne vaut pas contrôle administratif définitif :
+          aucune validation ni publication n'est activée.
+        </p>
+      </section>}
+
       {preview && preview.students.length === 0 &&
         <p role="status" className="text-sm text-slate-600">
           Aucun élève présent dans cette classe.
