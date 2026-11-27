@@ -215,7 +215,7 @@ test("S4-D.3k: REAL disposable Supabase Auth, RPC, PostgreSQL and RLS lifecycle"
     " FROM schoolnet_private.school_bulletin_v2_snapshots"+
     " WHERE id=(SELECT snapshot_id FROM schoolnet_private.school_bulletin_v2_cases"+
     " WHERE id='"+zeroCase.caseId+"')");
-  assert.equal(zeroAvg,"0");
+  assert.equal(Number(zeroAvg),0,"A genuine published zero may serialize as 0.00");
   assertOK(await transition(people.admin_a,zeroCase.caseId,"review_submitted",1,key()),"zero submit");
   assertDENIED(await transition(people.approver_a,zeroCase.caseId,
     "approval_refused",2,key(),""),"refusal reason required");
