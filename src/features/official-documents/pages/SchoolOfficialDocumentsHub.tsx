@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { downloadFictionalSchoolExport } from "../lib/schoolFictitiousExportDownload";
 import SchoolFictionalReportCardDemo from "./SchoolFictionalReportCardDemo";
 import SchoolOfficialBulletinWorkspace from "./SchoolOfficialBulletinWorkspace";
+import { isS4D3LLabRequested } from "../lib/schoolBulletinLocalLabGuard";
+const SchoolBulletinLocalLab = lazy(() => import("./SchoolBulletinLocalLab"));
 import {
   OFFICIAL_EXPORT_CATALOG, OFFICIAL_EXPORT_CADENCE_CATALOG,
   planSchoolOfficialExport, type ExportActorRole, type ExportKind,
@@ -125,6 +127,15 @@ export default function SchoolOfficialDocumentsHub({ actor }: HubProps) {
       setDownloadError("Échec de génération du fichier fictif. Aucun résultat scolaire réel n'a été consulté.");
     }
   }
+
+  // S4-D.3l isolated local functional lab; production bundle never opens it.
+  // Existing hooks above stay unconditional across all renders.
+  const labRequested = isS4D3LLabRequested(import.meta.env.DEV,
+    typeof window!=="undefined" ? window.location.search : "");
+  if (labRequested) return <Suspense fallback={<main role="status"
+    className="sn-card p-5 text-sm text-slate-700">Chargement du laboratoire local…</main>}>
+    <SchoolBulletinLocalLab />
+  </Suspense>;
 
   return <main className="space-y-6 pb-12">
     <header className="sn-card overflow-hidden border border-indigo-100 bg-gradient-to-br from-white via-blue-50 to-indigo-100 p-5 md:p-8">
