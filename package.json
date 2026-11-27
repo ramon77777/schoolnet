@@ -65,7 +65,8 @@
     "qa:s4c5": "node --experimental-strip-types --test scripts/test-schoolnet-s4c5-general-student-review.mjs",
     "qa:s4d3a": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3a-fictional-bulletin.mjs",
     "qa:s4d3b": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3b-report-card-contract.mjs",
-    "qa:s4d3c": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3c-authorized-bulletin-layout.mjs"
+    "qa:s4d3c": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3c-authorized-bulletin-layout.mjs",
+    "qa:s4d3d": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3d-bulletins-hub.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",

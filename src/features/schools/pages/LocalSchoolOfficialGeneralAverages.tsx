@@ -281,9 +281,17 @@ export default function LocalSchoolOfficialGeneralAverages() {
             </span>
           </div>
         </div>
-        <Link to="/app/school/grading-settings" className="sn-btn-ghost">
-          Périodes et coefficients
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to={localDemo
+            ? "/app/school/official-documents?schoolnet_c3c4_demo=1#schoolnet-v2-bulletins"
+            : "/app/school/official-documents#schoolnet-v2-bulletins"}
+            className="sn-btn-primary">
+            Bulletins V2
+          </Link>
+          <Link to="/app/school/grading-settings" className="sn-btn-ghost">
+            Périodes et coefficients
+          </Link>
+        </div>
       </div>
     </header>
 
