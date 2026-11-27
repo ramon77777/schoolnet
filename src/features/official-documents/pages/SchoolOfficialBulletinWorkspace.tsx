@@ -304,7 +304,10 @@ export default function SchoolOfficialBulletinWorkspace() {
           onClick={() => { resetStudent(); setRevision(value => value + 1); }}>
           ↻ Actualiser
         </button>
-        <Link className="sn-btn-ghost" to="/app/school/official-general-averages">
+        <Link className="sn-btn-ghost"
+          to={localDemo
+            ? "/app/school/official-general-averages?schoolnet_c3c4_demo=1"
+            : "/app/school/official-general-averages"}>
           Consulter les moyennes
         </Link>
       </div>
