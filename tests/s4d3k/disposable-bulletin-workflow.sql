@@ -254,9 +254,9 @@ BEGIN
  RETURNING id INTO v_snapshot_id;
  INSERT INTO schoolnet_private.school_bulletin_v2_cases(
   school_id,school_year_id,class_id,period_id,student_id,
-  snapshot_id,open_key
+  snapshot_id,open_key,state
  ) VALUES (p_school_id,v_year,p_class_id,p_period_id,p_student_id,
-  v_snapshot_id,p_idempotency_key) RETURNING * INTO v_case;
+  v_snapshot_id,p_idempotency_key,'draft') RETURNING * INTO v_case;
  INSERT INTO schoolnet_private.school_bulletin_v2_events(
   school_id,case_id,actor_id,action,from_state,to_state,
   from_version,to_version,idempotency_key
