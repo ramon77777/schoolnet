@@ -151,19 +151,21 @@ export default function SchoolOfficialBulletinWorkspace() {
 
   useEffect(() => {
     if (!allowed || !scope || !scopeKey) return;
+    // Preserve TypeScript's non-null narrowing across the async callback.
+    const targetScope: GeneralScope = scope;
     let cancelled = false;
     async function load() {
       try {
         const curriculum = localDemo
-          ? makeDemoCurriculum(scope)
-          : await readOfficialCurriculum(scope);
-        if (!isOfficialCurriculum(curriculum, scope))
+          ? makeDemoCurriculum(targetScope)
+          : await readOfficialCurriculum(targetScope);
+        if (!isOfficialCurriculum(curriculum, targetScope))
           throw new Error("Programme hors périmètre.");
         const preview = curriculum.status === "approved"
-          ? localDemo ? makeDemoGeneralPreview(scope)
-            : await readOfficialGeneralPreview(scope)
+          ? localDemo ? makeDemoGeneralPreview(targetScope)
+            : await readOfficialGeneralPreview(targetScope)
           : null;
-        if (preview && !isOfficialGeneralPreview(preview, scope))
+        if (preview && !isOfficialGeneralPreview(preview, targetScope))
           throw new Error("Aperçu hors périmètre.");
         if (!cancelled) setRosterLoad({
           key: scopeKey, state: "ready", curriculum, preview,
