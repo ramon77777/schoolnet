@@ -1,0 +1,70 @@
+name: SCHOOLNET S4-D.3l - functional bulletin approval UI with REAL local Supabase
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d3k-disposable-sql-workflow-20261127
+    paths:
+      - 'src/features/official-documents/lib/schoolBulletinLocalLab*.ts'
+      - 'src/features/official-documents/pages/SchoolBulletinLocalLab.tsx'
+      - 'src/features/official-documents/pages/SchoolOfficialDocumentsHub.tsx'
+      - 'tests/s4d3l/**'
+      - 'scripts/schoolnet-s4d3l-local-setup.mjs'
+      - 'scripts/test-schoolnet-s4d3l-functional-lab.mjs'
+      - 'docs/releases/SCHOOLNET_S4D3L_LOCAL_APPROVAL_UI_2026-11-27.md'
+      - '.github/workflows/schoolnet-s4d3l-local-interactive-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d3l-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  code-and-build:
+    name: DEV-only functional UI, SQL read guard, focused regressions, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d3l
+      - run: npm run qa:s4d3k
+      - run: npm run qa:s4d3d
+      - run: npm run lint
+      - run: npm run build
+
+  real-disposable-lab:
+    name: TRUE local Auth JWT, persisted dossier, reload, maker/checker and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+      - name: Start a fresh disposable localhost Supabase (Docker)
+        working-directory: tests/s4c3c35-supabase-ci
+        run: |
+          set -euo pipefail
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Provision real school fixture, scoped grants and local-only auth profiles
+        run: npm run lab:s4d3l:setup
+      - name: Run real HTTP tests with two distinct users and persistent database events
+        run: node --test tests/s4d3l/real-ui-lab-http.mjs
+      - name: Destroy localhost-only temporary database and credentials
+        if: always()
+        working-directory: tests/s4c3c35-supabase-ci
+        run: supabase stop --no-backup || true
