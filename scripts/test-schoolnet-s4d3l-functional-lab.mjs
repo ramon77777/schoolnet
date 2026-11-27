@@ -94,7 +94,7 @@ test("S4-D.3l: disposable SQL read cannot reveal any case without school members
  assert.match(sql,/g\.revoked_at IS NULL/);
  assert.match(sql,/v_caps='\[\]'::jsonb/);
  assert.match(sql,/c\.school_id=p_school_id/);
- assert.match(sql,/p\.student_id/);
+ assert.match(sql,/c\.student_id=p_student_id/);
  assert.match(sql,/schoolnet_private\.school_bulletin_v2_events/);
  assert.doesNotMatch(sql,/INSERT INTO schoolnet_private\.school_bulletin_v2_events/);
  assert.doesNotMatch(sql,/GRANT SELECT ON schoolnet_private/);
