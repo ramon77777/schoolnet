@@ -1,4 +1,5 @@
 import type { AdministrativeReview } from "../lib/schoolReportCardAdministrativeReview";
+import SchoolReportCardRoleGovernancePanel from "./SchoolReportCardRoleGovernancePanel";
 import {
   prepareReportCardApprovalWorkflow,
 } from "../lib/schoolReportCardApprovalPreparation";
@@ -117,6 +118,11 @@ export default function SchoolReportCardApprovalPreparationPanel({
         </dl>
       </section>
     </div>
+
+    <SchoolReportCardRoleGovernancePanel
+      workflow={plan}
+      fictional={fictional}
+    />
 
     <p role="status"
       className="rounded-xl border border-slate-300 bg-white p-4 text-xs leading-5 text-slate-800">
