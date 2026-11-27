@@ -72,7 +72,9 @@
     "qa:s4d3g": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3g-approval-governance.mjs",
     "qa:s4d3h": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3h-publication-policy-draft.mjs",
     "qa:s4d3j": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3j-workflow-contract.mjs",
-    "qa:s4d3k": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3k-sql-contract.mjs"
+    "qa:s4d3k": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3k-sql-contract.mjs",
+    "qa:s4d3l": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3l-functional-lab.mjs",
+    "lab:s4d3l:setup": "node scripts/schoolnet-s4d3l-local-setup.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
