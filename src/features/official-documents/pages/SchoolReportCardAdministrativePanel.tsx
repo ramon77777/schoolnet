@@ -1,5 +1,6 @@
 import type { OfficialCurriculum } from "../../schools/lib/schoolOfficialGeneralAveragesModel";
 import type { AuthorizedReportCardPreview } from "../lib/schoolAuthorizedReportCardModel";
+import SchoolReportCardApprovalPreparationPanel from "./SchoolReportCardApprovalPreparationPanel";
 import {
   makeReportCardAdministrativeReview,
   type ReportCardAcademicLabels,
@@ -131,5 +132,10 @@ export default function SchoolReportCardAdministrativePanel({
       seront définies séparément. Aucun statut publié, aucune approbation, aucun
       export PDF et aucune écriture en base ne sont effectués.
     </p>
+
+    <SchoolReportCardApprovalPreparationPanel
+      review={review}
+      fictional={fictional}
+    />
   </section>;
 }
