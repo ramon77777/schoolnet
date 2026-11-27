@@ -36,8 +36,8 @@ export function isS4D3LLabRequested(dev:boolean,search:string):boolean {
   return dev && new URLSearchParams(search).get("schoolnet_s4d3l_lab")==="1";
 }
 export function isLabSchoolAdmin(
-  viewer: {id:string;role:string;isDemo:boolean} | null,
+  viewer: {id:string;role:string;isDemo?:boolean} | null,
 ):boolean {
-  return Boolean(viewer && viewer.role==="school_admin" && !viewer.isDemo &&
+  return Boolean(viewer && viewer.role==="school_admin" && viewer.isDemo===false &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(viewer.id));
 }
