@@ -1,0 +1,46 @@
+name: SCHOOLNET S4-D.3j - isolated approval backend contract
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d3i-business-decisions-20261127
+    paths:
+      - 'tests/s4d3j/approval-contract-simulator.ts'
+      - 'scripts/test-schoolnet-s4d3j-workflow-contract.mjs'
+      - 'docs/architecture/SCHOOLNET_S4D3J_SECURE_APPROVAL_BACKEND_2026-11-27.md'
+      - '.github/workflows/schoolnet-s4d3j-approval-backend-contract-ci.yml'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d3j-contract-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  mock-only-server-contract:
+    name: Synthetic approval contract (NO database or migration), regressions, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d3j
+      - run: npm run qa:s4d3h
+      - run: npm run qa:s4d3g
+      - run: npm run qa:s4d3f
+      - run: npm run qa:s4d3e
+      - run: npm run qa:s4d3d
+      - run: npm run qa:s4d3c
+      - run: npm run qa:s4d3b
+      - run: npm run qa:s4d3a
+      - run: npm run qa:s4d2c2
+      - run: npm run qa:s4c3c4
+      - run: npm run qa:s4c5
+      - run: npm run lint
+      - run: npm run build
