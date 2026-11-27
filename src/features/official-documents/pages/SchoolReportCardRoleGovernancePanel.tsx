@@ -1,5 +1,6 @@
 import type { ApprovalWorkflowPreparation } from "../lib/schoolReportCardApprovalPreparation";
 import { prepareBulletinGovernance } from "../lib/schoolReportCardApprovalGovernance";
+import SchoolBulletinPublicationPolicyDraftPanel from "./SchoolBulletinPublicationPolicyDraftPanel";
 
 type Props = {
   workflow: ApprovalWorkflowPreparation;
@@ -142,6 +143,11 @@ export default function SchoolReportCardRoleGovernancePanel({
           </ol>
         </section>
       </div>
+
+      <SchoolBulletinPublicationPolicyDraftPanel
+        governance={governance}
+        fictional={fictional}
+      />
 
       <p role="status"
         className="rounded-xl border border-slate-300 bg-slate-50 p-4 text-xs leading-5 text-slate-800">
