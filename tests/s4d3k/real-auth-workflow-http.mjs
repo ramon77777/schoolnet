@@ -41,7 +41,8 @@ async function req(path,user,body){
 const rpc=(name,user,body)=>req("/rest/v1/rpc/"+name,user,body);
 const assertOK=(response,label)=>{
  assert.ok(response.status>=200&&response.status<300,
-  label+" unexpected HTTP "+response.status+" code="+(response.data?.code||"unknown"));
+  label+" unexpected HTTP "+response.status+" code="+(response.data?.code||"unknown")
+   +" message="+String(response.data?.message||"").slice(0,300));
  return response.data;
 };
 const assertDENIED=(response,label)=>{
