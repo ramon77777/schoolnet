@@ -46,8 +46,8 @@ test("S4-D.3d: existing S4-D.3a demonstration remains separate", () => {
   assert.match(workspace, /import\.meta\.env\.DEV/);
   assert.match(workspace, /schoolnet_c3c4_demo/);
   assert.match(workspace, /localDemo\s*\?\s*makeDemoGradeConfig/);
-  assert.match(workspace, /localDemo\s*\?\s*makeDemoCurriculum/);
-  assert.match(workspace, /localDemo\s*\?\s*makeDemoGeneralPreview/);
+  assert.match(workspace, /localDemo\s*\?\s*makeDemoCurriculum\(targetScope\)/);
+  assert.match(workspace, /localDemo\s*\?\s*makeDemoGeneralPreview\(targetScope\)/);
   assert.match(averages, /schoolnet_c3c4_demo=1#schoolnet-v2-bulletins/);
 });
 
@@ -55,11 +55,11 @@ test("S4-D.3d: live school selector reuses existing server-scoped permissions", 
   assert.match(workspace, /Promise\.all\(\[getAdminSchools\(\), getActiveSchoolAdmins\(\)\]\)/);
   assert.match(workspace, /filterSchoolsForLocalAdmin\(all, members, ownerKey\)/);
   assert.match(workspace, /getSchoolGradeConfiguration\(activeSchoolId\)/);
-  assert.match(workspace, /readOfficialCurriculum\(scope\)/);
-  assert.match(workspace, /readOfficialGeneralPreview\(scope\)/);
+  assert.match(workspace, /readOfficialCurriculum\(targetScope\)/);
+  assert.match(workspace, /readOfficialGeneralPreview\(targetScope\)/);
   assert.match(api, /schoolnet_school_report_card_preview/);
-  assert.match(workspace, /isOfficialCurriculum\(curriculum, scope\)/);
-  assert.match(workspace, /isOfficialGeneralPreview\(preview, scope\)/);
+  assert.match(workspace, /isOfficialCurriculum\(curriculum, targetScope\)/);
+  assert.match(workspace, /isOfficialGeneralPreview\(preview, targetScope\)/);
 });
 
 test("S4-D.3d: identity and school scope invalidate all old asynchronous responses", () => {
