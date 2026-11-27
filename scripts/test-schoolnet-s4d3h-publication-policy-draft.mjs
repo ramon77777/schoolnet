@@ -215,7 +215,7 @@ test("S4-D.3h: future transitions are all disabled and state machine cannot exec
   assert.equal(new Set(events.map(item => item.event)).size, 7);
   assert.equal(events.find(item => item.event === "review_submitted").from, "draft");
   assert.equal(events.find(item => item.event === "publication_revoked").from, "published");
-  assert.doesNotMatch(model, /onClick=|onSubmit=|\\.rpc\\(|\\.insert\\(|\\.update\\(|\\.upsert\\(|\\.delete\\(/);
+  assert.doesNotMatch(model, /onClick=|onSubmit=|\.rpc\(|\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
 });
 
 test("S4-D.3h: seven server controls require identity, scope, snapshot, audit and publication permissions", () => {
