@@ -655,6 +655,10 @@ export default function LocalSchoolOfficialGeneralAverages() {
                             viewer={reportViewer}
                             localDemo={localDemo}
                             revisionKey={reviewKey}
+                            schoolName={selectedSchool?.name ?? ""}
+                            schoolYearName={currentConfig?.years.find(year => year.id === activeYearId)?.name ?? ""}
+                            className={classes.find(item => item.id === activeClassId)?.name ?? ""}
+                            periodName={selectedPeriod?.name ?? ""}
                           />}
                       </section>
                     </td>

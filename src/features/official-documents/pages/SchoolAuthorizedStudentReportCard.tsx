@@ -9,6 +9,7 @@ import {
 import type {
   AuthorizedReportCardPreview,
 } from "../lib/schoolAuthorizedReportCardModel";
+import SchoolAuthorizedReportCardLayout from "./SchoolAuthorizedReportCardLayout";
 
 type Props = {
   scope: GeneralScope;
@@ -18,6 +19,10 @@ type Props = {
   viewer: ReportCardViewer;
   localDemo: boolean;
   revisionKey: string;
+  schoolName: string;
+  schoolYearName: string;
+  className: string;
+  periodName: string;
 };
 type LoadState = "loading" | "ready" | "pending" | "error";
 type Display = {
@@ -33,6 +38,7 @@ const states={
 
 export default function SchoolAuthorizedStudentReportCard({
   scope,studentId,curriculum,general,viewer,localDemo,revisionKey,
+  schoolName,schoolYearName,className,periodName,
 }:Props) {
   const [result,setResult]=useState<Display|null>(null);
   const key=[
@@ -150,6 +156,19 @@ export default function SchoolAuthorizedStudentReportCard({
         Les résultats par matière calculables peuvent être visibles, sans
         transformer les évaluations non publiées en zéros.
       </p>}
+      <div className="border-t border-indigo-100 pt-5">
+        <h5 className="mb-3 text-sm font-extrabold text-indigo-900">
+          S4-D.3c · Prévisualisation complète du bulletin
+        </h5>
+        <SchoolAuthorizedReportCardLayout
+          report={report}
+          schoolName={schoolName}
+          schoolYearName={schoolYearName}
+          className={className}
+          periodName={periodName}
+          fictional={localDemo}
+        />
+      </div>
       <p className="text-xs leading-5 text-slate-600">
         {localDemo
           ? "SPECIMEN FICTIF : ces moyennes par matière sont purement illustratives, jamais issues d'enseignants ou de Supabase."
