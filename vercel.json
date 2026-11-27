@@ -40,7 +40,8 @@
       "feature/schoolnet-s4d3d-bulletins-hub-20261127": false,
       "feature/schoolnet-s4d3e-admin-reportcard-review-20261127": false,
       "feature/schoolnet-s4d3f-approval-workflow-preparation-20261127": false,
-      "feature/schoolnet-s4d3g-approval-role-governance-20261127": false
+      "feature/schoolnet-s4d3g-approval-role-governance-20261127": false,
+      "feature/schoolnet-s4d3h-publication-policy-draft-20261127": false
     }
   }
 }
