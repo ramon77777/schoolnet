@@ -36,7 +36,8 @@
       "feature/schoolnet-s4c5-general-student-review-20261126": false,
       "feature/schoolnet-s4d3a-fictional-reportcard-preview-20261126": false,
       "feature/schoolnet-s4d3b-authorized-subject-lines-20261126": false,
-      "feature/schoolnet-s4d3c-authorized-bulletin-layout-20261127": false
+      "feature/schoolnet-s4d3c-authorized-bulletin-layout-20261127": false,
+      "feature/schoolnet-s4d3d-bulletins-hub-20261127": false
     }
   }
 }
