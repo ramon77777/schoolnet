@@ -1,0 +1,45 @@
+name: SCHOOLNET S4-D.3e - administrative review of V2 report cards
+on:
+  pull_request:
+    branches:
+      - feature/schoolnet-s4d3d-bulletins-hub-20261127
+    paths:
+      - 'src/features/official-documents/lib/schoolReportCardAdministrativeReview.ts'
+      - 'src/features/official-documents/pages/SchoolReportCardAdministrativePanel.tsx'
+      - 'src/features/official-documents/pages/SchoolAuthorizedStudentReportCard.tsx'
+      - 'src/features/official-documents/pages/SchoolOfficialBulletinWorkspace.tsx'
+      - 'scripts/test-schoolnet-s4d3e-admin-reportcard.mjs'
+      - '.github/workflows/schoolnet-s4d3e-admin-reportcard-ci.yml'
+      - 'docs/releases/SCHOOLNET_S4D3E_ADMIN_REPORTCARD_REVIEW_2026-11-27.md'
+      - 'package.json'
+      - 'vercel.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: schoolnet-s4d3e-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  read-only-administrative-review:
+    name: Administrative checklist, legacy regressions, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run qa:s4d3e
+      - run: npm run qa:s4d3d
+      - run: npm run qa:s4d3c
+      - run: npm run qa:s4d3b
+      - run: npm run qa:s4d3a
+      - run: npm run qa:s4d2c2
+      - run: npm run qa:s4c3c4
+      - run: npm run qa:s4c5
+      - run: npm run lint
+      - run: npm run build

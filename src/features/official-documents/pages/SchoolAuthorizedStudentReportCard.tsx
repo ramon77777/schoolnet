@@ -10,6 +10,7 @@ import type {
   AuthorizedReportCardPreview,
 } from "../lib/schoolAuthorizedReportCardModel";
 import SchoolAuthorizedReportCardLayout from "./SchoolAuthorizedReportCardLayout";
+import SchoolReportCardAdministrativePanel from "./SchoolReportCardAdministrativePanel";
 
 type Props = {
   scope: GeneralScope;
@@ -156,6 +157,12 @@ export default function SchoolAuthorizedStudentReportCard({
         Les résultats par matière calculables peuvent être visibles, sans
         transformer les évaluations non publiées en zéros.
       </p>}
+      <SchoolReportCardAdministrativePanel
+        report={report}
+        curriculum={curriculum}
+        labels={{ schoolName, schoolYearName, className, periodName }}
+        fictional={localDemo}
+      />
       <div className="border-t border-indigo-100 pt-5">
         <h5 className="mb-3 text-sm font-extrabold text-indigo-900">
           S4-D.3c · Prévisualisation complète du bulletin
