@@ -70,7 +70,8 @@
     "qa:s4d3e": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3e-admin-reportcard.mjs",
     "qa:s4d3f": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3f-approval-workflow-preparation.mjs",
     "qa:s4d3g": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3g-approval-governance.mjs",
-    "qa:s4d3h": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3h-publication-policy-draft.mjs"
+    "qa:s4d3h": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3h-publication-policy-draft.mjs",
+    "qa:s4d3j": "node --experimental-strip-types --test scripts/test-schoolnet-s4d3j-workflow-contract.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.94.0",
